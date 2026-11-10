@@ -1,0 +1,558 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "blocking",
+              "major",
+              "minor"
+            ]
+          },
+          "status": {
+            "default": "active",
+            "type": "string",
+            "enum": [
+              "active",
+              "retired"
+            ]
+          },
+          "scope": {
+            "default": "listed",
+            "type": "string",
+            "enum": [
+              "global",
+              "listed"
+            ]
+          },
+          "targets": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "languages": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "anchors": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lang": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "quote": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "cases": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+                  }
+                }
+              },
+              "required": [
+                "lang",
+                "quote"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "check": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/GradingCheck"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "completed"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "review"
+                  },
+                  "samples": {
+                    "default": 3,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "gateOn": {
+            "default": "raw",
+            "type": "string",
+            "enum": [
+              "raw",
+              "final",
+              "both"
+            ]
+          },
+          "margin": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1
+          },
+          "examples": {
+            "type": "object",
+            "properties": {
+              "pass": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fail": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "input": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                }
+              },
+              "params": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                }
+              }
+            },
+            "required": [
+              "pass",
+              "fail"
+            ],
+            "additionalProperties": false
+          },
+          "origin": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "commit": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "date": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "layer": {
+                  "type": "string",
+                  "enum": [
+                    "prompt",
+                    "code",
+                    "pipeline"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "severity",
+          "check"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "rules"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "GradingCheck": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "script"
+            },
+            "allow": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "ignore": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignoreFrom": {
+              "type": "string",
+              "pattern": "^(?:input|params)(?:\\.[^.\\s]+)+$"
+            }
+          },
+          "required": [
+            "type",
+            "allow"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "emoji"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "pattern"
+            },
+            "regex": {
+              "type": "string",
+              "minLength": 1
+            },
+            "flags": {
+              "type": "string",
+              "pattern": "^(?!.*(.).*\\1)[ims]*$"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "forbid",
+                "require"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "regex",
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "phrases"
+            },
+            "any": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "anyFrom": {
+              "type": "string",
+              "pattern": "^(?:input|params)(?:\\.[^.\\s]+)+$"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "forbid",
+                "require"
+              ]
+            },
+            "normalize": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "mode"
+          ],
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "any"
+              ]
+            },
+            {
+              "required": [
+                "anyFrom"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "overlap"
+            },
+            "with": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "withFrom": {
+              "type": "string",
+              "pattern": "^(?:input|params)(?:\\.[^.\\s]+)+$"
+            },
+            "minChars": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "type",
+            "minChars"
+          ],
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "with"
+              ]
+            },
+            {
+              "required": [
+                "withFrom"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "length"
+            },
+            "min": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "unit": {
+              "type": "string",
+              "enum": [
+                "chars",
+                "graphemes"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "unit"
+          ],
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "min"
+              ]
+            },
+            {
+              "required": [
+                "max"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "json"
+            },
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/$defs/JsonValue"
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "all"
+            },
+            "checks": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/GradingCheck"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "checks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "any"
+            },
+            "checks": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/GradingCheck"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "checks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "not"
+            },
+            "check": {
+              "$ref": "#/$defs/GradingCheck"
+            }
+          },
+          "required": [
+            "type",
+            "check"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

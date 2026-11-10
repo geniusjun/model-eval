@@ -1,0 +1,862 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/SendLine"
+    },
+    {
+      "$ref": "#/$defs/AttemptLine"
+    },
+    {
+      "$ref": "#/$defs/CostLine"
+    }
+  ],
+  "$defs": {
+    "SendLine": {
+      "type": "object",
+      "properties": {
+        "caseId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "segment": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "reservedUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sending": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "caseId",
+        "repeat",
+        "attempt",
+        "segment",
+        "reservedUsd",
+        "sending"
+      ],
+      "additionalProperties": false
+    },
+    "AttemptLine": {
+      "oneOf": [
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "caseId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+                },
+                "repeat": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "segment": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "seed": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                "costUsd": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "costEstimated": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "$ref": "#/$defs/Usage"
+                },
+                "calls": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/CallRecord"
+                  }
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "status": {
+                  "type": "string",
+                  "const": "ok"
+                },
+                "raw": {
+                  "type": "string"
+                },
+                "answers": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "stages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "latencyMs": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "finishReason": {
+                  "type": "string",
+                  "enum": [
+                    "stop",
+                    "length",
+                    "content_filter",
+                    "other"
+                  ]
+                },
+                "modelSnapshot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "fingerprint": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "finalKind": {
+                  "type": "string",
+                  "const": "model"
+                },
+                "final": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "caseId",
+                "repeat",
+                "attempt",
+                "segment",
+                "seed",
+                "costUsd",
+                "status",
+                "raw",
+                "answers",
+                "latencyMs",
+                "finishReason",
+                "finalKind",
+                "final"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "caseId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+                },
+                "repeat": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "segment": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "seed": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                "costUsd": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "costEstimated": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "$ref": "#/$defs/Usage"
+                },
+                "calls": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/CallRecord"
+                  }
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "status": {
+                  "type": "string",
+                  "const": "ok"
+                },
+                "raw": {
+                  "type": "string"
+                },
+                "answers": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "stages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "latencyMs": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "finishReason": {
+                  "type": "string",
+                  "enum": [
+                    "stop",
+                    "length",
+                    "content_filter",
+                    "other"
+                  ]
+                },
+                "modelSnapshot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "fingerprint": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "finalKind": {
+                  "type": "string",
+                  "const": "fallback"
+                },
+                "final": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "caseId",
+                "repeat",
+                "attempt",
+                "segment",
+                "seed",
+                "costUsd",
+                "status",
+                "raw",
+                "answers",
+                "latencyMs",
+                "finishReason",
+                "finalKind",
+                "final"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "caseId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+                },
+                "repeat": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "segment": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "seed": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                "costUsd": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "costEstimated": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "$ref": "#/$defs/Usage"
+                },
+                "calls": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/CallRecord"
+                  }
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "status": {
+                  "type": "string",
+                  "const": "ok"
+                },
+                "raw": {
+                  "type": "string"
+                },
+                "answers": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "stages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "latencyMs": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "finishReason": {
+                  "type": "string",
+                  "enum": [
+                    "stop",
+                    "length",
+                    "content_filter",
+                    "other"
+                  ]
+                },
+                "modelSnapshot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "fingerprint": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "finalKind": {
+                  "type": "string",
+                  "const": "discarded"
+                },
+                "discardReason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "caseId",
+                "repeat",
+                "attempt",
+                "segment",
+                "seed",
+                "costUsd",
+                "status",
+                "raw",
+                "answers",
+                "latencyMs",
+                "finishReason",
+                "finalKind"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "caseId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+            },
+            "repeat": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "segment": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "seed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "costUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "costEstimated": {
+              "type": "boolean"
+            },
+            "usage": {
+              "$ref": "#/$defs/Usage"
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/CallRecord"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "status": {
+              "type": "string",
+              "const": "error"
+            },
+            "error": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "config",
+                    "adapter",
+                    "transient",
+                    "permanent",
+                    "timeout"
+                  ]
+                },
+                "message": {
+                  "type": "string"
+                },
+                "retryAfterMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "abandoned": {
+                  "type": "string",
+                  "enum": [
+                    "timeout",
+                    "restart"
+                  ]
+                },
+                "capturedRaw": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "message"
+              ],
+              "additionalProperties": false
+            },
+            "latencyMs": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "caseId",
+            "repeat",
+            "attempt",
+            "segment",
+            "seed",
+            "costUsd",
+            "status",
+            "error"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "caseId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+            },
+            "repeat": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "segment": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "seed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "costUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "costEstimated": {
+              "type": "boolean"
+            },
+            "usage": {
+              "$ref": "#/$defs/Usage"
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/CallRecord"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "status": {
+              "type": "string",
+              "const": "stopped"
+            }
+          },
+          "required": [
+            "caseId",
+            "repeat",
+            "attempt",
+            "segment",
+            "seed",
+            "costUsd",
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Usage": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "cachedInput": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "cacheWrite": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "output": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reasoning": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "CallRecord": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "failed",
+            "unanswered"
+          ]
+        },
+        "responseModel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "errorKind": {
+          "type": "string",
+          "enum": [
+            "config",
+            "transient",
+            "permanent",
+            "timeout"
+          ]
+        },
+        "retryAfterMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "branch": {
+          "type": "string",
+          "enum": [
+            "answer",
+            "side"
+          ]
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "finishReason": {
+          "type": "string"
+        },
+        "latencyMs": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "model",
+        "outcome"
+      ],
+      "additionalProperties": false
+    },
+    "CostLine": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "segment": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "late",
+                "calls"
+              ]
+            },
+            "costUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "costEstimated": {
+              "type": "boolean"
+            },
+            "usage": {
+              "$ref": "#/$defs/Usage"
+            },
+            "costCorrection": {
+              "type": "boolean",
+              "const": true
+            },
+            "caseId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+            },
+            "repeat": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/CallRecord"
+              }
+            }
+          },
+          "required": [
+            "segment",
+            "source",
+            "costUsd",
+            "costCorrection",
+            "caseId",
+            "repeat",
+            "attempt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "segment": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "late",
+                "calls"
+              ]
+            },
+            "costUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "costEstimated": {
+              "type": "boolean"
+            },
+            "usage": {
+              "$ref": "#/$defs/Usage"
+            },
+            "costCorrection": {
+              "type": "boolean",
+              "const": true
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/CallRecord"
+              }
+            }
+          },
+          "required": [
+            "segment",
+            "source",
+            "costUsd",
+            "costCorrection",
+            "calls"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

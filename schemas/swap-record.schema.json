@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/SwapRecord",
+  "$defs": {
+    "SwapRecord": {
+      "type": "object",
+      "properties": {
+        "swapId": {
+          "type": "string",
+          "pattern": "^\\d{8}-\\d{6}-swap-[0-9a-f]{4}$"
+        },
+        "baselineRunId": {
+          "type": "string",
+          "pattern": "^\\d{8}-\\d{6}-[a-z0-9][a-z0-9._-]{0,63}-[0-9a-f]{4}$"
+        },
+        "candidateRunId": {
+          "type": "string",
+          "pattern": "^\\d{8}-\\d{6}-[a-z0-9][a-z0-9._-]{0,63}-[0-9a-f]{4}$"
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "maxCostUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "run",
+                "swap"
+              ]
+            }
+          },
+          "required": [
+            "maxCostUsd",
+            "scope"
+          ],
+          "additionalProperties": false
+        },
+        "spentUsd": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "segment": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "endedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "spentUsd": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "segment",
+              "startedAt",
+              "spentUsd"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "running",
+            "complete",
+            "partial"
+          ]
+        },
+        "stopReason": {
+          "type": "string",
+          "enum": [
+            "interrupted",
+            "budget",
+            "budget-projected",
+            "adapter-errors",
+            "transient-errors",
+            "config-error"
+          ]
+        },
+        "comparisonId": {
+          "type": "string",
+          "pattern": "^cmp-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "swapId",
+        "baselineRunId",
+        "candidateRunId",
+        "budget",
+        "spentUsd",
+        "segments",
+        "status"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
