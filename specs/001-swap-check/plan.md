@@ -14,7 +14,7 @@ Each rule × language × output surface cell gets a non-inferiority verdict from
 
 **Language/Version**: TypeScript 5.x with `strict`, `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess`; ESM only
 
-**Primary Dependencies**: `zod`, `ajv` and `yaml` at run time (D3); everything else is Node built-ins or written in-house. Development only: pnpm, `tsc`, vitest, ESLint with typescript-eslint (strict type-checked), Prettier, publint, Are the Types Wrong
+**Primary Dependencies**: `zod`, `ajv` and `yaml` at run time (D3); everything else is Node built-ins or written in-house. Development only: pnpm, `tsc`, `@types/node`, vitest, `tsx` (runs `scripts/` and `bench/`), ESLint with typescript-eslint (strict type-checked), Prettier, publint, Are the Types Wrong
 
 **Storage**: Files only. A run is `manifest.json` plus JSONL; a comparison is JSON plus `report.md` and `report.html` (feature 002)
 
@@ -65,7 +65,8 @@ specs/001-swap-check/
 │   ├── config.md        # model-eval.config.yaml, rules/*.yaml, cases/**/*.yaml
 │   └── adapter-protocol.md
 ├── checklists/
-│   └── requirements.md
+│   ├── requirements.md
+│   └── validation.md    # SC-004 to SC-007 figures, filled by people
 └── tasks.md             # Phase 2 output (/speckit.tasks), not created by /speckit.plan
 ```
 
@@ -83,7 +84,8 @@ src/
 ├── report/        # Markdown and JSON writers, redaction, page data for feature 002
 ├── lint/          # one function per lint code
 ├── messages/      # en.json, ko.json
-├── cli/           # entry points, output, exit codes
+├── cli/           # entry points, output, exit codes, init templates (templates/)
+├── cli.ts         # bin entry, built to dist/cli.js
 └── index.ts       # public library API
 
 schemas/           # JSON Schemas generated from zod, shipped in the package
@@ -91,6 +93,7 @@ examples/pogo/     # synthetic example: config, rules, cases, Node mock adapter
 bench/             # SC-003 simulation using src/stats
 test/              # unit/ contract/ e2e/ fixtures/
 scripts/           # check-spec-coverage.ts, generate-schemas.ts
+.github/workflows/ # CI
 docs/
 ├── guide/         # adapter, rules, reading the statistics, CI
 └── reference/     # CLI, config, checks
@@ -187,7 +190,7 @@ Work that does not wait on other work runs in parallel branches, and the contrac
    - B, result page (feature 002), built against the comparison fixture.
    - C, Python helper (feature 003).
    - Done when `swap` runs end to end against the mock adapter, SC-001, SC-002 and SC-003 pass, and the coverage check passes for this feature's FRs. Branches B and C meet their own success criteria against the fixtures.
-3. **Integrate**: connect the result page to `compare`, `swap` and `report`, and test again on real comparison output. The TypeScript helper and `init --adapter node` are a separate branch here; if the real integration uses only the Python helper, step 4 starts before that branch ends. Done when the mock adapter and the example Python service run end to end and the success criteria of features 002 and 003 pass on real output.
+3. **Integrate**: connect the result page to `compare`, `swap` and `report`, connect `init --adapter python` and `init --adapter node` to the helpers of feature 003, and test again on real comparison output. The TypeScript helper and `init --adapter node` are a separate branch here; if the real integration uses only the Python helper, step 4 starts before that branch ends. Done when the mock adapter and the example Python service run end to end and the success criteria of features 002 and 003 pass on real output.
 4. **Real integration**: an adapter built on the helper, at least 15 deterministic rules, 30 cases per language, `lint --render` passing, and two real comparisons (the second measures SC-005). Done when SC-004, SC-005 and SC-007 are recorded with the cache hit ratio and every anchor warning is handled (fixed or `retired`).
 5. **Docs and demo**: README, `docs/guide/`, `docs/reference/` and the GitHub Pages demo. Done when someone new to the repository has actually performed SC-006.
 6. **Release preparation**: licence, package metadata, repository settings, and an independent review with its fixes. Done when every known defect is handled and `npm publish --dry-run` and publint pass.

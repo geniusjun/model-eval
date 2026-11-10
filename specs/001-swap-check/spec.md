@@ -206,7 +206,7 @@ After fixing a check, an operator re-grades saved runs and compares them again w
   1. decision summary and gate result;
   2. cell table;
   3. failing examples of regressed cells (raw and final);
-  4. masked rate and the discard, fallback and regeneration figures;
+  4. masked rate and the discard, fallback and regeneration figures, or that an adapter declares no post-processing;
   5. cells whose baseline compliance is below the configured level;
   6. anchors and origins;
   7. operational metrics and warnings;
@@ -220,6 +220,7 @@ After fixing a check, an operator re-grades saved runs and compares them again w
   3. A swap check that stops early still compares what finished and marks the result as withheld, unless it stopped on a configuration error, was forced to quit, or finished no trial.
 - **FR-033**: `init` MUST create a config template, example rules and cases and an ignore entry for the output directory. With `--adapter`, it also creates an adapter skeleton that uses the helper for that language, and for Python copies the helper file next to it.
 - **FR-034**: System MUST print human output in English by default and in Korean when asked.
+- **FR-035**: System MUST warn in lint when the adapter's helper is older than the helper bundled with the tool.
 
 ### Key Entities *(include if feature involves data)*
 

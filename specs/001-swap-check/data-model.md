@@ -138,7 +138,7 @@ Atomic writes: [plan D6](plan.md#d6-runs-are-files-and-grading-is-separate-from-
 | Field | Description |
 |---|---|
 | `runId`, `swapId` | See §Identifiers and Hashing. `swapId` only on runs made by a swap check |
-| `tool`, `adapter`, `service` | Name, version and protocol version. `adapter` always has `launchHash`, the hash of `adapter.command`, `adapter.env` and the real path of `adapter.cwd` (resolved from the config folder with links and letter case resolved, `fs.realpathSync.native`, so a link or a different letter case to the same folder does not block resume), and the helper language and version when a helper is used. Environment values appear only hashed. `service` is what the adapter declares: git SHA, dirty flag and `treeHash`; unknown fields are omitted |
+| `tool`, `adapter`, `service` | Name, version and protocol version. `adapter` always has `launchHash`, the hash of `adapter.command`, `adapter.env` and the real path of `adapter.cwd` (resolved from the config folder with links and letter case resolved, `fs.realpathSync.native`, so a link or a different letter case to the same folder does not block resume), the helper language and version when a helper is used, and the `capabilities` it declared in `initialize`. Environment values appear only hashed. `service` is what the adapter declares: git SHA, dirty flag and `treeHash`; unknown fields are omitted |
 | `variant` | The full variant and its fingerprint |
 | `cases` | `{id, lang, hash}` per case |
 | `rulesHash` | Informational only; not compared on resume, since rules do not affect generation |
@@ -148,7 +148,7 @@ Atomic writes: [plan D6](plan.md#d6-runs-are-files-and-grading-is-separate-from-
 | `pricing` | Copy of the prices at run time |
 | `budget` | Cap and scope. Omitted in config means 1 USD; `null` means no cap. Both runs of a swap share one cap |
 | `estimate` | `{expected, conservative, basis}` before the start, and `projected[]` for every re-estimate. `basis` is `history` or `structure` (§Cost) |
-| `costProfile` | Per variant and language for a finished run: `{repeat0MeanUsd, repeatNMeanUsd, outputTokensMean, outputTokensP95, callsPerTrialP95, callsPerAttemptMax}`. Values per trial sum every line of its key. Both call counts are at least 1 |
+| `costProfile` | Per variant and language for a finished run: `{repeat0MeanUsd, repeatNMeanUsd, inputTokensMean, outputTokensMean, outputTokensP95, cacheHitRatio, callsPerTrialP95, callsPerAttemptMax}`. Values per trial sum every line of its key; a trial's input tokens are `input` + `cachedInput` + `cacheWrite`. `cacheHitRatio` = `cachedInput` ÷ (`input` + `cachedInput` + `cacheWrite`), summed over all lines of finished keys. Both call counts are at least 1 |
 | `totals` | Trials per outcome (effective lines), token buckets and cost of all lines with the part charged as reservations, `overrunUsd`, duration |
 | `segments[]` | One per segment, the first run being segment 1: start and end, tool, adapter and helper versions, prices, cap, concurrency, `toolPaths` sent (including on restarts), spend, `resume-unverified` and `resume-config-ignored` details |
 | `warnings` | Warnings this run raises from its own records (§Warnings). Rewritten at segment start (after pre-start checks), whenever a new code appears and at segment end, so a run left `running` still has them. In such a run, values like the overrun are as last written; resume recounts them. They equal the warnings of `run --json` |
@@ -270,9 +270,10 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 |---|---|
 | `comparisonId` | Deterministic ID (§Identifiers and Hashing) |
 | `createdAt` | When the comparison was written (volatile) |
-| `baseline`, `candidate` | Run ID, grade set ID, variant, run `status` |
+| `baseline`, `candidate` | Run ID, grade set ID, variant, run `status`, versions from the manifest (`tool`, `adapter` with its helper, `service`) and the `postprocess` capability the adapter declared |
 | `cells[]` | Cells |
 | `aggregates[]` | Per rule and surface, the pooled rate and difference over languages. No verdict |
+| `rules[]` | `active` rules applicable to the compared targets: `{id, title, severity, languages, gateOn, margin, anchors, origin}`, with `margin` as used (§Statistics, Verdict order) |
 | `summary` | In order: `worse[]` (regressed cells, cells with a confirmed drop, "clear drop" cells with K < 3), `improved[]`, `unknown[]` (undecided cells with `needed`), `ops[]` (changes such as cost ratio, latency ratio, discard rate), `scope`. An undecided cell with a confirmed drop appears in both `worse[]` and `unknown[]` |
 | `ops` | Per variant: rejection, time-out, transient, adapter error, discard, fallback, empty answer and regeneration rates (each with a Wilson interval); systematic trials and cases; discard reasons; top 3 messages per error kind by frequency; side-call failures per kind; abandoned trials per cause; finish reasons; latency p50, p95 and distribution; token buckets and cost per trial; response model snapshots |
 | `samples` | Texts for side-by-side viewing: `review` samples per case and failing examples of regressed cells, redacted. Each (variant, `caseId`, `repeat`) text is stored once and referenced by key. `review` takes the lowest repeats, `samples` per case, raw and final. Error trials carry the kind and message instead. Failing examples are up to `report.samples` per cell, sorted by case and repeat and taken round-robin across cases |
@@ -281,8 +282,9 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 | `scope` | Judged targets, judged rules / all rules, `review` rules |
 | `priorComparisons` | Number of distinct run pairs among earlier comparisons in the output directory with the same two variant fingerprints in the same roles, excluding the current run pair. Re-grading or finishing the same runs is not a new sample; rerunning only the candidate is |
 | `stats` | Confidence level, method, G, both z values, `minCases` |
-| `config` | Copies of `gate` and `stats` used |
+| `config` | Copies of `gate`, `stats` and `report` used |
 
+- The report, the result page and `report` read rule details, versions and settings from the comparison alone. `rules[]` comes from rule definitions that `rulesHash` covers, versions and `postprocess` from the manifests of the runs the grade sets name, and `config` from the `gate`, `stats` and `report` settings the `comparisonId` input already holds, so these fields add no input to the ID.
 - Metrics use the same common, unchanged cases as the cells (FR-027).
 - Denominators: rejection, time-out, discard, fallback, empty answer and regeneration rates divide by the variant's trials graded on `completed` in the comparison (systematic failures in, other transient, adapter and config errors out). Transient and adapter error rates divide by all finished trials over the whole run, and systematic trials stay in their numerators.
 - Cost and tokens per trial average keys finished in both runs. Latency uses the `ok` trials among them; the time of trials that ended in errors shows through the time-out and error rates. This keeps a partial run whose repeat 0 alone finished from looking expensive because of cache writes.
