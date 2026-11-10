@@ -85,7 +85,7 @@ viewer/
     ├── report/                   # readEmbeddedReport.ts, uses the shared schema from src/report/schema.ts
     ├── components/               # shared pieces: IntervalBar, VerdictBadge, CodeText
     ├── hooks/                    # useHashParam.ts
-    ├── i18n/                     # en.json, ko.json, useMessages.ts
+    ├── i18n/                     # en.json, ko.json (interface strings), useMessages.ts
     ├── utils/                    # format.ts (percent, points, currency)
     └── styles/                   # tokens.css (colour schemes), global.css
 test/browser/                     # Playwright specs against dist/viewer and fixtures
@@ -139,7 +139,7 @@ The grid is a real `<table>` with a `<button>` per cell that opens its detail; v
 
 ### D8. English and Korean messages in files
 
-All page strings live in `viewer/src/i18n/en.json` and `ko.json`, both embedded. The page starts in the language of the command (`lang` in the payload, [contracts/page-data.md](contracts/page-data.md#payloads)) and offers a switch. Adding a language adds a file and touches no component.
+The page renders the codes of the comparison (cell notes, `needed`, warnings, gate reasons) with the message files of feature 001, `src/messages/en.json` and `ko.json`, bundled into the template like `src/report/schema.ts` (D4), so the command line and the page give a code the same text. `viewer/src/i18n/en.json` and `ko.json` hold only the page's own interface strings. Both sets are embedded. The page starts in the language of the command (`lang` in the payload, [contracts/page-data.md](contracts/page-data.md#payloads)) and offers a switch. Adding a language adds a file to each set and touches no component.
 
 ### D9. Styling with CSS Modules and tokens
 

@@ -8,6 +8,8 @@ All files are YAML. The tool ships JSON Schemas (`schemas/config.schema.json` an
 
 `model-eval.config.yaml`:
 
+Every value the example shows is the default for a key that is left out, with these exceptions: `version`, `adapter.command`, `variants` and `pricing` are required; `gate.severities` and `redact` default to empty lists, so a left-out gate blocks nothing; `gate.margin` defaults to 0.10; `estimate.inputTokens` has no default.
+
 ```yaml
 version: 1
 lang: en                                   # Human output and result page language: en or ko.

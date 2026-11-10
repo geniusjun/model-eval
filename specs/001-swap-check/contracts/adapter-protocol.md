@@ -48,6 +48,7 @@ Result:
   - Resume and adapter restarts compare `treeHash` when present, otherwise `version` and `dirty`, so a new commit with identical content is the same service.
 - `adapter.helper` is present only when a helper is used; lint reports `helper-outdated` when it is older than the bundled helper.
 - `postprocess: false` means `final` always equals `raw`, and reports say so.
+- A capability left out is `false`, except `postprocess`, which is `true`. Without `maxConcurrency` the adapter sets no limit and `run.concurrency` alone applies.
 
 ### `render` (optional, when `capabilities.render`)
 

@@ -213,7 +213,7 @@ After fixing a check, an operator re-grades saved runs and compares them again w
   8. judged scope (judged targets and rule counts, and rules not judged);
   9. reproduction details.
 - **FR-030**: Every command MUST offer `--json` output with a `schemaVersion` and published exit codes.
-- **FR-031**: System MUST pass reports, result pages, saved comparisons, stdout, stderr (including relayed adapter stderr) and logs through the configured redaction rules before writing them.
+- **FR-031**: System MUST pass reports, result pages, saved comparisons, stdout, stderr (including relayed adapter stderr) and logs through the configured redaction rules before writing them. Redaction applies to free text (model and service output, error and log messages, adapter warnings, rule titles, anchor quotes, case notes); identifiers, hashes, codes and other enumerated values are written as they are.
 - **FR-032**: The swap check MUST run both variants, grade, compare, gate and write the outputs in one command:
   1. Both variants use the same trial order and seeds, and their trials are interleaved.
   2. Repeats of a case are sent in repeat order, each only after the previous repeat of that case finished (data-model §Send Order).

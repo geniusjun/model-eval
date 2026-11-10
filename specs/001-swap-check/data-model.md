@@ -4,6 +4,8 @@
 
 This file defines entities, fields, enums, validation and state. File syntax is in [contracts/config.md](contracts/config.md), adapter messages in [contracts/adapter-protocol.md](contracts/adapter-protocol.md) and the reasons behind the statistics in [research.md](research.md) R3. "N characters" always means N Unicode code points, and text is cut on code point boundaries.
 
+The tables give each field's meaning. The exact JSON shape of every written record is the generated `schemas/*.schema.json`, and changing it follows constitution VIII.
+
 ## Overview
 
 ```text
@@ -109,6 +111,7 @@ Exact semantics:
 - `…From` fields are paths into the case (`input.nickname`, `params.words`). A string value is a one-item list. A missing `ignoreFrom` or `withFrom` value is an empty list; a missing `anyFrom` value is a lint error (`unresolved-ref`), because an empty forbid list checks nothing.
 - Overlap with the rendered prompt is a later feature; until then a prompt-leak rule puts the prompt sentence in `with`.
 - `Examples` is `{pass: string[], fail: string[], input?, params?}`; `input` and `params` supply values for `…From` references. Not allowed on `review` or `completed`.
+- Check parameters have no defaults except `normalize` and `samples` above. Required: `allow` (`script`), `regex` and `mode` (`pattern`), `mode` (`phrases`), `minChars` (`overlap`), `unit` (`length`), `checks` (`all`, `any`) and `check` (`not`). A check that checks nothing is a `schema` error: `phrases` without `any` or `anyFrom`, `overlap` without `with` or `withFrom`, `length` without `min` or `max`.
 
 ### Case
 
@@ -147,7 +150,7 @@ Atomic writes: [plan D6](plan.md#d6-runs-are-files-and-grading-is-separate-from-
 | `limits` | `run.retries` and `adapter.timeoutMs`. They decide when a trial is finished, so resume keeps them |
 | `pricing` | Copy of the prices at run time |
 | `budget` | Cap and scope. Omitted in config means 1 USD; `null` means no cap. Both runs of a swap share one cap |
-| `estimate` | `{expected, conservative, basis}` before the start, and `projected[]` for every re-estimate. `basis` is `history` or `structure` (§Cost) |
+| `estimate` | `{expected, conservative, basis}` before the start, and `projected[]` for every re-estimate. `basis` maps each language key (`*` for cases without a language) to `history` or `structure` (§Cost) |
 | `costProfile` | Per variant and language for a finished run: `{repeat0MeanUsd, repeatNMeanUsd, inputTokensMean, outputTokensMean, outputTokensP95, cacheHitRatio, callsPerTrialP95, callsPerAttemptMax}`. Values per trial sum every line of its key; a trial's input tokens are `input` + `cachedInput` + `cacheWrite`. `cacheHitRatio` = `cachedInput` ÷ (`input` + `cachedInput` + `cacheWrite`), summed over all lines of finished keys. Both call counts are at least 1 |
 | `totals` | Trials per outcome (effective lines), token buckets and cost of all lines with the part charged as reservations, `overrunUsd`, duration |
 | `segments[]` | One per segment, the first run being segment 1: start and end, tool, adapter and helper versions, prices, cap, concurrency, `toolPaths` sent (including on restarts), spend, `resume-unverified` and `resume-config-ignored` details |
@@ -258,8 +261,8 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 | `masked` | `raw` cells only: per variant, the share of trials graded on both surfaces that failed raw and passed final. Shown as "masked by the service" |
 | `margin` | Margin used |
 | `verdict` | `improved`, `non-inferior`, `regressed`, `inconclusive`, `insufficient`, `not-applicable` |
-| `needed` | Undecided gated cells only: `{repeats, cellTrials, trialsPerVariant}` or `{cases}` with the message (§Statistics). `cellTrials` = K × repeats; `trialsPerVariant` = all cases × repeats |
-| `note` | When `high < 0`: "drop confirmed, within margin" (`non-inferior`), "drop confirmed, margin not decided" (`inconclusive`), "drop confirmed, too few samples" (`insufficient` with K ≥ 3). With K < 3 only "clear drop, too few cases to decide" (§Statistics) |
+| `needed` | Undecided gated cells only, one of the kinds of §Statistics, Trials needed: `{kind: repeats, repeats, cellTrials, trialsPerVariant, nearMargin}`, `{kind: cases, cases}` or `{kind: on-margin}`. `cellTrials` = K × repeats; `trialsPerVariant` = all cases × repeats. The message files hold the text; the `repeats` text's `currentTrials` is the cell's `candidate.trials` |
+| `note` | A code; the message files hold its text. When `high < 0`: `drop-within-margin` (`non-inferior`), `drop-margin-undecided` (`inconclusive`), `drop-too-few-samples` (`insufficient` with K ≥ 3). With K < 3 only `clear-drop-too-few-cases` (§Statistics) |
 
 - `Rate` is `{cases, trials, passes, rate, pooledRate, low, high, nEff}`. `rate` is case-weighted and drives the verdict; `pooledRate` = passes ÷ trials is for reference; `nEff` is ñ.
 - Display names: `improved` Better, `non-inferior` Held, `regressed` Regressed, `inconclusive` Inconclusive, `insufficient` Too few samples, `not-applicable` Not applicable. "Undecided" covers `inconclusive` and `insufficient`; neither ever counts as passing.
@@ -274,17 +277,19 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 | `cells[]` | Cells |
 | `aggregates[]` | Per rule and surface, the pooled rate and difference over languages. No verdict |
 | `rules[]` | `active` rules applicable to the compared targets: `{id, title, severity, languages, gateOn, margin, anchors, origin}`, with `margin` as used (§Statistics, Verdict order) |
-| `summary` | In order: `worse[]` (regressed cells, cells with a confirmed drop, "clear drop" cells with K < 3), `improved[]`, `unknown[]` (undecided cells with `needed`), `ops[]` (changes such as cost ratio, latency ratio, discard rate), `scope`. An undecided cell with a confirmed drop appears in both `worse[]` and `unknown[]` |
+| `summary` | In order: `worse[]` (regressed cells, cells with a confirmed drop, cells with note `clear-drop-too-few-cases`), `improved[]`, `unknown[]` (undecided cells with `needed`), `ops[]` (changes such as cost ratio, latency ratio, discard rate), `scope`. An undecided cell with a confirmed drop appears in both `worse[]` and `unknown[]` |
+| `gate` | The Gate of this comparison (§Gate) |
+| `completion` | Per language, the baseline completion rate of §Gate (row 3) with its judged trials and passes |
 | `ops` | Per variant: rejection, time-out, transient, adapter error, discard, fallback, empty answer and regeneration rates (each with a Wilson interval); systematic trials and cases; discard reasons; top 3 messages per error kind by frequency; side-call failures per kind; abandoned trials per cause; finish reasons; latency p50, p95 and distribution; token buckets and cost per trial; response model snapshots |
 | `samples` | Texts for side-by-side viewing: `review` samples per case and failing examples of regressed cells, redacted. Each (variant, `caseId`, `repeat`) text is stored once and referenced by key. `review` takes the lowest repeats, `samples` per case, raw and final. Error trials carry the kind and message instead. Failing examples are up to `report.samples` per cell, sorted by case and repeat and taken round-robin across cases |
-| `warnings[]` | `{code, message, ruleId?, lang?, variants?, caseIds?, file?, line?, column?}`, codes from §Warnings only. `file`, `line` and `column` are for file-location warnings |
+| `warnings[]` | `{code, params?, ruleId?, lang?, variants?, caseIds?, file?, line?, column?}`, codes from §Warnings only. `file`, `line` and `column` are for file-location warnings |
 | `coverage` | Common cases, cases in one run only, cases dropped for a changed hash |
 | `scope` | Judged targets, judged rules / all rules, `review` rules |
 | `priorComparisons` | Number of distinct run pairs among earlier comparisons in the output directory with the same two variant fingerprints in the same roles, excluding the current run pair. Re-grading or finishing the same runs is not a new sample; rerunning only the candidate is |
 | `stats` | Confidence level, method, G, both z values, `minCases` |
 | `config` | Copies of `gate`, `stats` and `report` used |
 
-- The report, the result page and `report` read rule details, versions and settings from the comparison alone. `rules[]` comes from rule definitions that `rulesHash` covers, versions and `postprocess` from the manifests of the runs the grade sets name, and `config` from the `gate`, `stats` and `report` settings the `comparisonId` input already holds, so these fields add no input to the ID.
+- The report, the result page and `report` read rule details, versions and settings from the comparison alone. `rules[]` comes from rule definitions that `rulesHash` covers, versions and `postprocess` from the manifests of the runs the grade sets name, and `config` from the `gate`, `stats` and `report` settings the `comparisonId` input already holds, so these fields add no input to the ID. `gate` and `completion` are derived from those inputs and add none either.
 - Metrics use the same common, unchanged cases as the cells (FR-027).
 - Denominators: rejection, time-out, discard, fallback, empty answer and regeneration rates divide by the variant's trials graded on `completed` in the comparison (systematic failures in, other transient, adapter and config errors out). Transient and adapter error rates divide by all finished trials over the whole run, and systematic trials stay in their numerators.
 - Cost and tokens per trial average keys finished in both runs. Latency uses the `ok` trials among them; the time of trials that ended in errors shows through the time-out and error rates. This keeps a partial run whose repeat 0 alone finished from looking expensive because of cache writes.
@@ -303,31 +308,31 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 
 The first matching row decides. Rows 1–3 check the premise of the comparison and come before the gate config, so even with an empty gate a comparison without a basis is `undecided` (constitution II). The human message for each reason code lives in the message files (`src/messages/`).
 
-| Order | Condition | Outcome | Reason code |
-|---|---|---|---|
-| 1 | A run is not `complete` (`partial`, or `running` because it was killed or is still running) | `undecided` | `partial-run` |
-| 2 | A run has no judged trial | `undecided` | `no-judged-trials` |
-| 3 | The baseline completion rate is below 0.5 in some language | `undecided` | `baseline-incomplete` (with the language) |
-| 4 | The gate is empty | `no-gate` | `no-gate` |
-| 5 | No gated cell | `undecided` | `no-gated-cells` |
-| 6 | A gated cell is `regressed` | `block` | `regressed` (one per cell) |
-| 7 | A gated cell is `inconclusive` or `insufficient`, or a gated rule has no judged cell | `undecided` | `cell-undecided` (per cell), `rule-not-judged` (per rule) |
-| 8 | Otherwise | `pass` | — |
+| Order | Condition | Outcome | Reason code | Params |
+|---|---|---|---|---|
+| 1 | A run is not `complete` (`partial`, or `running` because it was killed or is still running) | `undecided` | `partial-run` | As the warning `partial-run` (§Warnings) |
+| 2 | A run has no judged trial | `undecided` | `no-judged-trials` | `{variants: list of variant IDs}` |
+| 3 | The baseline completion rate is below 0.5 in some language | `undecided` | `baseline-incomplete` (with the language) | `{rate}` |
+| 4 | The gate is empty | `no-gate` | `no-gate` | — |
+| 5 | No gated cell | `undecided` | `no-gated-cells` | — |
+| 6 | A gated cell is `regressed` | `block` | `regressed` (one per cell) | — |
+| 7 | A gated cell is `inconclusive` or `insufficient`, or a gated rule has no judged cell | `undecided` | `cell-undecided` (per cell), `rule-not-judged` (per rule) | — |
+| 8 | Otherwise | `pass` | — | — |
 
 | Field | Description |
 |---|---|
 | `outcome` | `pass` \| `block` \| `undecided` \| `no-gate` |
-| `reasons[]` | `{code, message, ruleId?, lang?, surface?}` with the codes above plus two informational ones that never change the outcome: `dominant-error` and `abandoned-in-systematic` |
+| `reasons[]` | `{code, params?, ruleId?, lang?, surface?}` with the codes above plus two informational ones that never change the outcome: `dominant-error` and `abandoned-in-systematic` |
 | `blocking[]` | Regressed gated cells |
 | `undecided[]` | Undecided gated cells with `needed`, and gated rules without a judged cell |
-| `excluded[]` | Rules removed from the gate and why |
+| `excluded[]` | Rules removed from the gate: `{ruleId, cause}`, `cause` as in the warning `excluded-from-gate` (§Warnings) |
 
 - A partial or still-running run never blocks. A CI time-out kills the process and leaves the run `running`; comparing it as finished could pass a half-run. Variants of a stopped run may also have finished different cases. Cell verdicts stay visible and regressed cells are listed in the reasons.
 - 0.5 in row 3 is a premise check, not a statistical threshold: when the baseline fails to answer half the time, "the candidate is no worse" means nothing.
 - Row 4 is not `pass` because nothing was judged; it exits 0 because nothing can block (constitution II, IV).
 - Row 7 includes rules without a judged cell because a gated rule must be able to block; a run limited by `--cases` that misses a gated rule is `undecided`.
-- `dominant-error`: when at least 80% of the failing trials of the blocking cells end with the same error message (redacted, first 200 characters), the message and its share go first in `reasons[]` and at the top of the summary. A new shape of billing or quota error classified as a rejection would otherwise look like a worse model. The outcome does not change.
-- `abandoned-in-systematic`: abandoned trials inside the systematic failures of a gated `completed` cell, with counts per cause and, for the tool time limit, the run's `adapter.timeoutMs`.
+- `dominant-error`: when at least 80% of the failing trials of the blocking cells end with the same error message (redacted, first 200 characters), the reason goes first in `reasons[]` and at the top of the summary, with params `{message, share}`. A new shape of billing or quota error classified as a rejection would otherwise look like a worse model. The outcome does not change.
+- `abandoned-in-systematic`: abandoned trials inside the systematic failures of a gated `completed` cell, with params `{trials: per variant {timeout, restart}, timeoutMs: per variant}`, `timeoutMs` being each run's `adapter.timeoutMs`.
 - Exit codes per outcome: [contracts/cli.md](contracts/cli.md).
 
 ## Statistics
@@ -363,17 +368,17 @@ U = Δ̂ + √((u_c − p̂_c)² + (p̂_b − l_b)²)      with z = z_U
 | 3 | U < −m | `regressed` |
 | 4 | K < `minCases` | `insufficient` |
 | 5 | L > 0 | `improved` |
-| 6 | L > −m | `non-inferior` (note "drop confirmed, within margin" when U < 0) |
+| 6 | L > −m | `non-inferior` (note `drop-within-margin` when U < 0) |
 | 7 | min(ñ_b, ñ_c) < n_min(m) | `insufficient` |
 | 8 | Otherwise | `inconclusive` |
 
 - A cell with U < 0 has a confirmed drop whatever its verdict and goes under worse cells in the decision summary with its `note` (§Cell). Otherwise a confirmed drop would hide under "undecided".
-- With K < 3, if U computed without the design effect is below −m, the cell gets the note "clear drop, too few cases to decide".
+- With K < 3, if U computed without the design effect is below −m, the cell gets the note `clear-drop-too-few-cases`.
 - n_min(m) = ⌈z_L²(1−m)/m⌉: 73, 35 and 22 for m = 0.05, 0.10 and 0.15 with z_L = 1.96. A cell planned below it gets the lint warning `margin-unreachable`.
 
 **Trials needed** (FR-024), for undecided gated cells only:
 
-- Cases first. If K < max(3, `minCases`), more repeats fall back into verdict rows 2 or 4, so the cell asks for max(3, `minCases`) cases, or for the larger count below when that is higher. The repeat formula applies only to cells with enough cases.
+- Cases first. If K < max(3, `minCases`), more repeats fall back into verdict rows 2 or 4, so the cell asks for max(3, `minCases`) cases (kind cases), or for the larger count below when that is higher. The repeat formula applies only to cells with enough cases.
 
 ```text
 z     = z_L if Δ̂ > −m, else z_U
@@ -381,12 +386,12 @@ p̃_v   = (x_v + z²/2) / (n_v + z²)            (x_v, n_v: pooled passes and tr
 W     = p̃_b(1−p̃_b) + p̃_c(1−p̃_c),  r̄ = harmonic mean of candidate trials per case
 σ²_B  = max(0, s_d² − W/r̄)                   (s_d²: sample variance of d_i; the between-case part repeats cannot reduce)
 d     = |Δ̂ + m|,  z_t = z + 0.84             (0.84 gives 80% power)
-d = 0 → "exactly on the margin, repeats are unlikely to settle it" (no number)
+d = 0 → kind on-margin: exactly on the margin, repeats are unlikely to settle it (no number)
 c     = K·d²/z_t² − σ²_B
-c > 0 → r′ = max(⌈W/c⌉, ⌈n_min/K⌉, ⌊r̄⌋ + 1)
-        "a new run with r′ repeats gives this cell K·r′ trials per variant (now n_c) and the whole run (cases)·r′ trials per variant; about 80% chance of a verdict (estimate)"
-c ≤ 0 → "repeats cannot settle it; about ⌈z_t²(σ²_B + W/r̄)/d²⌉ cases are needed"
-r′ > 10·r̄ → append "near the margin, repeats are unlikely to settle it"
+c > 0 → kind repeats with r′ = max(⌈W/c⌉, ⌈n_min/K⌉, ⌊r̄⌋ + 1): a new run with r′ repeats gives this cell
+        K·r′ trials per variant (now n_c) and the whole run (cases)·r′ trials per variant; about 80% chance of a verdict (estimate)
+c ≤ 0 → kind cases with ⌈z_t²(σ²_B + W/r̄)/d²⌉ cases: repeats cannot settle it
+r′ > 10·r̄ → nearMargin: near the margin, repeats are unlikely to settle it
 ```
 
 ## Trial Outcomes
@@ -501,32 +506,34 @@ Adapter and transient error rates are shares of finished trials, checked only af
 
 Run and comparison warning codes (lint codes are in §Validation Rules):
 
-| Code | Condition |
-|---|---|
-| `transient-rate` | Transient error rate above `report.warn.transientRate` |
-| `discard-rate-increase` | Candidate minus baseline discard rate above `report.warn.discardRateIncrease` |
-| `regeneration-rate-increase` | Candidate minus baseline regeneration rate above `report.warn.regenerationRateIncrease`: the service filters the candidate's first answers more often |
-| `latency-p95-ratio` | Latency p95 ratio above `report.warn.latencyP95Ratio` |
-| `cost-ratio` | Cost-per-trial ratio above `report.warn.costRatio` |
-| `identical-repeats` | All repeats of a case returned the same output (FR-016) |
-| `response-model-changed` | More than one response model snapshot within a run: the model behind an alias changed during the run |
-| `same-response-model` | The variants have different `model` values but the same non-empty list of response snapshots: both may have answered with one model (a pinned Azure deployment, a proxy that ignores the model name) |
-| `render-mismatch` | A trial's request fingerprint differs from its case's render fingerprint (FR-015) |
-| `budget-overrun` | Spend above reservations (`overrunUsd` > 0) |
-| `abandoned-trials` | Trials abandoned without an answer, per cause. For trials abandoned at the tool time limit whose late responses contain failed calls with a kind, the message adds per kind the number of such trials and their longest `retryAfterMs`. All calls are checked, not only the last, because after `cancel` a request can still finish and a successful SDK retry would hide the earlier failure. Transient failures here suggest the service's SDK waited before retrying |
-| `resume-unverified` | A generation condition could not be verified on resume |
-| `resume-config-ignored` | On resume, config values for variant, seed, repeats, retries or adapter time limit differ and the manifest wins, or cases only in the files were left out |
-| `unpriced-model` | Without a cap, an unpriced call was charged at the most expensive price |
-| `cached-input-unpriced` | No `cachedInput` price, so cache hits were charged at `input` |
-| `estimate-low-accuracy` | Input tokens could not be counted from the render and `estimate.inputTokens` was used (§Cost) |
-| `conservative-over-budget` | The conservative estimate exceeds the cap (before the start); the run may stop at the cap if the cache misses or outputs are long |
-| `excluded-from-gate` | A rule of a gated severity is `review` or an uncalibrated judge and was removed from the gate |
-| `partial-run` | A compared run is not finished (`partial` or `running`) |
-| `versions-differ` | The compared runs differ in service code (`treeHash`, else version and dirty flag), adapter version, `launchHash` or helper version |
-| `adapter-warnings` | The adapter attached warnings to results. One per distinct sentence, with the variants in `variants`, counts per variant in the message and cases in `caseIds`. Helper warnings change how a result reads ([003 helper-api §Trial Warnings](../003-adapter-helpers/contracts/helper-api.md#trial-warnings)) |
+| Code | Condition | Params |
+|---|---|---|
+| `transient-rate` | Transient error rate above `report.warn.transientRate` | `{rates: per variant, threshold}` |
+| `discard-rate-increase` | Candidate minus baseline discard rate above `report.warn.discardRateIncrease` | `{rates: per variant, threshold}` |
+| `regeneration-rate-increase` | Candidate minus baseline regeneration rate above `report.warn.regenerationRateIncrease`: the service filters the candidate's first answers more often | `{rates: per variant, threshold}` |
+| `latency-p95-ratio` | Latency p95 ratio above `report.warn.latencyP95Ratio` | `{p95Ms: per variant, ratio, threshold}` |
+| `cost-ratio` | Cost-per-trial ratio above `report.warn.costRatio` | `{costPerTrialUsd: per variant, ratio, threshold}` |
+| `identical-repeats` | All repeats of a case returned the same output (FR-016) | — |
+| `response-model-changed` | More than one response model snapshot within a run: the model behind an alias changed during the run | `{models: per variant, list of snapshots}` |
+| `same-response-model` | The variants have different `model` values but the same non-empty list of response snapshots: both may have answered with one model (a pinned Azure deployment, a proxy that ignores the model name) | `{models: list of snapshots}` |
+| `render-mismatch` | A trial's request fingerprint differs from its case's render fingerprint (FR-015) | `{trials: per variant}` |
+| `budget-overrun` | Spend above reservations (`overrunUsd` > 0) | `{overrunUsd: per variant}` |
+| `abandoned-trials` | Trials abandoned without an answer, per cause. For trials abandoned at the tool time limit whose late responses contain failed calls with a kind, `lateFailures` holds per kind the number of such trials and their longest `retryAfterMs`. All calls are checked, not only the last, because after `cancel` a request can still finish and a successful SDK retry would hide the earlier failure. Transient failures here suggest the service's SDK waited before retrying | `{trials: per variant {timeout, restart}, timeoutMs: per variant, lateFailures: per variant {kind: {trials, maxRetryAfterMs}}}`, `timeoutMs` being each run's `adapter.timeoutMs` |
+| `resume-unverified` | A generation condition could not be verified on resume | `{conditions: list of service-version, tree-hash, render-fingerprint}` |
+| `resume-config-ignored` | On resume, config values for variant, seed, repeats, retries or adapter time limit differ and the manifest wins, or cases only in the files were left out | `{fields: list of variant, seed, repeats, retries, timeoutMs}`; left-out cases in `caseIds` |
+| `unpriced-model` | Without a cap, an unpriced call was charged at the most expensive price | `{models: list of model names}` |
+| `cached-input-unpriced` | No `cachedInput` price, so cache hits were charged at `input` | `{models: list of model names}` |
+| `estimate-low-accuracy` | Input tokens could not be counted from the render and `estimate.inputTokens` was used (§Cost) | `{inputTokens}`, the `estimate.inputTokens` used |
+| `conservative-over-budget` | The conservative estimate exceeds the cap (before the start); the run may stop at the cap if the cache misses or outputs are long | `{conservativeUsd, maxCostUsd}` |
+| `excluded-from-gate` | A rule of a gated severity is `review` or an uncalibrated judge and was removed from the gate | `{cause: review | uncalibrated-judge}` |
+| `partial-run` | A compared run is not finished (`partial` or `running`) | `{runs: per unfinished variant {status, stopReason}}`, `stopReason` `null` for a `running` run |
+| `versions-differ` | The compared runs differ in service code (`treeHash`, else version and dirty flag), adapter version, `launchHash` or helper version | `{fields: list of service, adapter-version, launch-hash, helper-version}` |
+| `adapter-warnings` | The adapter attached warnings to results. One per distinct sentence, with the variants in `variants`, counts per variant in `params` and cases in `caseIds`. Helper warnings change how a result reads ([003 helper-api §Trial Warnings](../003-adapter-helpers/contracts/helper-api.md#trial-warnings)) | `{sentence, trials: per variant}` |
 
 - **Who raises them**: a run raises codes from its own records. Codes that compare variants (`discard-rate-increase`, `regeneration-rate-increase`, `latency-p95-ratio`, `cost-ratio`, `same-response-model`, `versions-differ`), `excluded-from-gate` (from the gate config) and `partial-run` (from run status) come only from comparisons. `conservative-over-budget` is raised before the start; a swap check raises it once against the combined estimate. A comparison re-raises every other code from both runs' records: trial-based codes are recounted on common cases, and manifest warnings (`budget-overrun`, `unpriced-model`, `cached-input-unpriced`, `estimate-low-accuracy`, `resume-unverified`, `resume-config-ignored`) are copied under their run's variant. A swap that reaches the comparison therefore holds every warning of its runs.
-- **Grouping**: one warning per code per run or comparison; per `ruleId` and `lang` when the code has them; per sentence for `adapter-warnings`. Affected variants go in `variants`, cases in `caseIds`, counts and values per variant in the message, so both variants can be read side by side.
+- **Grouping**: one warning per code per run or comparison; per `ruleId` and `lang` when the code has them; per sentence for `adapter-warnings`. Affected variants go in `variants`, cases in `caseIds`, counts and values per variant in `params`, so both variants can be read side by side.
+- **Text**: records hold no sentences the tool composes. A warning, gate reason or lint finding is its code with the params of its table row, and the message files (`src/messages/`) turn it into text in the `--lang` language. Text that comes from the adapter (the sentence of `adapter-warnings`, error messages) is data and stays in `params` as written; a validator's `detail` is data in English.
+- **Params notation**: in the Params columns, "per variant" is an object keyed by variant ID, "list of" is an array, and a dash (`—`) means the finding has no `params`. Each message template names every params key of its code exactly once as `{key}` and nothing else; the renderer writes objects and lists out.
 - Sample-plan warnings before the start use the lint codes `few-cases` and `margin-unreachable` (FR-006). They go into the `--json` envelope's `warnings`, not the comparison, because they can occur without one.
 
 ## Identifiers and Hashing
@@ -609,30 +616,30 @@ The helpers implement these rules directly rather than relying on each language'
 
 ## Validation Rules
 
-Lint codes. Info does not count as a warning, is not limited by `--max-warnings` and appears under `result.info` in `--json`.
+Lint codes. Info does not count as a warning, is not limited by `--max-warnings` and appears under `result.info` in `--json`. Lint findings have the shape and the text rule of §Warnings.
 
-| Code | Level | Condition |
-|---|---|---|
-| `schema` | error | A file violates its schema |
-| `duplicate-id` | error | Duplicate rule, case or variant ID |
-| `unknown-rule` | error | A case names a rule that does not exist |
-| `input-schema` | error | A case input violates the target's input schema |
-| `missing-lang` | error | A case of a multi-language target has no `lang` |
-| `unresolved-ref` | error | A required reference (`anyFrom`) is missing from the case |
-| `derived-tracked` | error | A `derived` case file is tracked by git, or sits in a git work tree without being ignored |
-| `example-mismatch` | error | A rule example gives a different result than expected |
-| `adapter-failed` | error | The adapter did not start or initialise, or broke the protocol, so checks that need it could not run. Unlike other lint errors it exits with code 4 |
-| `render-failed` | error | A case failed to render with `--render`, with the adapter's message. Cases on paths that never call a model (input blocks, fixed messages) are not swap-check material; remove them or change the input |
-| `anchor-missing` | warning | An anchor is missing from the rendered prompt |
-| `rule-without-case` | warning | A `listed` rule no case names |
-| `rule-filter-mismatch` | warning | A rule listed on a case does not match its target or language and is not graded |
-| `completed-not-gated` | warning | A gate exists but no `completed` rule exists or its severity is not gated, so rejections, time-outs and discards cannot block |
-| `language-gap` | warning | A rule language has no cases |
-| `few-cases` | warning | A gated cell has fewer than 10 cases; it only catches large drops (research R3) |
-| `margin-unreachable` | warning | A gated cell's planned trials (cases × repeats) are below n_min for its margin; equal compliance cannot pass (§Statistics) |
-| `excluded-from-gate` | warning | Same as the run warning of that name (§Warnings), raised by lint |
-| `vcs-unknown` | warning | Not a git work tree, so `derived-tracked` cannot be decided |
-| `helper-outdated` | warning | The adapter's helper is older than the one bundled with this tool; copy it again with `init` |
-| `unanchored` | info | A rule and language without an anchor; a notice, not something to fix (for example a rule kept by post-processing alone) |
+| Code | Level | Condition | Params |
+|---|---|---|---|
+| `schema` | error | A file violates its schema | `{path, detail}`; `path` is empty for a whole-file finding, and its text then names only `detail` |
+| `duplicate-id` | error | Duplicate rule, case or variant ID | `{kind: rule | case | variant, id}` |
+| `unknown-rule` | error | A case names a rule that does not exist | —; the rule in `ruleId`, the case in `caseIds` |
+| `input-schema` | error | A case input violates the target's input schema | `{target, detail}` |
+| `missing-lang` | error | A case of a multi-language target has no `lang` | `{target}` |
+| `unresolved-ref` | error | A required reference (`anyFrom`) is missing from the case | `{path}` |
+| `derived-tracked` | error | A `derived` case file is tracked by git, or sits in a git work tree without being ignored | `{cause: tracked | not-ignored}` |
+| `example-mismatch` | error | A rule example gives a different result than expected | `{example, expected: pass | fail}` |
+| `adapter-failed` | error | The adapter did not start or initialise, or broke the protocol, so checks that need it could not run. Unlike other lint errors it exits with code 4 | `{detail}` |
+| `render-failed` | error | A case failed to render with `--render`, with the adapter's message. Cases on paths that never call a model (input blocks, fixed messages) are not swap-check material; remove them or change the input | `{detail}`, the adapter's message |
+| `anchor-missing` | warning | An anchor is missing from the rendered prompt | `{quote}` |
+| `rule-without-case` | warning | A `listed` rule no case names | — |
+| `rule-filter-mismatch` | warning | A rule listed on a case does not match its target or language and is not graded | — |
+| `completed-not-gated` | warning | A gate exists but no `completed` rule exists or its severity is not gated, so rejections, time-outs and discards cannot block | `{cause: no-rule | not-gated}` |
+| `language-gap` | warning | A rule language has no cases | — |
+| `few-cases` | warning | A gated cell has fewer than 10 cases; it only catches large drops (research R3) | `{surface, cases}` |
+| `margin-unreachable` | warning | A gated cell's planned trials (cases × repeats) are below n_min for its margin; equal compliance cannot pass (§Statistics) | `{surface, plannedTrials, nMin, margin}` |
+| `excluded-from-gate` | warning | Same as the run warning of that name (§Warnings), raised by lint | `{cause: review | uncalibrated-judge}` |
+| `vcs-unknown` | warning | Not a git work tree, so `derived-tracked` cannot be decided | — |
+| `helper-outdated` | warning | The adapter's helper is older than the one bundled with this tool; copy it again with `init` | `{version, bundled}` |
+| `unanchored` | info | A rule and language without an anchor; a notice, not something to fix (for example a rule kept by post-processing alone) | — |
 
 - Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema` and anchor checks.

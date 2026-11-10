@@ -24,6 +24,15 @@
 | `--verbose` | Show adapter stderr and per-stage timings |
 | `--no-color` | Disable colour. `NO_COLOR` is honoured too |
 
+### Top-Level Options
+
+Given without a command:
+
+| Option | Meaning |
+|---|---|
+| `--version` | Print the tool version and exit |
+| `--help`, `-h` | Print the commands and common options and exit |
+
 ### `lint` Options
 
 | Option | Meaning |
@@ -58,6 +67,7 @@ After exit code 2, run again with the suggested `--repeats` as a new run. It is 
 | 3 | `run-failed` | The run could not finish because of the adapter or transient error limits or a user interrupt; it stays `partial` |
 | 4 | `config-error` | See below |
 | 5 | `over-budget` | The expected cost exceeded the cap and no model was called; or a re-estimate after the first batch, a repeat round or at resume exceeded the cap; or the next attempt's reservation, tool retries included, would cross the cap (the last two leave the run `partial`) |
+| 6 | `internal-error` | An unexpected internal error; report it as a bug |
 
 Exit code 4 covers:
 
@@ -69,8 +79,9 @@ Exit code 4 covers:
 6. A model call, side calls included, failed on authentication, model, quota, billing or TLS certificate.
 7. A restarted adapter declares a different adapter or helper version or service code.
 8. Resume problems: generation conditions differ from the record, `--variant`, `--from`/`--to`, `--repeats` or `--cases` differ from the record, the run or swap is `complete`, a run that belongs to a swap is resumed with `run`, or another process holds the lock.
+9. The command line is invalid: an unknown command or option, or an invalid option value.
 
-- A stopped run exits with the code of its `stopReason` (`config-error` if present, else the first reason). Other overlaps resolve in the order 4, 5, 3, 1, 2, 0. A `swap` stopped by the cap exits 5 whatever its comparison says; the comparison is still in `result.gate`.
+- A stopped run exits with the code of its `stopReason` (`config-error` if present, else the first reason). Other overlaps resolve in the order 6, 4, 5, 3, 1, 2, 0. A `swap` stopped by the cap exits 5 whatever its comparison says; the comparison is still in `result.gate`.
 - File errors exit 1 from `lint`, where they are findings, and 4 from commands that call models, where they prevent the start.
 - A stop with exit code 5 shows the outcome distribution per variant so far. A candidate that times out or is rejected every time has a candidate problem, not a cap problem.
 - An empty gate never blocks: `no-gate` with code 0 when the preconditions hold, otherwise `undecided` with code 2. `no-gate` is shown apart from `pass`, because nothing was judged (constitution II, IV).
@@ -86,17 +97,44 @@ Every command uses the same envelope:
   "schemaVersion": "1",
   "command": "swap",
   "exit": {"code": 1, "name": "failed"},
-  "result": {"swapId": "…", "runs": ["…", "…"], "comparison": {}, "gate": {"outcome": "block", "reasons": [{"code": "regressed", "message": "…", "ruleId": "script-ja", "lang": "ja", "surface": "raw"}]}},
-  "warnings": [{"code": "abandoned-trials", "message": "…", "variants": ["next"]}]
+  "result": {
+    "swapId": "20261105-101500-swap-a1b2",
+    "runs": ["20261105-101500-current-c3d4", "20261105-101500-next-e5f6"],
+    "gate": {
+      "outcome": "block",
+      "reasons": [{"code": "regressed", "ruleId": "script-ja", "lang": "ja", "surface": "raw"}],
+      "blocking": [{"ruleId": "script-ja", "lang": "ja", "surface": "raw"}],
+      "undecided": [],
+      "excluded": []
+    }
+  },
+  "warnings": [{
+    "code": "abandoned-trials",
+    "variants": ["next"],
+    "params": {"trials": {"next": {"timeout": 2, "restart": 0}}, "timeoutMs": {"next": 120000}, "lateFailures": {"next": {}}}
+  }]
 }
 ```
 
-- `result` has a JSON Schema per command (`schemas/<command>.schema.json`).
+The example leaves `result.comparison` out for length; a swap that reached the comparison carries it.
+
+- `result` has a JSON Schema per command (`schemas/<command>.schema.json`). It is `null` when the command ends before it has a result: a usage error (exit code 4) or an internal error (exit code 6). `command` is `null` when the command line names no known command; such an envelope follows `schemas/envelope.schema.json`, the envelope of any command.
+- Findings carry a code and `params`, never a sentence the tool composes; a validator's detail is data in English, and adapter text is data as written. The message files turn them into text in the `--lang` language ([data-model §Warnings](../data-model.md#warnings)).
 - `warnings` holds every warning the command raised, in the shape of the comparison's `warnings[]`, with codes from the warning table or the lint table of the data model.
   - `lint` uses lint codes. Errors go to `result.errors` and info to `result.info` in the same shape, with `file`, `line` and `column` (FR-001). `warnings` holds only warning-level codes, matching what `--max-warnings` counts.
   - `compare`: equal to `result.comparison.warnings`.
   - `run` and `swap` include pre-start warnings (`few-cases`, `margin-unreachable`, `conservative-over-budget`); `swap` raises them once, not per run. `run` adds its run warnings. `swap` that reached the comparison carries `result.comparison.warnings`; one that stopped without comparing carries both runs' warnings grouped the same way, so CI still sees them. Copying run warnings next to the comparison's would duplicate them, since the comparison re-raises every run warning, or make them diverge from the result page counts.
-- `result.comparison` and `result.gate` of `compare` and `swap` are the Comparison and Gate of the data model. The result page reads the same comparison.
+- `result.comparison` and `result.gate` of `compare` and `swap` are the Comparison and Gate of the data model; `result.gate` equals `result.comparison.gate`. The result page reads the same comparison.
+- `run --dry-run` and `swap --dry-run` create no run, so their `result` is `{plan}` alone:
+
+  | Field of `plan` | Meaning |
+  |---|---|
+  | `variants[]` | Per variant: `variant` (ID), `trials` to send (the remaining ones with `--resume`), and `calls`, `inputTokens` and `outputTokens` summed over those trials; `basis` per language key (`*` for cases without a language), `history` or `structure`; `reservationUsd`, the largest attempt reservation of the variant at the start |
+  | `expectedUsd`, `conservativeUsd` | Both estimates over every variant of the command. With `--resume`, `expectedUsd` is the re-estimated total with earlier spend included and `conservativeUsd` is `null` |
+  | `maxCostUsd` | The cap, `null` without one |
+  | `cells[]` | Per gated cell: `{ruleId, lang, surface, plannedTrials, nMin}` |
+
+  Costs are `null` when no price is configured at all.
 - `--json` output is redacted as well.
 - JSON output does not depend on `--lang`.
 
