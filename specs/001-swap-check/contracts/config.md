@@ -83,7 +83,7 @@ output:
   dir: .model-eval                         # Runs, comparisons and result pages. init adds it to .gitignore.
 
 redact:                                    # Applied to every written surface of FR-031. Not applied to raw trial records.
-  - { pattern: "\\b01[0-9]-?\\d{3,4}-?\\d{4}\\b", replace: "<phone>" }
+  - { pattern: "\\b01[0-9]-?\\d{3,4}-?\\d{4}\\b", replace: "<phone>" }   # replace must not be empty, so readers see that text was removed.
 ```
 
 - Relative paths (`adapter.cwd`, `files` globs, `output.dir`) resolve from the config file's folder, so every working directory points to the same files and resume starts the same adapter (`launchHash`).
