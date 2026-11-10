@@ -154,7 +154,7 @@ Atomic writes: [plan D6](plan.md#d6-runs-are-files-and-grading-is-separate-from-
 | `costProfile` | Per variant and language for a finished run: `{repeat0MeanUsd, repeatNMeanUsd, inputTokensMean, outputTokensMean, outputTokensP95, cacheHitRatio, callsPerTrialP95, callsPerAttemptMax}`. Values per trial sum every line of its key; a trial's input tokens are `input` + `cachedInput` + `cacheWrite`. `cacheHitRatio` = `cachedInput` ÷ (`input` + `cachedInput` + `cacheWrite`), summed over all lines of finished keys. Both call counts are at least 1. Every p95 in records is the nearest-rank 95th percentile |
 | `totals` | Trials per outcome (effective lines), token buckets and cost of all lines with the estimated part (`costEstimated`: reservations and substitute prices), `overrunUsd`, duration |
 | `segments[]` | One per segment, the first run being segment 1: start and end, tool, adapter and helper versions, prices, cap, concurrency, `toolPaths` sent (including on restarts), spend, `resume-unverified` and `resume-config-ignored` details |
-| `warnings` | Warnings this run raises from its own records (§Warnings). Rewritten at segment start (after pre-start checks), whenever a new code appears and at segment end, so a run left `running` still has them. In such a run, values like the overrun are as last written; resume recounts them. They equal the warnings of `run --json` |
+| `warnings` | Warnings this run raises from its own records (§Warnings). Rewritten at segment start (after pre-start checks), whenever a new code appears and at segment end, so a run left `running` still has them. In such a run, values like the overrun are as last written; resume recounts them. `run --json` carries them after the pre-start `few-cases`, `margin-unreachable` and `conservative-over-budget`, which the manifest does not hold |
 | `status` | `running` → `complete` \| `partial` |
 | `stopReason` | When `partial`: `interrupted`, `budget`, `budget-projected`, `adapter-errors`, `transient-errors`, `config-error` |
 
@@ -239,7 +239,7 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 
 ### Grade and GradeSet
 
-- A grade: `{caseId, repeat, ruleId, surface: raw | final | trial, outcome: pass | fail | skip | error, evidence?}`. `evidence` holds the violating characters or matched strings. `error` means the check itself could not run; it leaves the denominator.
+- A grade: `{caseId, repeat, ruleId, surface: raw | final | trial, outcome: pass | fail | skip | error, evidence?}`. `evidence` holds the violating characters or matched strings; for `length` it is the measured length, and for `json` each schema violation by instance path and message. `error` means the check itself could not run; it leaves the denominator.
 - A grade set: `{gradeSetId, runId, rulesHash, checkerVersion, trialsFingerprint, casesHash}`. The last five values identify it and an existing one is reused. `checkerVersion` is the tool version; any tool change re-grades, which is cheap for deterministic checks. `trialsFingerprint` covers every line, so a resumed run gets a new grade set. `casesHash` uses the current case files because checks read case input through `…From`. The file `grades/<gradeSetId>.jsonl` holds the grade set on its first line and its grades after it.
 - Trials of a case whose current hash differs from the manifest, including deleted cases, are not graded and leave the comparison too (FR-027). They get `skip` for every rule that applies to the case as defined now; a deleted case gets it for every `global` rule matching its target and language.
 - A grade set looks at one run. Systematic failures need both runs and are applied by the comparison (§Trial Outcomes).
@@ -334,7 +334,7 @@ The first matching row decides. Rows 1–3 check the premise of the comparison a
 - Row 4 is not `pass` because nothing was judged; it exits 0 because nothing can block (constitution II, IV).
 - Row 7 includes rules without a judged cell because a gated rule must be able to block; a run limited by `--cases` that misses a gated rule is `undecided`.
 - `dominant-error`: when at least 80% of the failing candidate trials of the blocking cells end with the same error message (redacted, first 200 characters), the reason goes first in `reasons[]` and at the top of the summary, with params `{message, share}`. A new shape of billing or quota error classified as a rejection would otherwise look like a worse model. The outcome does not change.
-- `abandoned-in-systematic`: abandoned trials inside the systematic failures of a gated `completed` cell, with params `{trials: per variant {timeout, restart}, timeoutMs: per variant}`, `timeoutMs` being each run's `adapter.timeoutMs`.
+- `abandoned-in-systematic`: abandoned trials inside the systematic failures of a gated `completed` cell, with params `{trials: per variant {timeout, restart}, timeoutMs: per variant}` listing both variants, a variant without abandoned trials with zero counts, `timeoutMs` being each run's `adapter.timeoutMs`.
 - Exit codes per outcome: [contracts/cli.md](contracts/cli.md).
 
 ## Statistics
@@ -410,7 +410,7 @@ The first matching row decides. "Judged" means `pass` or `fail`; "excluded" mean
 | 6 | `ok`, empty `raw`, `answers` 1 | Reasoning used the whole output limit | — | fail | excluded | excluded | Empty answer rate |
 | 7 | `ok` · `discarded` | Service threw away a cut or emptied answer (declared discard) | — | fail | judged | excluded | Discard rate and reasons |
 | 8 | `ok` · `fallback` | Fixed message or another model's answer after a failed check | — | fail | judged | excluded | Fallback rate |
-| 9 | `ok` · `model`, empty `final` | Service sent empty text | — | fail | judged | excluded | Empty answer rate |
+| 9 | `ok` · `model`, empty `final` | Service sent empty text | — | fail | judged | excluded | Empty answer rate only when `raw` is empty too |
 | 10 | `ok` · `model`, finish reason not `stop` | Shipped cut (`length`) or filtered | — | fail | judged | judged | Finish reasons |
 | 11 | `ok` · `model`, finish reason `stop` | Normal answer | — | pass | judged | judged | — |
 

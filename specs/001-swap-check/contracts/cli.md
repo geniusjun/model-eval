@@ -79,7 +79,7 @@ Exit code 4 covers:
 6. A model call, side calls included, failed on authentication, model, quota, billing or TLS certificate.
 7. A restarted adapter declares a different adapter or helper version or service code.
 8. Resume problems: generation conditions differ from the record, `--variant`, `--from`/`--to`, `--repeats` or `--cases` differ from the record, the run or swap is `complete`, a run that belongs to a swap is resumed with `run`, or another process holds the lock.
-9. The command line is invalid: an unknown command or option, or an invalid option value.
+9. The command line is invalid: an unknown command or option, or an invalid option value, such as `swap --from` and `--to` naming the same variant.
 
 - A stopped run exits with the code of its `stopReason` (`config-error` if present, else the first reason). Other overlaps resolve in the order 6, 4, 5, 3, 1, 2, 0. A `swap` stopped by the cap exits 5 whatever its comparison says; the comparison is still in `result.gate`.
 - File errors exit 1 from `lint`, where they are findings, and 4 from commands that call models, where they prevent the start.
