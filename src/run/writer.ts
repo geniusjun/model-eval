@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import type { Manifest, SwapRecord } from './manifest.js';
 import type { TrialLine } from './records.js';
-import type { Warning } from './warning.js';
+import type { Warning, WarningCode } from './warning.js';
 
 // The run directory (data-model §Run) and the atomic writes of plan D6.
 
@@ -140,6 +140,33 @@ export function runDirectoryPath(outputDir: string, runId: string): string {
   return path.join(outputDir, 'runs', runId);
 }
 
+/** Run IDs drawn before giving up; one collides only with a run of the same second and variant. */
+const RUN_ID_TRIES = 8;
+
+/**
+ * Creates the directory of a new run under the first ID `nextRunId` gives that no run directory
+ * has, so two runs never share a folder.
+ */
+export async function createRunDirectory(
+  outputDir: string,
+  nextRunId: () => string,
+): Promise<{ readonly runId: string; readonly runDir: string }> {
+  await mkdir(path.join(outputDir, 'runs'), { recursive: true });
+  for (let tries = 0; tries < RUN_ID_TRIES; tries += 1) {
+    const runId = nextRunId();
+    const runDir = runDirectoryPath(outputDir, runId);
+    try {
+      await mkdir(runDir);
+      return { runId, runDir };
+    } catch (error) {
+      if (errorCode(error) !== 'EEXIST') {
+        throw error;
+      }
+    }
+  }
+  throw new Error(`no free run ID in ${path.join(outputDir, 'runs')}`);
+}
+
 export function swapRecordPath(outputDir: string, swapId: string): string {
   return path.join(outputDir, 'swaps', `${swapId}.json`);
 }
@@ -156,8 +183,8 @@ export async function writeSwapRecord(outputDir: string, record: SwapRecord): Pr
  */
 export function hasNewWarningCode(
   written: readonly Warning[],
-  current: readonly Warning[],
+  current: Iterable<WarningCode>,
 ): boolean {
   const codes = new Set(written.map((warning) => warning.code));
-  return current.some((warning) => !codes.has(warning.code));
+  return [...current].some((code) => !codes.has(code));
 }

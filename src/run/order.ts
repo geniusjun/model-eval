@@ -104,7 +104,6 @@ export function nextKey(keys: readonly TrialKey[], progress: KeyProgress): Trial
 }
 
 export interface VariantProgress {
-  readonly id: string;
   /** Finished trials over all segments. */
   readonly finished: number;
   /** Trials sent at least once. */
@@ -116,23 +115,30 @@ export interface VariantProgress {
 }
 
 /**
- * The variant whose next trial goes out, or `undefined` when every variant waits. A variant that
- * finished `limit` or more trials than another variant with trials left waits for it; among the
- * rest, the one that started fewer trials goes first, then the first listed.
+ * The position of the run whose next trial goes out, or `undefined` when every run waits. A run
+ * that finished `limit` or more trials than another run with trials left waits for it; among the
+ * rest, the one that started fewer trials goes first, then the first listed. Runs are told apart
+ * by position, not by variant ID.
  */
 export function pickVariant(
   variants: readonly VariantProgress[],
   limit: number,
-): string | undefined {
+): number | undefined {
   const ahead = (variant: VariantProgress): boolean =>
     variants.some(
       (other) =>
         other !== variant && other.hasRemaining && variant.finished - other.finished >= limit,
     );
-  const ready = variants.filter((variant) => variant.hasSendable && !ahead(variant));
-  const first = ready.reduce<VariantProgress | undefined>(
-    (best, variant) => (best === undefined || variant.started < best.started ? variant : best),
-    undefined,
-  );
-  return first?.id;
+  let picked: number | undefined;
+  variants.forEach((variant, index) => {
+    const best = picked === undefined ? undefined : variants[picked];
+    if (
+      variant.hasSendable &&
+      !ahead(variant) &&
+      (best === undefined || variant.started < best.started)
+    ) {
+      picked = index;
+    }
+  });
+  return picked;
 }

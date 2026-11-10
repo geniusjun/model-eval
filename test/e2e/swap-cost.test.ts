@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import type { TrialLine } from '../../src/run/records.js';
 import { E2E, runJson, SWAP, swapJson, useProjects } from './support/commands.js';
 import {
   attemptLines,
@@ -86,6 +87,31 @@ function totalCostUsd(run: RunFiles): number {
     (sum, line) => sum + (line.costUsd ?? 0),
     0,
   );
+}
+
+/**
+ * Replays one run's `trials.jsonl`: before every send, what the run spent plus its reservations
+ * in flight plus this reservation stays within the cap. The cap covers both runs, so this is a
+ * bound each run must meet on its own; the lines do not record how the two runs interleaved.
+ */
+function expectSendsWithinCap(lines: readonly TrialLine[], cap: number): void {
+  let spent = 0;
+  const inFlight = new Map<string, number>();
+  const id = (line: { caseId: string; repeat: number; attempt: number }): string =>
+    `${trialKey(line.caseId, line.repeat)}:${String(line.attempt)}`;
+  for (const line of lines) {
+    if ('sending' in line) {
+      const reserved = line.reservedUsd ?? 0;
+      const held = [...inFlight.values()].reduce((total, value) => total + value, 0);
+      expect(spent + held + reserved).toBeLessThanOrEqual(cap + 1e-12);
+      inFlight.set(id(line), reserved);
+    } else {
+      if ('status' in line) {
+        inFlight.delete(id(line));
+      }
+      spent += line.costUsd ?? 0;
+    }
+  }
 }
 
 describe('001 FR-011 --dry-run', () => {
@@ -251,6 +277,9 @@ describe('001 US1 scenario 10: a candidate that writes far longer outputs than a
       expect(record).toMatchObject({ status: 'partial', stopReason: 'budget-projected' });
       expect(record.spentUsd ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(1);
       expect(totalCostUsd(baseline) + totalCostUsd(candidate)).toBeLessThanOrEqual(1);
+      for (const run of [baseline, candidate]) {
+        expectSendsWithinCap(run.lines, 1);
+      }
 
       // First batch: 10 cases alternating languages in file order, repeats 0 and 1.
       const firstBatchCases = [1, 2, 3, 4, 5].flatMap((n) => [

@@ -138,7 +138,7 @@ describe('report.md', () => {
     expect(summary).toContain('BLOCK');
     expect(summary).toContain('script-ja (ja, raw): This gated cell regressed.');
     expect(summary).toContain(
-      'completed (ja, trial): Abandoned trials inside the systematic failures: next (timeout 1, restart 0) (tool time limit next 120000 ms).',
+      'completed (ja, trial): Abandoned trials inside the systematic failures: current (timeout 0, restart 0), next (timeout 1, restart 0) (tool time limit current 120000, next 120000 ms).',
     );
     expect(section(renderReport(loadComparison('no-gate'), 'en'), 0)).toContain(
       'The gate is empty, so nothing can block.',
@@ -213,6 +213,33 @@ describe('report.md', () => {
       '| no-emoji | ko | raw',
     ]);
     expect(low).toContain('99.5%');
+    expect(low).not.toContain('| Gated |');
+  });
+
+  it('001 FR-029 a cell whose baseline equals config.report.lowBaseline is not low baseline', () => {
+    const comparison = loadComparison('block');
+    comparison.config.report.lowBaseline = 0.9866666666666667;
+    const low = section(renderReport(comparison, 'en'), 4);
+    expect(low.split('\n').filter((line) => /^\| [a-z]/.test(line))).toEqual([]);
+  });
+
+  it('001 FR-029 escapes | in table cells, so a language key cannot add a column', () => {
+    const comparison = loadComparison('block');
+    comparison.cells = comparison.cells.map((cell) => ({ ...cell, lang: `${cell.lang}|x` }));
+    comparison.config.report.lowBaseline = 0.995;
+    const report = renderReport(comparison, 'en');
+    for (const index of [1, 4]) {
+      const [table = ''] = section(report, index)
+        .split(/\n\n/)
+        .filter((part) => part.startsWith('|'));
+      const columns = table
+        .split('\n')
+        .filter((row) => row !== '')
+        .map((row) => row.split(/(?<!\\)\|/).length);
+      expect(columns.length, String(index)).toBeGreaterThan(2);
+      expect(new Set(columns).size, String(index)).toBe(1);
+      expect(table).toContain('ko\\|x');
+    }
   });
 
   it('001 FR-029 never lists completed cells as low baseline, since row 3 of the gate covers them', () => {

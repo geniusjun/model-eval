@@ -1,5 +1,6 @@
 import { compareCodeUnits } from '../adapter/canonical-json.js';
 import type { Rule, Surface } from '../config/schema.js';
+import { classifyTrial } from '../grade/outcome.js';
 import type { Grade } from '../grade/record.js';
 import type { Aggregate, Cell, Rate } from '../report/schema.js';
 import { trialKeyId } from '../run/ids.js';
@@ -72,7 +73,10 @@ export interface CellContext {
   readonly runCases: number;
 }
 
-const keyId = (key: CellKey): string => `${key.ruleId}\u0000${key.lang}\u0000${key.surface}`;
+/** A map key for a cell. */
+export function cellId(cell: CellKey): string {
+  return `${cell.ruleId}\u0000${cell.lang}\u0000${cell.surface}`;
+}
 
 interface MutableCounts {
   trials: number;
@@ -103,15 +107,13 @@ interface RunTally {
 const isJudged = (outcome: Grade['outcome'] | undefined): boolean =>
   outcome === 'pass' || outcome === 'fail';
 
-/** The kind of each finished trial that ended in a transient or adapter error, by trial key. */
+/** The outcome of each finished trial in a transient or adapter row, by trial key. */
 function excludedKinds(finished: readonly AttemptLine[]): Map<string, ExcludedKind> {
   const kinds = new Map<string, ExcludedKind>();
   for (const line of finished) {
-    if (
-      line.status === 'error' &&
-      (line.error.kind === 'transient' || line.error.kind === 'adapter')
-    ) {
-      kinds.set(trialKeyId(line), line.error.kind);
+    const outcome = classifyTrial(line);
+    if (outcome === 'transient' || outcome === 'adapter') {
+      kinds.set(trialKeyId(line), outcome);
     }
   }
   return kinds;
@@ -137,7 +139,7 @@ function tally(
       continue;
     }
     const key: CellKey = { ruleId: grade.ruleId, lang: caseLang, surface: grade.surface };
-    const id = keyId(key);
+    const id = cellId(key);
     result.keys.set(id, key);
     const trialKey = trialKeyId(grade);
     const isSystematic =
@@ -245,7 +247,7 @@ export function cellEvidence(input: CellsInput): CellEvidence[] {
   const order = new Map(input.rules.map((rule, index) => [rule.id, index]));
   const keys = new Map([...runs.baseline.keys, ...runs.candidate.keys]);
   return [...keys.values()].sort(compareKeys(order)).map((key) => {
-    const id = keyId(key);
+    const id = cellId(key);
     const perCase = {
       baseline: runs.baseline.counts.get(id) ?? new Map<string, MutableCounts>(),
       candidate: runs.candidate.counts.get(id) ?? new Map<string, MutableCounts>(),

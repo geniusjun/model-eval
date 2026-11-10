@@ -4,7 +4,7 @@ import { compareCodeUnits } from '../adapter/canonical-json.js';
 import type { dryRunPlanSchema } from '../cli/results.js';
 import type { LintFinding } from '../config/diagnostics.js';
 import type { Case, GateConfig, Rule, StatsConfig, Surface } from '../config/schema.js';
-import { gateRules, gatesSurface } from '../compare/gate.js';
+import { applicableToTargets, gateRules, gatesSurface } from '../compare/gate.js';
 import { applicableRules } from '../grade/grade.js';
 import { zValues } from '../stats/interval.js';
 import { nMin } from '../stats/verdict.js';
@@ -59,7 +59,7 @@ function casesPerLanguage(rule: Rule, cases: readonly PlannedCase[]): [string, n
  */
 export function samplePlan(input: SamplePlanInput): SamplePlan {
   const targets = [...new Set(input.cases.map(({ definition }) => definition.target))];
-  const { gated } = gateRules(input.rules, targets, input.gate);
+  const { gated } = gateRules(applicableToTargets(input.rules, targets), input.gate);
   const { zLower } = zValues(input.stats.confidence, 0);
   const cells: PlannedCell[] = [];
   const warnings: LintFinding[] = [];

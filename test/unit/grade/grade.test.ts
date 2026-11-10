@@ -41,7 +41,7 @@ function runCase(definition: Case, lang = 'ko'): RunCase {
     target: definition.target,
     lang,
     hash: HASH,
-    current: { definition, hash: HASH },
+    current: { definition, hash: HASH, lang },
   };
 }
 
@@ -219,7 +219,10 @@ describe('grading per surface', () => {
   });
 
   it('001 FR-027 a changed case gets skip for every rule that applies to it as defined now', () => {
-    const changed: RunCase = { ...runCase(mood), current: { definition: mood, hash: OTHER_HASH } };
+    const changed: RunCase = {
+      ...runCase(mood),
+      current: { definition: mood, hash: OTHER_HASH, lang: 'ko' },
+    };
     expect(gradesOf(moodLine(okLine({ raw: '😀', final: '😀' })), changed)).toEqual([
       ['chat-only', 'final', 'skip'],
       ['chat-only', 'raw', 'skip'],
@@ -234,6 +237,15 @@ describe('grading per surface', () => {
     // The current definition decides, not the target the manifest recorded.
     const moved: RunCase = { ...changed, target: 'summary' };
     expect(gradesOf(moodLine(okLine()), moved).map(([ruleId]) => ruleId)).toContain('chat-only');
+    // So does the language the case resolves to now, not the one the manifest recorded.
+    const english = { ...mood, lang: 'en' };
+    const relabelled: RunCase = {
+      ...changed,
+      current: { definition: english, hash: OTHER_HASH, lang: 'en' },
+    };
+    expect(gradesOf(moodLine(okLine()), relabelled).map(([ruleId]) => ruleId)).not.toContain(
+      'script-ko',
+    );
   });
 
   it('001 FR-027 a deleted case gets skip for every global rule matching its target and language', () => {

@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { rmdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -10,6 +10,7 @@ import { PROTOCOL_VERSION, type LogParams } from '../adapter/protocol.js';
 import type { Project } from '../config/load.js';
 import type { Sha256 } from '../config/identifiers.js';
 import type { Price, Rule, Variant } from '../config/schema.js';
+import { NO_LANGUAGE } from '../grade/grade.js';
 import { ActiveRun, type RunEnd } from './active-run.js';
 import { createCapLedger, exceedsCap, type CapLedger } from './cap.js';
 import { createCallsRouter, type CallsRouter } from './calls-router.js';
@@ -33,8 +34,8 @@ import {
 import { driveRuns } from './drive.js';
 import { launchHash, rulesHash, variantFingerprint } from './hashes.js';
 import { previousProfiles } from './history.js';
-import { newRunId } from './ids.js';
-import { acquireRunLock, type LockRefusal } from './lock.js';
+import { newRunId, type SuffixSource } from './ids.js';
+import { acquireRunLock, type HeldLock, type LockRefusal } from './lock.js';
 import type { Manifest } from './manifest.js';
 import { sendOrder } from './order.js';
 import { renderCases, type RenderedCases, type RenderFailure } from './render-cases.js';
@@ -44,7 +45,7 @@ import { createStopSignal, type StopSignal } from './stopping.js';
 import { runTotals } from './totals.js';
 import { TrialBook } from './trial-book.js';
 import type { Warning } from './warning.js';
-import { openTrialLog, RUN_FILES, runDirectoryPath, writeManifest } from './writer.js';
+import { createRunDirectory, openTrialLog, RUN_FILES, writeManifest } from './writer.js';
 
 // One run of one variant: the start (T067), the send loop (T068) and the end (T069).
 
@@ -69,6 +70,8 @@ export interface RunRequest {
   readonly swapId?: string;
   readonly now?: () => Date;
   readonly random?: RandomSource;
+  /** The 4 hex digits that end the run ID; random unless a test sets them. */
+  readonly runIdSuffix?: SuffixSource;
   readonly onLog?: (params: LogParams) => void;
   readonly onStderr?: (line: string) => void;
 }
@@ -99,7 +102,6 @@ export interface VariantPlan extends PlannedUsage {
 
 /** A started and rendered adapter whose run has written nothing yet. */
 export interface PreparedRun {
-  readonly runId: string;
   readonly variantId: string;
   readonly estimate: StartEstimate;
   /** Trials this run will send. */
@@ -108,11 +110,23 @@ export interface PreparedRun {
   readonly cases: readonly RunCaseSpec[];
   readonly plan: VariantPlan;
   /**
-   * Creates the run directory, takes `run.lock` and writes the first manifest. `ledger` and
-   * `stop` are shared by every run under one cap.
+   * Creates the run directory under a run ID no other run has and takes `run.lock`; nothing else
+   * is written yet. A failure shuts the adapter down.
    */
-  begin(shared: SharedRun): Promise<BeginResult>;
+  claim(): Promise<ClaimResult>;
   /** Shuts the adapter down without writing anything, after a refused start. */
+  abandon(): Promise<void>;
+}
+
+/** A run whose directory and lock are held and whose manifest is not written yet. */
+export interface ClaimedRun {
+  readonly runId: string;
+  /**
+   * Writes the first manifest and opens `trials.jsonl`. `ledger` and `stop` are shared by every
+   * run under one cap. A failure releases the lock and shuts the adapter down.
+   */
+  begin(shared: SharedRun): Promise<ActiveRun>;
+  /** Releases the lock, removes the still empty run directory and shuts the adapter down. */
   abandon(): Promise<void>;
 }
 
@@ -125,8 +139,8 @@ export type PrepareResult =
   | { readonly ok: true; readonly run: PreparedRun }
   | { readonly ok: false; readonly failure: RunStartFailure };
 
-export type BeginResult =
-  | { readonly ok: true; readonly run: ActiveRun }
+export type ClaimResult =
+  | { readonly ok: true; readonly run: ClaimedRun }
   | { readonly ok: false; readonly failure: RunStartFailure };
 
 /** The config file, the files the rule and case globs match, and the output directory. */
@@ -171,7 +185,6 @@ function startReservationUsd(
 
 interface Started {
   readonly request: RunRequest;
-  readonly runId: string;
   readonly startedAt: Date;
   readonly client: AdapterClient;
   readonly router: CallsRouter;
@@ -226,6 +239,24 @@ export async function prepareRun(request: RunRequest): Promise<PrepareResult> {
     return { ok: false, failure: { kind: 'adapter', error: started.error } };
   }
   const { client } = started;
+  try {
+    return await renderedRun(request, startedAt, paths, client, router);
+  } catch (error) {
+    await client.shutdown();
+    throw error;
+  }
+}
+
+/** The steps of {@link prepareRun} after the adapter started; refusals shut it down. */
+async function renderedRun(
+  request: RunRequest,
+  startedAt: Date,
+  paths: readonly string[],
+  client: AdapterClient,
+  router: CallsRouter,
+): Promise<PrepareResult> {
+  const { project, variant } = request;
+  const config = project.config.data;
   const refuse = async (failure: RunStartFailure): Promise<PrepareResult> => {
     await client.shutdown();
     return { ok: false, failure };
@@ -258,7 +289,6 @@ export async function prepareRun(request: RunRequest): Promise<PrepareResult> {
   const expected = expectedEstimate(estimateInput);
   const prepared: Started = {
     request,
-    runId: newRunId(variant.id, startedAt),
     startedAt,
     client,
     router,
@@ -277,7 +307,6 @@ export async function prepareRun(request: RunRequest): Promise<PrepareResult> {
   return {
     ok: true,
     run: {
-      runId: prepared.runId,
       variantId: variant.id,
       estimate: prepared.estimate,
       trials,
@@ -295,7 +324,7 @@ export async function prepareRun(request: RunRequest): Promise<PrepareResult> {
           previous,
         ),
       },
-      begin: (shared) => beginRun(prepared, shared),
+      claim: () => claimRun(prepared),
       abandon: async () => {
         await client.shutdown();
       },
@@ -310,7 +339,7 @@ function startWarnings(started: Started): Warning[] {
     : [];
 }
 
-function firstManifest(started: Started, shared: SharedRun): Manifest {
+function firstManifest(started: Started, runId: string, shared: SharedRun): Manifest {
   const { request, client, rendered } = started;
   const { project, variant } = request;
   const config = project.config.data;
@@ -318,7 +347,7 @@ function firstManifest(started: Started, shared: SharedRun): Manifest {
   const startedAt = started.startedAt.toISOString();
   const helper = info.adapter.helper === undefined ? {} : { helper: info.adapter.helper };
   return {
-    runId: started.runId,
+    runId,
     ...(request.swapId === undefined ? {} : { swapId: request.swapId }),
     tool: { ...request.tool, protocolVersion: PROTOCOL_VERSION, startedAt },
     adapter: {
@@ -376,51 +405,97 @@ function firstManifest(started: Started, shared: SharedRun): Manifest {
   };
 }
 
-async function beginRun(started: Started, shared: SharedRun): Promise<BeginResult> {
+async function claimRun(started: Started): Promise<ClaimResult> {
   const { request, client } = started;
-  const { project } = request;
-  const config = project.config.data;
-  const runDir = runDirectoryPath(project.paths.outputDir, started.runId);
-  await mkdir(runDir, { recursive: true });
-  const locked = await acquireRunLock(runDir, { now: started.startedAt });
-  if (!locked.ok) {
+  const { variant } = request;
+  try {
+    const { runId, runDir } = await createRunDirectory(request.project.paths.outputDir, () =>
+      newRunId(variant.id, started.startedAt, request.runIdSuffix),
+    );
+    const locked = await acquireRunLock(runDir, { now: started.startedAt });
+    if (!locked.ok) {
+      // The folder is still empty; the catch below shuts the adapter down if this throws.
+      await rmdir(runDir);
+      await client.shutdown();
+      return { ok: false, failure: { kind: 'lock', refusal: locked.refusal } };
+    }
+    const { lock } = locked;
+    return {
+      ok: true,
+      run: {
+        runId,
+        begin: async (shared) => {
+          try {
+            return await beginRun(started, { runId, runDir, lock }, shared);
+          } catch (error) {
+            try {
+              await lock.release();
+            } finally {
+              await client.shutdown();
+            }
+            throw error;
+          }
+        },
+        abandon: async () => {
+          try {
+            await lock.release();
+            await rmdir(runDir);
+          } finally {
+            await client.shutdown();
+          }
+        },
+      },
+    };
+  } catch (error) {
     await client.shutdown();
-    return { ok: false, failure: { kind: 'lock', refusal: locked.refusal } };
+    throw error;
   }
-  const manifest = firstManifest(started, shared);
+}
+
+interface RunDirectory {
+  readonly runId: string;
+  readonly runDir: string;
+  readonly lock: HeldLock;
+}
+
+async function beginRun(
+  started: Started,
+  { runId, runDir, lock }: RunDirectory,
+  shared: SharedRun,
+): Promise<ActiveRun> {
+  const { request, client } = started;
+  const config = request.project.config.data;
+  const manifest = firstManifest(started, runId, shared);
   await writeManifest(runDir, manifest);
   const log = await openTrialLog(path.join(runDir, RUN_FILES.trials));
   const langOf = new Map(started.cases.map((spec) => [spec.id, spec.lang]));
   const plan = sendOrder(started.cases, targetLanguages(client.info.targets), request.repeats);
-  return {
-    ok: true,
-    run: new ActiveRun({
-      runId: started.runId,
-      runDir,
-      config,
-      rules: started.rules,
-      cases: started.cases,
-      plans: started.rendered.plans,
-      expectedPerTrial: started.estimate.expected.perTrial,
-      previous: started.previous,
-      client,
-      router: started.router,
-      book: new TrialBook(
-        plan,
-        (caseId) => langOf.get(caseId) ?? '*',
-        config.run.retries,
-        request.random ?? Math.random,
-      ),
-      log,
-      lock: locked.lock,
-      ledger: shared.ledger,
-      stop: shared.stop,
-      manifest,
-      rulesHash: started.rulesHash,
-      checkerVersion: request.tool.version,
-      now: request.now ?? (() => new Date()),
-    }),
-  };
+  return new ActiveRun({
+    runId,
+    runDir,
+    config,
+    rules: started.rules,
+    cases: started.cases,
+    plans: started.rendered.plans,
+    expectedPerTrial: started.estimate.expected.perTrial,
+    previous: started.previous,
+    client,
+    router: started.router,
+    book: new TrialBook(
+      plan,
+      (caseId) => langOf.get(caseId) ?? NO_LANGUAGE,
+      config.run.retries,
+      request.random ?? Math.random,
+    ),
+    log,
+    lock,
+    ledger: shared.ledger,
+    stop: shared.stop,
+    manifest,
+    rulesHash: started.rulesHash,
+    checkerVersion: request.tool.version,
+    now: request.now ?? (() => new Date()),
+  });
 }
 
 /** The expected estimate exceeds the cap: no model is called (exit code 5). */
@@ -467,12 +542,12 @@ export async function startRun(run: PreparedRun, maxCostUsd: number | null): Pro
       failure: { kind: 'over-budget', expectedUsd: run.estimate.expected.usd, maxCostUsd },
     };
   }
-  const shared: SharedRun = { ledger: createCapLedger(maxCostUsd, 0), stop: createStopSignal() };
-  const begun = await run.begin(shared);
-  if (!begun.ok) {
-    return begun;
+  const claimed = await run.claim();
+  if (!claimed.ok) {
+    return claimed;
   }
-  const active = begun.run;
+  const shared: SharedRun = { ledger: createCapLedger(maxCostUsd, 0), stop: createStopSignal() };
+  const active = await claimed.run.begin(shared);
   try {
     await driveRuns([active], shared);
   } finally {

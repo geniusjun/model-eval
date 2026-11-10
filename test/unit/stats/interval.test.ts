@@ -43,6 +43,14 @@ describe('confidence levels', () => {
     });
   });
 
+  it('001 FR-021 keeps z finite for a confidence just below 1, where 1 − α rounds to 1', () => {
+    // α = 5.551115123125783e-17; scipy gives z_{1−α} and z_{1−α/3}.
+    expect(zValues(0.9999999999999999, 3)).toEqual({
+      zLower: near(8.292361075813595, 10),
+      zUpper: near(8.422011622583538, 10),
+    });
+  });
+
   it('001 FR-021 leaves z_U uncorrected without gated cells and for ungated cells', () => {
     const none = zValues(0.95, 0);
     expect(none.zUpper).toBe(none.zLower);
@@ -71,6 +79,21 @@ describe('case-weighted rates and ñ', () => {
     ] as const) {
       expect(effectiveTrials(repeated(repeats, times(cases, 0)))).toBe(cases * repeats);
     }
+  });
+
+  it('001 FR-021 computes ñ when the common multiple of the trial counts is not a safe integer', () => {
+    // The first 140 primes, 2 to 809, as trial counts; exact fractions give K² / Σ(1/n_i).
+    const primes: number[] = [];
+    for (let n = 2; primes.length < 140; n += 1) {
+      if (primes.every((p) => n % p !== 0)) {
+        primes.push(n);
+      }
+    }
+    expect(primes.at(-1)).toBe(809);
+    expect(effectiveTrials(primes.map((trials) => counts(trials, 0)))).toBeCloseTo(
+      9045.211531891291,
+      8,
+    );
   });
 
   it('001 FR-021 gives each variant a Wilson interval widened by its own design effect', () => {

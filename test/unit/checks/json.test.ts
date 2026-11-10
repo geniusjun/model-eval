@@ -61,8 +61,10 @@ describe('json check', () => {
 
   it('001 FR-017 cannot run with a schema that does not compile', () => {
     const broken = parseCheck('json', { schema: { type: 'nonsense' } });
-    const result = checkJson(broken, '{}');
-    expect(result.outcome).toBe('error');
-    expect(result).toMatchObject({ problem: { code: 'invalid-schema' } });
+    for (const text of ['{}', 'hello', '']) {
+      const result = checkJson(broken, text);
+      expect(result.outcome).toBe('error');
+      expect(result).toMatchObject({ problem: { code: 'invalid-schema' } });
+    }
   });
 });

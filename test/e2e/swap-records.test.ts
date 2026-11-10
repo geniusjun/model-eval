@@ -14,6 +14,8 @@ import {
   costLines,
   effectiveLines,
   filesUnder,
+  jsonAt,
+  readComparison,
   readRun,
   readSwapRecord,
   swapRunOf,
@@ -21,7 +23,7 @@ import {
   type RunFiles,
   type SwapEnvelope,
 } from './support/outputs.js';
-import { greetCases, MODEL_A, MODEL_B, type Project } from './support/project.js';
+import { greetCases, MODEL_A, MODEL_B, type Project, type RuleInput } from './support/project.js';
 import { ANSWERED, NO_EMOJI, SELF_STATE_REVIEW } from './support/rules.js';
 
 // Records of a swap (FR-007, FR-010, FR-014, FR-015, FR-016, FR-031) against the mock adapter.
@@ -33,6 +35,14 @@ const RULES = [ANSWERED, NO_EMOJI, SELF_STATE_REVIEW];
 const PHONE = '010-1234-5678';
 /** The redaction rule of contracts/config.md. */
 const REDACT = [{ pattern: '\\b01[0-9]-?\\d{3,4}-?\\d{4}\\b', replace: '<phone>' }];
+/** Fails every answer, with the phone number as its evidence, so grade sets hold the secret. */
+const NO_PHONE: RuleInput = {
+  id: 'no-phone',
+  title: 'No phone number',
+  severity: 'minor',
+  scope: 'global',
+  check: { type: 'pattern', regex: '\\d{3}-\\d{4}-\\d{4}', mode: 'forbid' },
+};
 /** The price both models get in the e2e projects, USD per 1M tokens. */
 const PRICE = { input: 1, cachedInput: 0.1, cacheWrite: 1, output: 2 };
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
@@ -75,7 +85,7 @@ describe('001 records of a finished swap', () => {
   beforeAll(async () => {
     records = await project({
       scenario: 'swap-records',
-      rules: RULES,
+      rules: [...RULES, NO_PHONE],
       cases: CASES,
       config: { redact: REDACT },
     });
@@ -263,6 +273,21 @@ describe('001 records of a finished swap', () => {
       }
     }
     expect(leaking).toEqual([]);
+    // The no-phone rule caught the number in every grade set, so the check above covers them.
+    const gradeFiles = written.filter((file) => path.basename(path.dirname(file)) === 'grades');
+    expect(gradeFiles).toHaveLength(trialFiles.length);
+    for (const file of gradeFiles) {
+      const caught = (await readFile(file, 'utf8'))
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((line): unknown => JSON.parse(line))
+        .filter((grade) => jsonAt(grade, ['ruleId']) === 'no-phone');
+      expect(caught.length).toBeGreaterThan(0);
+      for (const grade of caught) {
+        expect(jsonAt(grade, ['outcome'])).toBe('fail');
+        expect(jsonAt(grade, ['evidence'])).toEqual(['<phone>']);
+      }
+    }
     for (const stream of [outcome.cli.stdout, outcome.cli.stderr, human.stdout, human.stderr]) {
       expect(stream).not.toContain(PHONE);
     }
@@ -395,6 +420,63 @@ describe('001 FR-007 calls reported outside a result', () => {
         }
       }
       expect(withCalls.manifest.totals.costUsd).toBeCloseTo(lineCostUsd(withCalls), 12);
+    },
+    E2E.timeout,
+  );
+});
+
+describe('001 FR-031 a redaction rule whose replacement it matches again', () => {
+  it(
+    '001 FR-031 stdout shows the comparison text redacted once, as comparison.json has it',
+    async () => {
+      // The candidate's time-outs share one message, which the gate names as the dominant error.
+      const timeouts = await project({
+        scenario: 'swap-timeout',
+        rules: [ANSWERED],
+        cases: greetCases({ ko: 10, ja: 10 }),
+        config: {
+          redact: [{ pattern: 'limit', replace: 'limit-x' }],
+          gate: { severities: ['blocking'] },
+          sampling: { repeats: 3 },
+        },
+      });
+      const once = '"service time limit-x of 30 s"';
+      const { cli, envelope } = await swapJson(timeouts);
+      expect(cli.code).toBe(1);
+      const shown = comparisonOf(envelope);
+      const { comparison } = await readComparison(timeouts.outputDir, shown.comparisonId);
+      expect(shown).toEqual(comparison);
+      expect(swapRunOf(envelope).gate).toEqual(comparison.gate);
+      expect(envelope.warnings).toEqual(expect.arrayContaining([...comparison.warnings]));
+      expect(JSON.stringify(comparison)).toContain('limit-x');
+      expect(cli.stdout).not.toContain('limit-x-x');
+
+      const human = await timeouts.run([...SWAP]);
+      expect(human.code).toBe(1);
+      expect(human.stdout).toContain(once);
+      expect(human.stdout).not.toContain('limit-x-x');
+    },
+    E2E.timeout,
+  );
+
+  it(
+    '001 FR-031 failing-sample evidence is redacted once in comparison.json and on stdout',
+    async () => {
+      const emoji = await project({
+        scenario: 'swap-records',
+        rules: [NO_EMOJI],
+        cases: greetCases({ ja: 10 }),
+        config: { redact: [{ pattern: '😀', replace: '😀😀' }], sampling: { repeats: 3 } },
+      });
+      const { envelope } = await swapJson(emoji);
+      const shown = comparisonOf(envelope);
+      const { comparison } = await readComparison(emoji.outputDir, shown.comparisonId);
+      const evidence = comparison.samples.failing.flatMap((cell) =>
+        cell.keys.flatMap((key) => key.evidence ?? []),
+      );
+      expect(evidence.length).toBeGreaterThan(0);
+      expect(new Set(evidence)).toEqual(new Set(['😀😀']));
+      expect(shown.samples).toEqual(comparison.samples);
     },
     E2E.timeout,
   );

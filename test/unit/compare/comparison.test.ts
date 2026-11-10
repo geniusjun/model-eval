@@ -15,6 +15,9 @@ import type { Sha256 } from '../../../src/config/identifiers.js';
 import { caseSchema, configSchema, ruleSchema, type Rule } from '../../../src/config/schema.js';
 import { gradeRun } from '../../../src/grade/grade.js';
 import { effectiveAttempts } from '../../../src/grade/outcome.js';
+import { renderReport } from '../../../src/report/markdown.js';
+import { createRedactor } from '../../../src/report/redact.js';
+import { comparisonPage, serializePageData } from '../../../src/report/page-data.js';
 import { comparisonSchema, type Comparison } from '../../../src/report/schema.js';
 import { manifestSchema, type Manifest } from '../../../src/run/manifest.js';
 import type { AttemptLine } from '../../../src/run/records.js';
@@ -54,16 +57,22 @@ function currentCase(id: string, caseHash: Sha256 = CASE_HASH): CurrentCase {
       input: {},
     }),
     hash: caseHash,
+    lang: 'ko',
   };
 }
 
-const ADAPTER_ERROR = Symbol('adapter error');
+interface TrialError {
+  readonly kind: 'adapter' | 'permanent';
+  readonly message: string;
+}
+
+const ADAPTER_ERROR: TrialError = { kind: 'adapter', message: 'adapter failure' };
 
 interface RunSpec {
   readonly variant: string;
   readonly cases: readonly string[];
-  /** The raw and final answer of each trial, or an adapter error. */
-  readonly answer: (caseId: string, repeat: number) => string | typeof ADAPTER_ERROR;
+  /** The raw and final answer of each trial, or an error. */
+  readonly answer: (caseId: string, repeat: number) => string | TrialError;
   readonly manifest?: Partial<Manifest>;
   readonly gradeSetId?: string;
 }
@@ -96,9 +105,9 @@ function linesOf(spec: RunSpec): AttemptLine[] {
   return spec.cases.flatMap((caseId) =>
     Array.from({ length: 5 }, (_, repeat) => {
       const answer = spec.answer(caseId, repeat);
-      return answer === ADAPTER_ERROR
-        ? errorLine('adapter', { caseId, repeat })
-        : okLine({ caseId, repeat, raw: answer, final: answer });
+      return typeof answer === 'string'
+        ? okLine({ caseId, repeat, raw: answer, final: answer })
+        : errorLine(answer.kind, { caseId, repeat, error: answer });
     }),
   );
 }
@@ -159,6 +168,7 @@ interface Scenario {
   readonly baseline?: Partial<RunSpec>;
   readonly candidate?: Partial<RunSpec>;
   readonly cases?: readonly CurrentCase[];
+  readonly rules?: readonly Rule[];
   readonly config?: Partial<ComparisonInput['config']>;
 }
 
@@ -176,7 +186,7 @@ function input(scenario: Scenario = {}): ComparisonInput {
         cases,
       ),
     },
-    rules: RULES,
+    rules: scenario.rules ?? RULES,
     cases,
     config: { ...CONFIG, ...scenario.config },
     outputDir,
@@ -327,6 +337,67 @@ describe('the comparison of two runs', () => {
     });
   });
 
+  it('001 FR-031 each message is redacted once, and dominant-error and top messages group the redacted text', async () => {
+    const failed = new Set(caseIds(12));
+    const scenario = input({
+      candidate: {
+        answer: (caseId, repeat) => (failed.has(caseId) ? ADAPTER_ERROR : CLEAN(caseId, repeat)),
+      },
+      config: {
+        redact: [
+          { pattern: 'fail', replace: 'fail-x' },
+          { pattern: 'req-[0-9a-z-]+', replace: 'req' },
+        ],
+      },
+    });
+    const lines = scenario.runs.candidate.lines.map((line) =>
+      'status' in line && line.status === 'error'
+        ? {
+            ...line,
+            error: {
+              ...line.error,
+              message: `adapter failure req-${line.caseId}-${String(line.repeat)}`,
+            },
+          }
+        : line,
+    );
+    const comparison = await buildComparison({
+      ...scenario,
+      runs: { ...scenario.runs, candidate: { ...scenario.runs.candidate, lines } },
+    });
+    expect(comparison.gate.reasons[0]).toEqual({
+      code: 'dominant-error',
+      params: { message: 'adapter fail-xure req', share: 1 },
+    });
+    expect(comparison.ops.candidate.topMessages).toEqual([
+      { kind: 'adapter', message: 'adapter fail-xure req', count: 60 },
+    ]);
+  });
+
+  it('001 FR-025 dominant-error reads the failing trials of the blocking cells only', async () => {
+    const quota: TrialError = { kind: 'permanent', message: 'quota exceeded' };
+    const rejected = (caseId: string, repeat: number) =>
+      repeat < 2 || (repeat === 2 && caseId < 'ko-15');
+    const comparison = await compare({
+      baseline: {
+        answer: (caseId, repeat) => (rejected(caseId, repeat) ? quota : CLEAN(caseId, repeat)),
+      },
+      candidate: {
+        answer: (caseId, repeat) => {
+          if (rejected(caseId, repeat)) {
+            return quota;
+          }
+          const emoji = caseId < 'ko-15' && (repeat === 3 || caseId < 'ko-03');
+          return emoji ? EMOJI(caseId, repeat) : CLEAN(caseId, repeat);
+        },
+      },
+    });
+    expect(comparison.gate.blocking).toEqual([{ ruleId: 'no-emoji', lang: 'ko', surface: 'raw' }]);
+    expect(comparison.cells[0]).toMatchObject({ ruleId: 'completed', gated: true });
+    expect(comparison.cells[0]?.verdict).not.toBe('regressed');
+    expect(comparison.gate.reasons.map((reason) => reason.code)).not.toContain('dominant-error');
+  });
+
   it('001 FR-021 abandoned trials inside systematic failures of a gated completed cell', async () => {
     const comparison = await compare({
       candidate: {
@@ -356,7 +427,10 @@ describe('the comparison of two runs', () => {
       ruleId: 'completed',
       lang: 'ko',
       surface: 'trial',
-      params: { trials: { next: { timeout: 2, restart: 0 } }, timeoutMs: { next: 120_000 } },
+      params: {
+        trials: { current: { timeout: 0, restart: 0 }, next: { timeout: 2, restart: 0 } },
+        timeoutMs: { current: 120_000, next: 120_000 },
+      },
     });
   });
 
@@ -397,6 +471,119 @@ describe('the comparison of two runs', () => {
       changedHash: ['changed', 'deleted'],
     });
     expect(comparison.completion).toEqual([{ lang: 'ko', trials: 20, passes: 20, rate: 1 }]);
+  });
+
+  it('001 FR-027 a case with a changed hash reaches no metric, warning or systematic failure', async () => {
+    const shared = caseIds(4);
+    const comparison = await compare({
+      cases: [...shared.map((id) => currentCase(id)), currentCase('changed', hash('9'))],
+      baseline: {
+        cases: [...shared, 'changed'],
+        answer: (caseId, repeat) => (caseId === 'changed' ? 'same' : CLEAN(caseId, repeat)),
+      },
+      candidate: {
+        cases: [...shared, 'changed'],
+        answer: (caseId, repeat) => (caseId === 'changed' ? ADAPTER_ERROR : CLEAN(caseId, repeat)),
+      },
+    });
+    expect(comparison.coverage.changedHash).toEqual(['changed']);
+    expect(comparison.ops.candidate.rates.adapter.count).toBe(0);
+    expect(comparison.ops.candidate.systematic).toEqual({ trials: 0, cases: 0 });
+    expect(comparison.ops.candidate.topMessages).toEqual([]);
+    expect(comparison.cells[0]?.systematic?.candidate).toEqual({ trials: 0, cases: 0 });
+    expect(comparison.warnings.map((warning) => warning.code)).not.toContain('identical-repeats');
+  });
+
+  it('001 FR-025 rules[] holds the active rules of the compared targets only', async () => {
+    const comparison = await compare({
+      rules: [
+        ...RULES,
+        rule({ id: 'mail-only', targets: ['mail'] }),
+        rule({ id: 'retired', status: 'retired' }),
+      ],
+    });
+    expect(comparison.rules.map((each) => each.id)).toEqual([
+      'completed',
+      'no-emoji',
+      'self-state',
+    ]);
+  });
+
+  it('001 FR-024 trials per variant a new run needs count the candidate run cases', async () => {
+    const extra = ['zz-00', 'zz-01'];
+    const ids = caseIds(30);
+    const comparison = await compare({
+      cases: [...ids, ...extra].map((id) => currentCase(id)),
+      candidate: {
+        cases: [...ids, ...extra],
+        answer: (caseId, repeat) =>
+          repeat === 0 && caseId < 'ko-08' ? EMOJI(caseId, repeat) : CLEAN(caseId, repeat),
+      },
+    });
+    const needed = comparison.cells.find(
+      (cell) => cell.ruleId === 'no-emoji' && cell.surface === 'raw',
+    )?.needed;
+    if (needed?.kind !== 'repeats') {
+      throw new Error(`expected a repeats estimate, got ${JSON.stringify(needed)}`);
+    }
+    expect(needed.trialsPerVariant).toBe(32 * needed.repeats);
+  });
+
+  it('001 FR-031 failing-sample evidence keeps the redaction its grade set wrote', async () => {
+    const redact = [{ pattern: '😀', replace: '😀😀' }];
+    const redactor = createRedactor(redact);
+    const scenario = input({ candidate: { answer: EMOJI }, config: { redact } });
+    // A grade set holds redacted evidence (FR-031), as gradeSetFor writes it.
+    const redactedGrades = (run: ComparedRunRecords): ComparedRunRecords => ({
+      ...run,
+      gradeSet: {
+        ...run.gradeSet,
+        grades: run.gradeSet.grades.map((grade) =>
+          grade.evidence === undefined
+            ? grade
+            : { ...grade, evidence: grade.evidence.map((text) => redactor.text(text)) },
+        ),
+      },
+    });
+    const comparison = await buildComparison({
+      ...scenario,
+      runs: {
+        baseline: redactedGrades(scenario.runs.baseline),
+        candidate: redactedGrades(scenario.runs.candidate),
+      },
+    });
+    expect(comparison.samples.failing[0]?.keys[0]?.evidence).toEqual(['😀😀']);
+    expect(
+      comparison.samples.texts.find(
+        (text) => text.variant === 'candidate' && text.caseId === 'ko-00' && text.repeat === 0,
+      ),
+    ).toMatchObject({ raw: '안녕! 😀😀 (0)', final: '안녕! 😀😀 (0)' });
+  });
+
+  it('001 FR-031 redacts every free-text field once and writes identifiers as they are', async () => {
+    const comparison = await compare({
+      candidate: { answer: EMOJI },
+      config: {
+        redact: [
+          { pattern: '오늘', replace: '[day]' },
+          { pattern: '안녕', replace: '[hi]' },
+          { pattern: 'title', replace: '[t]' },
+          { pattern: 'ko', replace: '[k]' },
+        ],
+      },
+    });
+    const saved = JSON.stringify(comparison);
+    const payload = serializePageData(comparisonPage(comparison, 'en'));
+    const report = renderReport(comparison, 'en');
+    for (const text of [saved, payload, report]) {
+      expect(text).not.toContain('오늘');
+      expect(text).not.toContain('안녕');
+      expect(text).toContain('[hi]');
+      expect(text).not.toContain('[k]');
+    }
+    expect(comparison.rules.map((each) => each.title)).toEqual(['[t]', '[t]', '[t]']);
+    expect(comparison.samples.failing[0]?.keys[0]?.caseId).toBe('ko-00');
+    expect(comparison.cells[0]?.lang).toBe('ko');
   });
 });
 

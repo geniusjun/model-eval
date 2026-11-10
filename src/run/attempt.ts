@@ -1,5 +1,6 @@
 import type { CallOutcome } from '../adapter/client.js';
 import type { CallRecord, GenerateResult, Usage } from '../adapter/protocol.js';
+import { hasConfigCall } from '../grade/outcome.js';
 import { attemptCharge, type AttemptReport, type Charge, type ChargeContext } from './cost.js';
 import type { AttemptLine, ErrorAttempt, OkAttempt } from './records.js';
 
@@ -34,11 +35,6 @@ function chargeFields(charge: Charge): Pick<AttemptLine, 'costUsd' | 'costEstima
   return charge.estimated
     ? { costUsd: charge.costUsd, costEstimated: true }
     : { costUsd: charge.costUsd };
-}
-
-/** A call failed with kind `config` (adapter-protocol §Reporting Model Failures, rule 6). */
-export function hasConfigCall(calls: readonly CallRecord[] | undefined): boolean {
-  return calls?.some((call) => call.outcome !== 'ok' && call.errorKind === 'config') ?? false;
 }
 
 /** What the adapter reported, kept in the message of a trial a `config` call turns into row 1. */

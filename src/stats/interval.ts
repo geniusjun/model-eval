@@ -35,13 +35,16 @@ export interface DifferenceInterval {
   readonly deff: number;
 }
 
-/** z_L = z_{1−α} and z_U = z_{1−α/G} with α = (1 − confidence)/2; z_U = z_L when G = 0. */
+/**
+ * z_L = z_{1−α} and z_U = z_{1−α/G} with α = (1 − confidence)/2; z_U = z_L when G = 0. They are
+ * taken as −z_α and −z_{α/G}: for a confidence near 1, 1 − α rounds to 1 and has no quantile.
+ */
 export function zValues(confidence: number, gatedCells: number): ZValues {
   const alpha = (1 - confidence) / 2;
-  const zLower = normalQuantile(1 - alpha);
+  const zLower = -normalQuantile(alpha);
   return {
     zLower,
-    zUpper: gatedCells > 0 ? normalQuantile(1 - alpha / gatedCells) : zLower,
+    zUpper: gatedCells > 0 ? -normalQuantile(alpha / gatedCells) : zLower,
   };
 }
 
@@ -99,13 +102,27 @@ const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 export function effectiveTrials(cases: readonly CaseCounts[]): number {
   assertCases(cases);
   const k = cases.length;
-  const common = cases.reduce((lcm, { trials }) => (lcm / gcd(lcm, trials)) * trials, 1);
-  const reciprocals = cases.reduce((sum, { trials }) => sum + common / trials, 0);
-  const numerator = k * k * common;
-  if (Number.isSafeInteger(numerator) && Number.isSafeInteger(reciprocals)) {
-    return numerator / reciprocals;
+  const common = commonMultiple(cases);
+  if (common !== null) {
+    const reciprocals = cases.reduce((sum, { trials }) => sum + common / trials, 0);
+    const numerator = k * k * common;
+    if (Number.isSafeInteger(numerator) && Number.isSafeInteger(reciprocals)) {
+      return numerator / reciprocals;
+    }
   }
   return (k * k) / cases.reduce((sum, { trials }) => sum + 1 / trials, 0);
+}
+
+/** The least common multiple of the trial counts; null once it is not a safe integer. */
+function commonMultiple(cases: readonly CaseCounts[]): number | null {
+  let lcm = 1;
+  for (const { trials } of cases) {
+    lcm = (lcm / gcd(lcm, trials)) * trials;
+    if (!Number.isSafeInteger(lcm)) {
+      return null;
+    }
+  }
+  return lcm;
 }
 
 /**

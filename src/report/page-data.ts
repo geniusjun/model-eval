@@ -1,9 +1,6 @@
-import { readdir, readFile } from 'node:fs/promises';
-import path from 'node:path';
-
+import { compareCodeUnits } from '../adapter/canonical-json.js';
 import type { Lang } from '../config/schema.js';
-import { isTemporaryName } from '../run/writer.js';
-import { COMPARISON_FILE, COMPARISONS_DIR, REPORT_PAGE_FILE } from './layout.js';
+import { COMPARISONS_DIR, REPORT_PAGE_FILE, savedComparisons } from './layout.js';
 import {
   comparisonSchema,
   SCHEMA_VERSION,
@@ -23,10 +20,11 @@ export function comparisonPage(comparison: Comparison, lang: Lang): ComparisonPa
 
 type ListEntry = ListPage['comparisons'][number];
 
-function listEntry(comparison: Comparison): ListEntry {
+/** The entry's `comparisonId` is the folder name (002 page-data §Payloads). */
+function listEntry(folder: string, comparison: Comparison): ListEntry {
   return {
-    comparisonId: comparison.comparisonId,
-    href: [COMPARISONS_DIR, comparison.comparisonId, REPORT_PAGE_FILE].join('/'),
+    comparisonId: folder,
+    href: [COMPARISONS_DIR, folder, REPORT_PAGE_FILE].join('/'),
     baseline: comparison.baseline.variant.id,
     candidate: comparison.candidate.variant.id,
     createdAt: comparison.createdAt,
@@ -36,48 +34,19 @@ function listEntry(comparison: Comparison): ListEntry {
 
 function newestFirst(a: ListEntry, b: ListEntry): number {
   const byTime = Date.parse(b.createdAt) - Date.parse(a.createdAt);
-  return byTime === 0 ? a.comparisonId.localeCompare(b.comparisonId) : byTime;
+  return byTime === 0 ? compareCodeUnits(a.comparisonId, b.comparisonId) : byTime;
 }
 
-async function comparisonFolders(directory: string): Promise<string[]> {
-  try {
-    const entries = await readdir(directory, { withFileTypes: true });
-    return entries
-      .filter((entry) => entry.isDirectory() && !isTemporaryName(entry.name))
-      .map((entry) => path.join(directory, entry.name));
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      return [];
-    }
-    throw error;
-  }
-}
-
-async function readComparison(folder: string): Promise<Comparison> {
-  const file = path.join(folder, COMPARISON_FILE);
-  const text = await readFile(file, 'utf8');
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch (error) {
-    throw new Error(`${file} is not valid JSON`, { cause: error });
-  }
-  const parsed = comparisonSchema.safeParse(value);
-  if (!parsed.success) {
-    throw new Error(`${file} is not a comparison: ${parsed.error.message}`);
-  }
-  return parsed.data;
-}
-
-/** The payload of the output root's `index.html`: every comparison folder, newest first. */
+/** The payload of the output root's `index.html`: every saved comparison, newest first. */
 export async function listPage(outputDir: string, lang: Lang): Promise<ListPage> {
-  const folders = await comparisonFolders(path.join(outputDir, COMPARISONS_DIR));
-  const comparisons = await Promise.all(folders.map(readComparison));
+  const saved = await savedComparisons(outputDir, comparisonSchema);
   return {
     schemaVersion: SCHEMA_VERSION,
     kind: 'list',
     lang,
-    comparisons: comparisons.map(listEntry).sort(newestFirst),
+    comparisons: saved
+      .map(({ folder, comparison }) => listEntry(folder, comparison))
+      .sort(newestFirst),
   };
 }
 

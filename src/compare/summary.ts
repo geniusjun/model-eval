@@ -6,7 +6,8 @@ import type { Cell, OpsChange, Samples, SampleText, Scope, Summary } from '../re
 import { trialKeyId } from '../run/ids.js';
 import type { AttemptLine } from '../run/records.js';
 import type { PerRole } from '../stats/interval.js';
-import { cellId, keyOf, type CellTrials, type FailingTrial } from './gate.js';
+import { cellId } from './cells.js';
+import { keyOf, type CellTrials, type FailingTrial } from './gate.js';
 
 // data-model §Comparison: the decision summary (FR-028) and `samples` (FR-020).
 

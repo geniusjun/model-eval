@@ -605,12 +605,17 @@
           "surface": "trial",
           "params": {
             "trials": {
+              "current": {
+                "timeout": 0,
+                "restart": 0
+              },
               "next": {
                 "timeout": 1,
                 "restart": 0
               }
             },
             "timeoutMs": {
+              "current": 120000,
               "next": 120000
             }
           }

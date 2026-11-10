@@ -12,6 +12,7 @@ import { trialSeed } from '../../../src/run/ids.js';
 import { manifestSchema, type Manifest } from '../../../src/run/manifest.js';
 import { trialLineSchema, type TrialLine } from '../../../src/run/records.js';
 import { executeRun, type RunRequest, type RunResult } from '../../../src/run/runner.js';
+import { executeSwap } from '../../../src/run/swap.js';
 import { RUN_FILES } from '../../../src/run/writer.js';
 
 const MOCK = fileURLToPath(new URL('../../../dist/adapter/mock.js', import.meta.url));
@@ -309,6 +310,20 @@ describe('runner start', () => {
     expect(segment).toMatchObject({ segment: 1, maxCostUsd: 1, concurrency: 2 });
   });
 
+  it('001 FR-014 draws a new run ID when a run of the same second and variant took the folder', async () => {
+    const loaded = await project('runner-chat');
+    const at = new Date('2026-11-10T12:00:00Z');
+    const suffixes = ['aaaa', 'aaaa', 'bbbb'];
+    const runIdSuffix = (): string => suffixes.shift() ?? 'cccc';
+    const first = await finished(executeRun(request(loaded, { now: () => at, runIdSuffix })));
+    const before = await readFile(path.join(first.end.runDir, RUN_FILES.trials), 'utf8');
+    const second = await finished(executeRun(request(loaded, { now: () => at, runIdSuffix })));
+    expect(first.end.runId).toBe('20261110-120000-current-aaaa');
+    expect(second.end.runId).toBe('20261110-120000-current-bbbb');
+    expect(await readFile(path.join(first.end.runDir, RUN_FILES.trials), 'utf8')).toBe(before);
+    expect((await readManifest(second.end.runDir)).runId).toBe(second.end.runId);
+  });
+
   it('001 FR-011 bases the next estimate on the previous complete run of the same variant', async () => {
     const loaded = await project('runner-chat');
     await finished(executeRun(request(loaded)));
@@ -469,6 +484,26 @@ describe('runner send loop', () => {
     expect(end.manifest.totals.overrunUsd).toBeGreaterThan(0);
     expect(end.manifest.warnings.map((warning) => warning.code)).toContain('budget-overrun');
   });
+  it('001 FR-011 charges an attempt without usage the reservation of its send line', async () => {
+    // Both trials go out at once; the first answers at once with a large input, which raises
+    // every later reservation, and the second answers later without usage.
+    const loaded = await project('runner-chat', {
+      command: scripted(
+        "if (m.params.caseId === 'chat-ko-01') { send({ id: m.id, result: { raw: 'a', finalKind: 'model', final: 'a', latencyMs: 1, finishReason: 'stop', usage: { input: 50000, output: 1 } } }); } else { setTimeout(() => send({ id: m.id, result: { raw: 'b', finalKind: 'model', final: 'b', latencyMs: 1, finishReason: 'stop' } }), 300); }",
+      ),
+      casesPerLang: 1,
+      repeats: 1,
+      concurrency: 2,
+      inputTokens: 300,
+    });
+    const { end } = await finished(executeRun(request(loaded)));
+    const lines = await readLines(end.runDir);
+    const send = sendLines(lines).find((line) => line.caseId === 'chat-ja-01');
+    const attempt = attemptLines(lines).find((line) => line.caseId === 'chat-ja-01');
+    expect(send?.reservedUsd).toBeCloseTo(usd(300, 50), 12);
+    expect(attempt).toMatchObject({ costUsd: send?.reservedUsd, costEstimated: true });
+  });
+
   it('001 FR-007 writes a calls notification that arrives after the attempt line as a cost line', async () => {
     const loaded = await project('runner-delayed-calls', { casesPerLang: 1, repeats: 1 });
     const { end } = await finished(executeRun(request(loaded)));
@@ -486,6 +521,28 @@ describe('runner send loop', () => {
       expect(lines.indexOf(own[0] ?? attempt)).toBeGreaterThan(lines.indexOf(attempt));
     }
     expect(end.manifest.totals.costUsd).toBeCloseTo(2 * (usd(100, 10) + usd(900, 40)), 12);
+  });
+});
+
+describe('runner interleaving', () => {
+  it('001 FR-032 drives two runs of one variant to the end, telling them apart by position', async () => {
+    const loaded = await project('runner-chat');
+    const { variant, ...settings } = request(loaded);
+    const result = await executeSwap({
+      ...settings,
+      baseline: variant,
+      candidate: variant,
+      lang: 'en',
+    });
+    if (!result.ok) {
+      throw new Error(`the swap did not start: ${JSON.stringify(result.failure)}`);
+    }
+    const { baseline, candidate } = result.end.runs;
+    expect(baseline.runId).not.toBe(candidate.runId);
+    for (const run of [baseline, candidate]) {
+      expect(run.status).toBe('complete');
+      expect(attemptLines(await readLines(run.runDir))).toHaveLength(8);
+    }
   });
 });
 
@@ -511,6 +568,27 @@ describe('runner stopping and end', () => {
     expect(end.manifest.totals.outcomes).toMatchObject({ ok: 0, config: 1 });
     expect([end.status, end.stopReason]).toEqual(['partial', 'config-error']);
   });
+
+  it('001 FR-011 stops at once when the cap refuses a send while a retry waits', async () => {
+    // The first trial fails transiently, costs more than its reservation and asks for a 60 s
+    // wait; the cap then refuses the second trial, so nothing is in flight and the run must stop
+    // without sitting out the wait.
+    const loaded = await project('runner-chat', {
+      command: scripted(
+        "send({ id: m.id, result: { error: { kind: 'transient', message: 'busy', retryAfterMs: 60000 }, usage: { input: 1000, output: 50 } } });",
+      ),
+      casesPerLang: 1,
+      repeats: 1,
+      concurrency: 1,
+      inputTokens: 300,
+      maxCostUsd: 0.001,
+    });
+    const startedAt = Date.now();
+    const { end } = await finished(executeRun(request(loaded)));
+    expect(Date.now() - startedAt).toBeLessThan(10_000);
+    expect([end.status, end.stopReason]).toEqual(['partial', 'budget']);
+    expect(attemptLines(await readLines(end.runDir))).toHaveLength(1);
+  }, 90_000);
 
   it('001 FR-011 holds the cap check before tool retries too', async () => {
     const cap = 0.02;

@@ -3,7 +3,6 @@ import { buildComparison, type CurrentCase } from '../compare/comparison.js';
 import { finishedTrials } from '../compare/finished.js';
 import type { Project } from '../config/load.js';
 import type { Lang, Variant } from '../config/schema.js';
-import { createRedactor } from '../report/redact.js';
 import type { Comparison } from '../report/schema.js';
 import { writeComparison, type WrittenComparison } from '../report/write.js';
 import type { PerRole } from '../stats/interval.js';
@@ -105,6 +104,64 @@ const byRole = <T>(value: (role: Role) => T): PerRole<T> => ({
   candidate: value('candidate'),
 });
 
+type Step<T, F> =
+  { readonly ok: true; readonly run: T } | { readonly ok: false; readonly failure: F };
+
+type Settled<T, F> =
+  | { readonly kind: 'run'; readonly run: T }
+  | { readonly kind: 'refused'; readonly failure: F }
+  | { readonly kind: 'threw'; readonly reason: unknown };
+
+type BothSteps<T, F> =
+  | { readonly ok: true; readonly runs: PerRole<T> }
+  | { readonly ok: false; readonly role: Role; readonly failure: F };
+
+async function settle<T, F>(step: Promise<Step<T, F>>): Promise<Settled<T, F>> {
+  try {
+    const result = await step;
+    return result.ok
+      ? { kind: 'run', run: result.run }
+      : { kind: 'refused', failure: result.failure };
+  } catch (reason) {
+    return { kind: 'threw', reason };
+  }
+}
+
+function failedStep<T, F>(
+  role: Role,
+  settled: Exclude<Settled<T, F>, { kind: 'run' }>,
+): BothSteps<T, F> {
+  if (settled.kind === 'threw') {
+    throw settled.reason;
+  }
+  return { ok: false, role, failure: settled.failure };
+}
+
+/**
+ * Runs one step for both roles at once. When either is refused or throws, the side that
+ * succeeded is abandoned, so no adapter outlives a failed start.
+ */
+async function bothOrNeither<T, F>(
+  step: (role: Role) => Promise<Step<T, F>>,
+  abandon: (run: T) => Promise<void>,
+): Promise<BothSteps<T, F>> {
+  const [baseline, candidate] = await Promise.all([
+    settle(step('baseline')),
+    settle(step('candidate')),
+  ]);
+  if (baseline.kind === 'run') {
+    if (candidate.kind === 'run') {
+      return { ok: true, runs: { baseline: baseline.run, candidate: candidate.run } };
+    }
+    await abandon(baseline.run);
+    return failedStep('candidate', candidate);
+  }
+  if (candidate.kind === 'run') {
+    await abandon(candidate.run);
+  }
+  return failedStep('baseline', baseline);
+}
+
 /**
  * Starts one adapter per variant and renders every case of both, before any model call. When
  * either fails, the other adapter is shut down and nothing is written.
@@ -127,27 +184,16 @@ export async function prepareSwap(request: SwapRequest): Promise<PrepareSwapResu
     ...(request.onLog === undefined ? {} : { onLog: request.onLog }),
     ...(request.onStderr === undefined ? {} : { onStderr: request.onStderr }),
   });
-  const [baseline, candidate] = await Promise.all([
-    prepareRun(runRequest(request.baseline)),
-    prepareRun(runRequest(request.candidate)),
-  ]);
-  if (!baseline.ok) {
-    if (candidate.ok) {
-      await candidate.run.abandon();
-    }
-    return {
-      ok: false,
-      failure: { kind: 'start', variantId: request.baseline.id, failure: baseline.failure },
-    };
+  const variants: PerRole<Variant> = { baseline: request.baseline, candidate: request.candidate };
+  const prepared = await bothOrNeither(
+    (role) => prepareRun(runRequest(variants[role])),
+    (run) => run.abandon(),
+  );
+  if (!prepared.ok) {
+    const { role, failure } = prepared;
+    return { ok: false, failure: { kind: 'start', variantId: variants[role].id, failure } };
   }
-  if (!candidate.ok) {
-    await baseline.run.abandon();
-    return {
-      ok: false,
-      failure: { kind: 'start', variantId: request.candidate.id, failure: candidate.failure },
-    };
-  }
-  const runs: PerRole<PreparedRun> = { baseline: baseline.run, candidate: candidate.run };
+  const { runs } = prepared;
   const conservativeUsd = addUsd(ROLES.map((role) => runs[role].estimate.conservativeUsd));
   const swap: PreparedSwap = {
     swapId,
@@ -172,6 +218,7 @@ export async function executeSwap(request: SwapRequest): Promise<SwapResult> {
 
 function swapRecord(
   swap: PreparedSwap,
+  runIds: PerRole<string>,
   startedAt: Date,
   progress: {
     readonly spentUsd: number | null;
@@ -183,8 +230,8 @@ function swapRecord(
   const { endedAt, stopReason, comparisonId } = progress;
   return {
     swapId: swap.swapId,
-    baselineRunId: swap.runs.baseline.runId,
-    candidateRunId: swap.runs.candidate.runId,
+    baselineRunId: runIds.baseline,
+    candidateRunId: runIds.candidate,
     budget: { maxCostUsd: swap.maxCostUsd, scope: 'swap' },
     spentUsd: progress.spentUsd,
     segments: [
@@ -222,7 +269,7 @@ function currentCases(runs: PerRole<PreparedRun>): CurrentCase[] {
   for (const role of ROLES) {
     for (const spec of runs[role].cases) {
       if (!cases.has(spec.id)) {
-        cases.set(spec.id, { definition: spec.definition, hash: spec.hash });
+        cases.set(spec.id, { definition: spec.definition, hash: spec.hash, lang: spec.lang });
       }
     }
   }
@@ -252,9 +299,52 @@ async function compareRuns(
     outputDir: project.paths.outputDir,
     comparison,
     lang: request.lang,
-    redactor: createRedactor(config.redact),
   });
   return { comparison, written };
+}
+
+interface ClaimedSide<R> {
+  begin(shared: SharedRun): Promise<R>;
+  abandon(): Promise<void>;
+}
+
+interface BegunSide<E> {
+  shutdown(): Promise<unknown>;
+  finish(): Promise<E>;
+}
+
+/**
+ * Begins the baseline, then the candidate. A failure leaves no run holding its lock: a baseline
+ * that did not begin cleans up after itself and the candidate claim is abandoned; a candidate
+ * that did not begin cleans up after itself, the begun baseline ends as a `config-error` stop
+ * does, shut down and finished `partial`, and `closeSwap` writes the swap record of that stop.
+ * The begin failure is what the caller sees, even when closing the record fails too.
+ */
+export async function beginRuns<E, R extends BegunSide<E>>(
+  claimed: PerRole<ClaimedSide<R>>,
+  shared: SharedRun,
+  closeSwap: (baseline: E) => Promise<void>,
+): Promise<PerRole<R>> {
+  let baseline: R;
+  try {
+    baseline = await claimed.baseline.begin(shared);
+  } catch (error) {
+    await claimed.candidate.abandon();
+    throw error;
+  }
+  try {
+    return { baseline, candidate: await claimed.candidate.begin(shared) };
+  } catch (error) {
+    shared.stop.raise('config-error');
+    await baseline.shutdown();
+    const ended = await baseline.finish();
+    try {
+      await closeSwap(ended);
+    } catch {
+      // The record stays as written at the start; the begin failure is the error to report.
+    }
+    throw error;
+  }
 }
 
 /**
@@ -276,50 +366,57 @@ async function startSwap(
       failure: { kind: 'over-budget', expectedUsd: swap.expectedUsd, maxCostUsd },
     };
   }
-  const shared: SharedRun = { ledger: createCapLedger(maxCostUsd, 0), stop: createStopSignal() };
-  const baseline = await runs.baseline.begin(shared);
-  if (!baseline.ok) {
-    await runs.candidate.abandon();
-    return {
-      ok: false,
-      failure: { kind: 'start', variantId: runs.baseline.variantId, failure: baseline.failure },
-    };
-  }
-  const candidate = await runs.candidate.begin(shared);
-  if (!candidate.ok) {
-    shared.stop.raise('config-error');
-    await baseline.run.shutdown();
-    await baseline.run.finish();
-    return {
-      ok: false,
-      failure: { kind: 'start', variantId: runs.candidate.variantId, failure: candidate.failure },
-    };
-  }
-  await writeSwapRecord(
-    request.project.paths.outputDir,
-    swapRecord(swap, startedAt, { spentUsd: 0 }),
+  const claimed = await bothOrNeither(
+    (role) => runs[role].claim(),
+    (run) => run.abandon(),
   );
-  const active = [baseline.run, candidate.run];
+  if (!claimed.ok) {
+    const { role, failure } = claimed;
+    return { ok: false, failure: { kind: 'start', variantId: runs[role].variantId, failure } };
+  }
+  const runIds = byRole((role) => claimed.runs[role].runId);
+  const shared: SharedRun = { ledger: createCapLedger(maxCostUsd, 0), stop: createStopSignal() };
+  const { outputDir } = request.project.paths;
+  // The record is written before either manifest names the swap, so every run with a swapId has
+  // one.
   try {
-    await driveRuns(active, shared);
+    await writeSwapRecord(outputDir, swapRecord(swap, runIds, startedAt, { spentUsd: 0 }));
+  } catch (error) {
+    await Promise.all(ROLES.map((role) => claimed.runs[role].abandon()));
+    throw error;
+  }
+  const now = request.now ?? (() => new Date());
+  // Only the baseline began, so its spend is the swap's; the record says what a normal stop says.
+  const begun = await beginRuns(claimed.runs, shared, (baseline: RunEnd) =>
+    writeSwapRecord(
+      outputDir,
+      swapRecord(swap, runIds, startedAt, {
+        spentUsd: baseline.manifest.totals.costUsd,
+        endedAt: now(),
+        stopReason: 'config-error',
+      }),
+    ),
+  );
+  try {
+    await driveRuns([begun.baseline, begun.candidate], shared);
   } finally {
-    await Promise.all(active.map((run) => run.shutdown()));
+    await Promise.all(ROLES.map((role) => begun[role].shutdown()));
   }
   const [baselineEnd, candidateEnd] = await Promise.all([
-    baseline.run.finish(),
-    candidate.run.finish(),
+    begun.baseline.finish(),
+    begun.candidate.finish(),
   ]);
   const ended: PerRole<RunEnd> = { baseline: baselineEnd, candidate: candidateEnd };
   const stopReason = shared.stop.reason;
   const compared = comparesAfterStop(stopReason, ended)
     ? await compareRuns(swap, request, ended)
     : undefined;
-  const record = swapRecord(swap, startedAt, {
+  const record = swapRecord(swap, runIds, startedAt, {
     spentUsd: addUsd(ROLES.map((role) => ended[role].manifest.totals.costUsd)),
-    endedAt: (request.now ?? (() => new Date()))(),
+    endedAt: now(),
     ...(stopReason === undefined ? {} : { stopReason }),
     ...(compared === undefined ? {} : { comparisonId: compared.comparison.comparisonId }),
   });
-  await writeSwapRecord(request.project.paths.outputDir, record);
+  await writeSwapRecord(outputDir, record);
   return { ok: true, end: { record, runs: ended, ...compared } };
 }

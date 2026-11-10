@@ -419,16 +419,30 @@ describe('001 US1 scenario 12: no gate and two finished runs', () => {
     }
   });
 
-  it('001 FR-032 the trials of both variants are interleaved', async () => {
-    expect(outcome.cli.code).toBe(0);
-    const requests = await clean.generateRequests();
-    const times = (variant: string) =>
-      requests.filter((request) => request.variant === variant).map((request) => request.at);
-    const baseline = times('current');
-    const candidate = times('next');
-    expect(Math.min(...baseline)).toBeLessThanOrEqual(Math.max(...candidate));
-    expect(Math.min(...candidate)).toBeLessThanOrEqual(Math.max(...baseline));
-  });
+  it(
+    '001 FR-032 with concurrency 1 the variants alternate, neither a finished trial ahead',
+    async () => {
+      // data-model §Send Order 4 with a limit of 1: a variant sends again only once the other has
+      // finished as many trials, so the sends reaching the adapters alternate between variants.
+      const alternating = await project({ scenario: 'swap-clean', rules: RULES, cases: TWO_LANGS });
+      const { cli } = await swapJson(alternating, ['--concurrency', '1']);
+      expect(cli.code).toBe(0);
+      const requests = await alternating.generateRequests();
+      expect(requests).toHaveLength(2 * TWO_LANGS.length * 2);
+      // Sends of the baseline minus sends of the candidate so far. Sends within the same
+      // millisecond are counted together, since their order is not recorded.
+      let lead = 0;
+      const times = [...new Set(requests.map((request) => request.at))].sort((a, b) => a - b);
+      for (const at of times) {
+        for (const request of requests.filter((item) => item.at === at)) {
+          lead += request.variant === 'current' ? 1 : -1;
+        }
+        expect(Math.abs(lead)).toBeLessThanOrEqual(1);
+      }
+      expect(lead).toBe(0);
+    },
+    E2E.timeout,
+  );
 });
 
 describe('001 US1 scenario 13: no gate and a baseline that misses half of its Japanese answers', () => {

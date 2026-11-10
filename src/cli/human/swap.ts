@@ -23,7 +23,7 @@ import {
   ratio,
   seconds,
 } from '../../report/format.js';
-import { isLowBaseline } from '../../report/markdown.js';
+import { isLowBaseline } from '../../compare/gate.js';
 import {
   opsRateNames,
   type Cell,
@@ -514,7 +514,7 @@ const isRateMetric = (metric: OpsChange['metric']): metric is RateName =>
 /** Changes worth a line: a different rate, or a ratio other than 1. */
 function opsSummary(t: Text, changes: readonly OpsChange[]): string[] {
   return changes.flatMap((change) => {
-    const label = t(`report.metric.${change.metric}`);
+    const label = t(`human.opsChange.${change.metric}`);
     if (isRateMetric(change.metric)) {
       return change.baseline === change.candidate
         ? []
@@ -782,19 +782,19 @@ function opsLines(t: Text, comparison: Comparison): string[] {
   );
   const body = [
     ...names.map((name) => [
-      t(`report.metric.${name}`),
+      t(`human.ops.${name}`),
       rateCell(baseline.rates[name]),
       rateCell(candidate.rates[name]),
       opsWarning(t, comparison, change(name)),
     ]),
     [
-      t('report.metric.latencyP95'),
+      t('human.ops.latencyP95'),
       seconds(baseline.latencyMs.p95),
       withRatio(seconds(candidate.latencyMs.p95), change('latencyP95')),
       opsWarning(t, comparison, change('latencyP95')),
     ],
     [
-      t('report.metric.costPerTrial'),
+      t('human.ops.costPerTrial'),
       dollars(baseline.costPerTrialUsd),
       withRatio(dollars(candidate.costPerTrialUsd), change('costPerTrial')),
       opsWarning(t, comparison, change('costPerTrial')),
@@ -845,13 +845,31 @@ function scaleParams(manifests: readonly Manifest[], spentUsd: number | null, co
 
 export interface SwapView extends Costs {
   readonly end: SwapEnd;
-  /** The comparison's warnings, or both runs' warnings when the swap did not compare. */
+  /**
+   * The comparison's warnings, redacted with it, or both runs' warnings when the swap did not
+   * compare.
+   */
   readonly warnings: readonly Warning[];
   /** Where `report.md` was written, as the user should see it. */
   readonly reportPath?: string;
 }
 
-export function swapLines(lang: Lang, view: SwapView): string[] {
+/**
+ * A line of human output. `redacted` marks a line made from a Comparison, whose free text went
+ * through the config's `redact` rules when it was built, so the output writes it as it is.
+ */
+export interface HumanLine {
+  readonly text: string;
+  readonly redacted: boolean;
+}
+
+const plainLines = (texts: readonly string[]): HumanLine[] =>
+  texts.map((text) => ({ text, redacted: false }));
+
+const redactedLines = (texts: readonly string[]): HumanLine[] =>
+  texts.map((text) => ({ text, redacted: true }));
+
+export function swapLines(lang: Lang, view: SwapView): HumanLine[] {
   const t = textOf(lang);
   const { end } = view;
   const manifests = [end.runs.baseline.manifest, end.runs.candidate.manifest];
@@ -864,7 +882,7 @@ export function swapLines(lang: Lang, view: SwapView): string[] {
           swapId: end.record.swapId,
           ordinal: ordinal(t, comparison.priorComparisons + 1),
         });
-  const lines = [
+  const head = plainLines([
     t('human.swap.header', {
       baseline: variantLabel(end.runs.baseline.manifest.variant),
       candidate: variantLabel(end.runs.candidate.manifest.variant),
@@ -875,27 +893,31 @@ export function swapLines(lang: Lang, view: SwapView): string[] {
       ? []
       : ['', ...stoppedLines(t, [end.runs.baseline, end.runs.candidate], stopReason)]),
     '',
-  ];
+  ]);
   if (comparison === undefined) {
-    lines.push(
-      stopReason === 'config-error'
-        ? t('human.noComparison.config-error')
-        : t('human.noComparison.nothing-finished'),
-      ...warningLines(t, view.warnings),
-    );
-    return lines;
+    return [
+      ...head,
+      ...plainLines([
+        stopReason === 'config-error'
+          ? t('human.noComparison.config-error')
+          : t('human.noComparison.nothing-finished'),
+        ...warningLines(t, view.warnings),
+      ]),
+    ];
   }
-  lines.push(
-    ...comparisonLines(t, comparison),
-    ...warningLines(
-      t,
-      view.warnings.filter((warning) => !OPS_WARNINGS.has(warning.code)),
-    ),
-  );
-  if (view.reportPath !== undefined) {
-    lines.push('', t('human.report', { path: view.reportPath }));
-  }
-  return lines;
+  return [
+    ...head,
+    ...redactedLines([
+      ...comparisonLines(t, comparison),
+      ...warningLines(
+        t,
+        view.warnings.filter((warning) => !OPS_WARNINGS.has(warning.code)),
+      ),
+    ]),
+    ...(view.reportPath === undefined
+      ? []
+      : plainLines(['', t('human.report', { path: view.reportPath })])),
+  ];
 }
 
 export interface RunView extends Costs {

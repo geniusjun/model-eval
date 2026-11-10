@@ -178,10 +178,9 @@ describe('manifest warnings', () => {
   const renderMismatch: Warning = { code: 'render-mismatch', params: { trials: { next: 1 } } };
 
   it('001 FR-014 asks for a rewrite whenever a new warning code appears', () => {
-    expect(hasNewWarningCode([], [overrun])).toBe(true);
-    expect(hasNewWarningCode([overrun], [overrun, renderMismatch])).toBe(true);
-    const larger: Warning = { ...overrun, params: { overrunUsd: { next: 0.0009 } } };
-    expect(hasNewWarningCode([overrun], [larger])).toBe(false);
-    expect(hasNewWarningCode([overrun, renderMismatch], [overrun])).toBe(false);
+    expect(hasNewWarningCode([], ['budget-overrun'])).toBe(true);
+    expect(hasNewWarningCode([overrun], ['budget-overrun', 'render-mismatch'])).toBe(true);
+    expect(hasNewWarningCode([overrun], ['budget-overrun'])).toBe(false);
+    expect(hasNewWarningCode([overrun, renderMismatch], ['budget-overrun'])).toBe(false);
   });
 });

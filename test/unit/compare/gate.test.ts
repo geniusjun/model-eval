@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { EXIT_CODES } from '../../../src/cli/exit-codes.js';
 import {
+  applicableToTargets,
   completionRates,
   decideGate,
   excludedFromGateWarnings,
@@ -102,7 +103,6 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     },
     completion: { baseline: [full('ko')], candidate: [full('ko')] },
     rules: RULES,
-    targets: ['chat'],
     gate: GATE,
     cells: [completedCell(), cell()],
     cellTrials: [],
@@ -126,12 +126,12 @@ describe('gated rules', () => {
       rule({ id: 'chat-only', targets: ['chat', 'summary'] }),
       rule({ id: 'major', severity: 'major' }),
     ];
-    const { gated } = gateRules(rules, ['chat'], GATE);
+    const { gated } = gateRules(applicableToTargets(rules, ['chat']), GATE);
     expect(gated.map(({ id }) => id)).toEqual(['completed', 'no-emoji', 'chat-only']);
   });
 
   it('001 FR-020 moves `review` rules of a gated severity to excluded[] with `excluded-from-gate`', () => {
-    const { gated, excluded } = gateRules(RULES, ['chat'], GATE);
+    const { gated, excluded } = gateRules(RULES, GATE);
     expect(gated.map(({ id }) => id)).not.toContain('self-state');
     expect(excluded).toEqual([{ ruleId: 'self-state', cause: 'review' }]);
     expect(excludedFromGateWarnings(excluded)).toEqual([
@@ -141,7 +141,7 @@ describe('gated rules', () => {
   });
 
   it('001 FR-025 are none for an empty gate', () => {
-    expect(gateRules(RULES, ['chat'], EMPTY_GATE)).toEqual({ gated: [], excluded: [] });
+    expect(gateRules(RULES, EMPTY_GATE)).toEqual({ gated: [], excluded: [] });
   });
 });
 
@@ -152,7 +152,7 @@ describe('gated cells', () => {
     rule({ id: 'both', gateOn: 'both' }),
     rule({ id: 'major', severity: 'major' }),
   ];
-  const isGated = gatedCellTest(gateRules(rules, ['chat'], GATE).gated, 0.9);
+  const isGated = gatedCellTest(gateRules(applicableToTargets(rules, ['chat']), GATE).gated, 0.9);
   const evidence = (
     ruleId: string,
     surface: 'raw' | 'final' | 'trial',
@@ -545,7 +545,7 @@ describe('informational reasons', () => {
     expect(withMessages.outcome).toBe(gate({ cells }).outcome);
   });
 
-  it('001 FR-025 lists `abandoned-in-systematic` per gated `completed` cell without changing the outcome', () => {
+  it('001 FR-025 lists `abandoned-in-systematic` per gated `completed` cell with both variants, without changing the outcome', () => {
     const cellTrials: CellTrials[] = [
       {
         ruleId: 'completed',
@@ -566,7 +566,10 @@ describe('informational reasons', () => {
         ruleId: 'completed',
         lang: 'ko',
         surface: 'trial',
-        params: { trials: { next: { timeout: 1, restart: 2 } }, timeoutMs: { next: 90000 } },
+        params: {
+          trials: { current: { timeout: 0, restart: 0 }, next: { timeout: 1, restart: 2 } },
+          timeoutMs: { current: 120000, next: 90000 },
+        },
       },
     ]);
   });

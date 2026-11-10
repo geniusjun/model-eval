@@ -11,10 +11,14 @@ import {
   casesHashOf,
   ensureGradeSet,
   gradeSetIdOf,
+  gradeSetPath,
   readGradeSet,
   trialsFingerprintOf,
   type GradeSetIdentity,
 } from '../../../src/grade/grade-set.js';
+import { createRedactor } from '../../../src/report/redact.js';
+import { asJsonValue } from '../../../src/run/hashes.js';
+import type { TrialLine } from '../../../src/run/records.js';
 import { okLine } from './lines.js';
 
 const HASH_A = `sha256:${'a'.repeat(64)}` as const;
@@ -53,18 +57,27 @@ const CASES: readonly RunCase[] = [
     target: 'chat',
     lang: 'ko',
     hash: HASH_A,
-    current: { definition: greet, hash: HASH_A },
+    current: { definition: greet, hash: HASH_A, lang: 'ko' },
   },
 ];
 
-/** What ensureGradeSet is given; it derives `casesHash` from the cases itself. */
+/** What ensureGradeSet is given; it derives `trialsFingerprint` and `casesHash` itself. */
 const INPUT = {
   runId: IDENTITY.runId,
   rulesHash: IDENTITY.rulesHash,
   checkerVersion: IDENTITY.checkerVersion,
-  trialsFingerprint: IDENTITY.trialsFingerprint,
+  redactor: createRedactor([]),
 };
-const STORED: GradeSetIdentity = { ...INPUT, casesHash: casesHashOf(CASES) };
+
+/** The identity ensureGradeSet stores for {@link CASES} and these lines. */
+function storedIdentity(lines: readonly TrialLine[]): GradeSetIdentity {
+  const { redactor: _redactor, ...identity } = INPUT;
+  return {
+    ...identity,
+    trialsFingerprint: trialsFingerprintOf(lines.map(asJsonValue)),
+    casesHash: casesHashOf(CASES),
+  };
+}
 
 let runDir = '';
 
@@ -103,7 +116,7 @@ describe('grade set identity', () => {
         target: 'chat',
         lang: 'ko',
         hash: HASH_A,
-        current: { definition: greet, hash: HASH_B },
+        current: { definition: greet, hash: HASH_B, lang: 'ko' },
       },
       { id: 'greet-ko', target: 'chat', lang: 'ko', hash: HASH_A },
     ];
@@ -131,22 +144,24 @@ describe('grade set identity', () => {
 
 describe('grade set files', () => {
   it('001 D6 writes grades/<gradeSetId>.jsonl, header first, without leaving temporary files', async () => {
+    const lines = [okLine({ raw: '😀' })];
     const { gradeSet, reused } = await ensureGradeSet({
       runDir,
       ...INPUT,
       rules: [emojiRule],
       cases: CASES,
-      lines: [okLine({ raw: '😀' })],
+      lines,
     });
     expect(reused).toBe(false);
-    const gradeSetId = gradeSetIdOf(STORED);
-    expect(gradeSet.header).toEqual({ gradeSetId, ...STORED });
+    const stored = storedIdentity(lines);
+    const gradeSetId = gradeSetIdOf(stored);
+    expect(gradeSet.header).toEqual({ gradeSetId, ...stored });
     expect(await readdir(path.join(runDir, 'grades'))).toEqual([`${gradeSetId}.jsonl`]);
     const text = await readFile(path.join(runDir, 'grades', `${gradeSetId}.jsonl`), 'utf8');
     expect(
       text.split('\n').map((line): unknown => (line === '' ? null : JSON.parse(line))),
     ).toEqual([
-      { gradeSetId, ...STORED },
+      { gradeSetId, ...stored },
       { caseId: 'greet-ko', repeat: 0, ruleId: 'no-emoji', surface: 'final', outcome: 'pass' },
       {
         caseId: 'greet-ko',
@@ -173,29 +188,29 @@ describe('grade set files', () => {
   });
 
   it('001 D6 reuses an existing grade set instead of grading again', async () => {
+    const lines = [okLine({ raw: '😀' })];
     const first = await ensureGradeSet({
       runDir,
       ...INPUT,
       rules: [emojiRule],
       cases: CASES,
-      lines: [okLine({ raw: '😀' })],
+      lines,
     });
-    // Same identity, different grading input: only the identity decides, so nothing is rebuilt.
-    const second = await ensureGradeSet({
-      runDir,
-      ...INPUT,
-      rules: [],
-      cases: CASES,
-      lines: [],
-    });
+    // Same identity, different rules under the same rulesHash: only the identity decides, so
+    // nothing is rebuilt.
+    const second = await ensureGradeSet({ runDir, ...INPUT, rules: [], cases: CASES, lines });
     expect(second.reused).toBe(true);
     expect(second.gradeSet).toEqual(first.gradeSet);
   });
 
   it('001 D6 a changed input writes a new grade set beside the old one', async () => {
-    const input = { runDir, rules: [emojiRule], cases: CASES, lines: [okLine()] };
-    const first = await ensureGradeSet({ ...input, ...INPUT });
-    const second = await ensureGradeSet({ ...input, ...INPUT, trialsFingerprint: HASH_C });
+    const input = { runDir, rules: [emojiRule], cases: CASES };
+    const first = await ensureGradeSet({ ...input, ...INPUT, lines: [okLine()] });
+    const second = await ensureGradeSet({
+      ...input,
+      ...INPUT,
+      lines: [okLine(), okLine({ attempt: 2 })],
+    });
     expect(second.reused).toBe(false);
     expect(second.gradeSet.header.gradeSetId).not.toBe(first.gradeSet.header.gradeSetId);
     expect((await readdir(path.join(runDir, 'grades'))).sort()).toEqual(
@@ -204,6 +219,29 @@ describe('grade set files', () => {
   });
 
   it('001 D6 reads nothing for a grade set that was never written', async () => {
-    expect(await readGradeSet(runDir, gradeSetIdOf(STORED))).toBeUndefined();
+    expect(await readGradeSet(runDir, gradeSetIdOf(storedIdentity([])))).toBeUndefined();
+  });
+
+  it('001 FR-031 writes evidence through the redaction rules and returns what it wrote', async () => {
+    const redactor = createRedactor([{ pattern: '\\d{3}-\\d{4}-\\d{4}', replace: '<phone>' }]);
+    const phone = ruleSchema.parse({
+      id: 'no-phone',
+      title: 'No phone number',
+      severity: 'major',
+      scope: 'global',
+      check: { type: 'pattern', regex: '\\d{3}-\\d{4}-\\d{4}', mode: 'forbid' },
+    });
+    const { gradeSet } = await ensureGradeSet({
+      runDir,
+      ...INPUT,
+      redactor,
+      rules: [phone],
+      cases: CASES,
+      lines: [okLine({ raw: '전화 010-1234-5678', final: '전화 010-1234-5678' })],
+    });
+    expect(gradeSet.grades.map((grade) => grade.evidence)).toEqual([['<phone>'], ['<phone>']]);
+    const file = await readFile(gradeSetPath(runDir, gradeSet.header.gradeSetId), 'utf8');
+    expect(file).not.toContain('010-1234-5678');
+    expect(await readGradeSet(runDir, gradeSet.header.gradeSetId)).toEqual(gradeSet);
   });
 });

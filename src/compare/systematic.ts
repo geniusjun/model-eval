@@ -1,16 +1,9 @@
 import { classifyTrial, completedGrade, mayBeSystematic } from '../grade/outcome.js';
 import type { AttemptLine } from '../run/records.js';
 import type { PerRole } from '../stats/interval.js';
+import { byCase } from './finished.js';
 
 // data-model §Systematic Failures: it needs both runs, so grade sets cannot apply it.
-
-function byCase(lines: readonly AttemptLine[]): Map<string, AttemptLine[]> {
-  const cases = new Map<string, AttemptLine[]>();
-  for (const line of lines) {
-    cases.set(line.caseId, [...(cases.get(line.caseId) ?? []), line]);
-  }
-  return cases;
-}
 
 const isCompletedGraded = (line: AttemptLine): boolean =>
   completedGrade(classifyTrial(line)) !== 'skip';

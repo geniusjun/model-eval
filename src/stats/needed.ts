@@ -1,5 +1,3 @@
-import type { Lang } from '../config/schema.js';
-import { message } from '../messages/index.js';
 import type { Needed } from '../report/schema.js';
 import {
   caseDifferences,
@@ -118,24 +116,4 @@ export function trialsNeeded(input: NeededInput): Needed {
     trialsPerVariant: runCases * repeats,
     nearMargin: repeats > 10 * c.rBar,
   };
-}
-
-/** The texts of `needed`; `currentTrials` is the cell's `candidate.trials`. */
-export function neededMessages(lang: Lang, needed: Needed, currentTrials: number): string[] {
-  switch (needed.kind) {
-    case 'repeats': {
-      const { repeats, cellTrials, trialsPerVariant } = needed;
-      const text = message(lang, 'needed.repeats', {
-        repeats,
-        cellTrials,
-        currentTrials,
-        trialsPerVariant,
-      });
-      return needed.nearMargin ? [text, message(lang, 'needed.nearMargin')] : [text];
-    }
-    case 'cases':
-      return [message(lang, 'needed.cases', { cases: needed.cases })];
-    case 'on-margin':
-      return [message(lang, 'needed.on-margin')];
-  }
 }

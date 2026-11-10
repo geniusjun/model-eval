@@ -106,25 +106,31 @@ describe('send order', () => {
   });
 });
 
-function variant(id: string, finished: number, started: number, more = true): VariantProgress {
-  return { id, finished, started, hasSendable: more, hasRemaining: more };
+function variant(finished: number, started: number, more = true): VariantProgress {
+  return { finished, started, hasSendable: more, hasRemaining: more };
 }
 
 describe('variant interleaving', () => {
   it('001 FR-032 makes a variant wait once it has finished the concurrency limit more trials', () => {
-    expect(pickVariant([variant('a', 4, 6), variant('b', 0, 4)], 4)).toBe('b');
-    const bBusy = { ...variant('b', 0, 4), hasSendable: false };
-    expect(pickVariant([variant('a', 4, 6), bBusy], 4)).toBeUndefined();
-    expect(pickVariant([variant('a', 3, 6), bBusy], 4)).toBe('a');
+    expect(pickVariant([variant(4, 6), variant(0, 4)], 4)).toBe(1);
+    const bBusy = { ...variant(0, 4), hasSendable: false };
+    expect(pickVariant([variant(4, 6), bBusy], 4)).toBeUndefined();
+    expect(pickVariant([variant(3, 6), bBusy], 4)).toBe(0);
   });
 
   it('001 FR-032 ignores a variant with nothing left', () => {
-    expect(pickVariant([variant('a', 40, 40), variant('b', 0, 0, false)], 4)).toBe('a');
+    expect(pickVariant([variant(40, 40), variant(0, 0, false)], 4)).toBe(0);
   });
 
   it('001 FR-032 alternates variants, the one that started fewer trials first', () => {
-    expect(pickVariant([variant('a', 0, 0), variant('b', 0, 0)], 4)).toBe('a');
-    expect(pickVariant([variant('a', 0, 1), variant('b', 0, 0)], 4)).toBe('b');
+    expect(pickVariant([variant(0, 0), variant(0, 0)], 4)).toBe(0);
+    expect(pickVariant([variant(0, 1), variant(0, 0)], 4)).toBe(1);
+  });
+
+  it('001 FR-032 tells runs with equal progress apart by position', () => {
+    const same = variant(2, 3);
+    expect(pickVariant([same, { ...same }], 4)).toBe(0);
+    expect(pickVariant([{ ...same, started: 4 }, same], 4)).toBe(1);
   });
 
   it('001 FR-032 sends both variants the same plan with neither ahead by the limit', () => {
@@ -153,8 +159,8 @@ describe('variant interleaving', () => {
         const { own, order } = progressOf(id);
         const next = nextKey(plan.keys, order);
         return {
+          id,
           progress: {
-            id,
             finished: own.finished.size,
             started: own.sent.length,
             hasSendable: next !== undefined,
@@ -167,15 +173,15 @@ describe('variant interleaving', () => {
         views.map((view) => view.progress),
         limit,
       );
-      const view = views.find((item) => item.progress.id === picked);
+      const view = picked === undefined ? undefined : views[picked];
       if (view?.next !== undefined) {
-        const { own } = progressOf(view.progress.id);
+        const { own } = progressOf(view.id);
         const other = views.find((item) => item !== view)?.progress;
         if (other?.hasRemaining === true) {
           expect(view.progress.finished - other.finished).toBeLessThan(limit);
         }
         own.sent.push(view.next);
-        if (view.progress.id === 'a') {
+        if (view.id === 'a') {
           own.finished.add(label(view.next));
         }
       }

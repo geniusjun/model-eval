@@ -10,7 +10,7 @@ import type { RunStatus, StopReason } from '../run/status.js';
 import type { abandonedCountsSchema, Warning } from '../run/warning.js';
 import type { PerRole } from '../stats/interval.js';
 import { isUndecided } from '../stats/verdict.js';
-import { baselineRate, isNotApplicable, type CellEvidence, type CellKey } from './cells.js';
+import { baselineRate, cellId, isNotApplicable, type CellEvidence, type CellKey } from './cells.js';
 import type { CommonCase } from './common-cases.js';
 
 // data-model §Gate: gated rules and cells, the completion rate and the row order.
@@ -37,21 +37,21 @@ export interface GateRules {
   readonly excluded: readonly ExcludedRule[];
 }
 
-/**
- * Active rules applicable to the compared targets whose severity is in `gate.severities`;
- * `review` rules among them go to `excluded` (constitution III).
- */
-export function gateRules(
-  rules: readonly Rule[],
-  targets: readonly string[],
-  gate: GateConfig,
-): GateRules {
-  const candidates = rules.filter(
+/** Active rules whose targets cover a compared target, or that name no target. */
+export function applicableToTargets(rules: readonly Rule[], targets: readonly string[]): Rule[] {
+  return rules.filter(
     (rule) =>
       rule.status === 'active' &&
-      gate.severities.includes(rule.severity) &&
       (rule.targets.length === 0 || rule.targets.some((target) => targets.includes(target))),
   );
+}
+
+/**
+ * Rules of `applicableToTargets` whose severity is in `gate.severities`; `review` rules among
+ * them go to `excluded` (constitution III).
+ */
+export function gateRules(rules: readonly Rule[], gate: GateConfig): GateRules {
+  const candidates = rules.filter((rule) => gate.severities.includes(rule.severity));
   return {
     gated: candidates.filter((rule) => rule.check.type !== 'review'),
     excluded: candidates
@@ -77,11 +77,26 @@ export function gatesSurface(rule: Rule, surface: Surface): boolean {
   return rule.gateOn === 'both' ? surface !== 'trial' : surface === rule.gateOn;
 }
 
+/** What the low-baseline test reads of a cell. */
+export interface BaselineOfCell {
+  readonly surface: Surface;
+  readonly baseline: { readonly rate: number | null };
+}
+
+/**
+ * A cell of a rule other than `completed` whose baseline rate is below `report.lowBaseline`.
+ * Only `completed` is judged on the `trial` surface, so the surface names its cells; it has its
+ * own premise check (row 3).
+ */
+export function isLowBaseline(cell: BaselineOfCell, lowBaseline: number): boolean {
+  return (
+    cell.surface !== 'trial' && cell.baseline.rate !== null && cell.baseline.rate < lowBaseline
+  );
+}
+
 /**
  * The gated-cell test over a cell's evidence. Cells need it before their verdicts, because G
- * sets z_U. A low-baseline cell (a rule other than `completed` whose baseline rate is below
- * `report.lowBaseline`) has no held behaviour to protect; `completed` has its own premise
- * check (row 3).
+ * sets z_U. A low-baseline cell has no held behaviour to protect.
  */
 export function gatedCellTest(
   gated: readonly Rule[],
@@ -90,11 +105,15 @@ export function gatedCellTest(
   const byId = new Map(gated.map((rule) => [rule.id, rule]));
   return (evidence) => {
     const rule = byId.get(evidence.ruleId);
-    if (rule === undefined || isNotApplicable(evidence) || !gatesSurface(rule, evidence.surface)) {
-      return false;
-    }
-    const rate = baselineRate(evidence);
-    return rule.check.type === 'completed' || rate === null || rate >= lowBaseline;
+    return (
+      rule !== undefined &&
+      !isNotApplicable(evidence) &&
+      gatesSurface(rule, evidence.surface) &&
+      !isLowBaseline(
+        { surface: evidence.surface, baseline: { rate: baselineRate(evidence) } },
+        lowBaseline,
+      )
+    );
   };
 }
 
@@ -161,9 +180,8 @@ export interface GateInput {
   readonly runs: PerRole<GateRun>;
   /** {@link completionRates} of the comparison. */
   readonly completion: PerRole<readonly LanguageCompletion[]>;
-  /** The active rules applicable to the compared targets. */
+  /** The rules of `applicableToTargets`. */
   readonly rules: readonly Rule[];
-  readonly targets: readonly string[];
   readonly gate: GateConfig;
   readonly cells: readonly Cell[];
   readonly cellTrials: readonly CellTrials[];
@@ -171,7 +189,7 @@ export interface GateInput {
 
 /** The first matching row of data-model §Gate decides. */
 export function decideGate(input: GateInput): Gate {
-  const { gated, excluded } = gateRules(input.rules, input.targets, input.gate);
+  const { gated, excluded } = gateRules(input.rules, input.gate);
   const gatedCells = input.cells.filter((cell) => cell.gated);
   const regressed = gatedCells.filter((cell) => cell.verdict === 'regressed');
   const regressedReasons = regressed.map((cell): GateReason => ({
@@ -325,8 +343,7 @@ function abandonedInSystematic(
     if (counts === undefined) {
       return [];
     }
-    const roles = ROLES.filter((role) => counts[role].timeout + counts[role].restart > 0);
-    if (roles.length === 0) {
+    if (ROLES.every((role) => counts[role].timeout + counts[role].restart === 0)) {
       return [];
     }
     return [
@@ -334,9 +351,9 @@ function abandonedInSystematic(
         code: 'abandoned-in-systematic',
         ...keyOf(cell),
         params: {
-          trials: Object.fromEntries(roles.map((role) => [runs[role].variant, counts[role]])),
+          trials: Object.fromEntries(ROLES.map((role) => [runs[role].variant, counts[role]])),
           timeoutMs: Object.fromEntries(
-            roles.map((role) => [runs[role].variant, runs[role].timeoutMs]),
+            ROLES.map((role) => [runs[role].variant, runs[role].timeoutMs]),
           ),
         },
       },
@@ -346,9 +363,4 @@ function abandonedInSystematic(
 
 export function keyOf(cell: CellKey): CellKey {
   return { ruleId: cell.ruleId, lang: cell.lang, surface: cell.surface };
-}
-
-/** A map key for a cell. */
-export function cellId(cell: CellKey): string {
-  return `${cell.ruleId}\u0000${cell.lang}\u0000${cell.surface}`;
 }

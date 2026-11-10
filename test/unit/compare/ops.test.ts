@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { finishedTrials } from '../../../src/compare/finished.js';
 import { comparisonOps, metricRate, reviewOps, type OpsRun } from '../../../src/compare/ops.js';
+import { createRedactor } from '../../../src/report/redact.js';
 import { reportConfigSchema } from '../../../src/config/schema.js';
 import { variantOpsSchema, type VariantOps } from '../../../src/report/schema.js';
 import {
@@ -29,7 +30,7 @@ const at = (repeat: number) => ({ caseId: 'c', repeat });
 const empty = run([]);
 
 function opsOf(baseline: OpsRun, candidate: OpsRun = empty) {
-  const ops = comparisonOps({ baseline, candidate }, Z_L);
+  const ops = comparisonOps({ baseline, candidate }, Z_L, createRedactor([]));
   expect(variantOpsSchema.parse(ops.baseline)).toEqual(ops.baseline);
   expect(variantOpsSchema.parse(ops.candidate)).toEqual(ops.candidate);
   return ops;

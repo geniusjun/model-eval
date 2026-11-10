@@ -1,3 +1,4 @@
+import { isLowBaseline } from '../compare/gate.js';
 import type { Lang } from '../config/schema.js';
 import { message, type MessageKey, type MessageParams } from '../messages/index.js';
 import type { Warning } from '../run/warning.js';
@@ -87,8 +88,10 @@ function codeBlock(text: string, info = ''): string {
   return `${fence}${info}\n${text}\n${fence}`;
 }
 
+/** A `|` inside a cell, also one from a case's language key, is escaped so it adds no column. */
 function table(header: readonly string[], rows: readonly (readonly string[])[]): string {
-  const line = (cells: readonly string[]): string => `| ${cells.join(' | ')} |`;
+  const line = (cells: readonly string[]): string =>
+    `| ${cells.map((cell) => cell.replaceAll('|', '\\|')).join(' | ')} |`;
   return [line(header), line(header.map(() => '---')), ...rows.map(line)].join('\n');
 }
 
@@ -422,15 +425,6 @@ function postprocessSection(ctx: Context): string {
 
 // 5. Cells whose baseline compliance is below the configured level
 
-/**
- * A low-baseline cell belongs to a rule other than `completed` (data-model §Gate), which has
- * its own premise check. Only `completed` is judged on the `trial` surface, so the surface names
- * its cells whatever ID the rule has.
- */
-export function isLowBaseline(cell: Cell, level: number): boolean {
-  return cell.surface !== 'trial' && cell.baseline.rate !== null && cell.baseline.rate < level;
-}
-
 function lowBaselineSection(ctx: Context): string {
   const level = ctx.comparison.config.report.lowBaseline;
   const low = ctx.comparison.cells.filter((cell) => isLowBaseline(cell, level));
@@ -444,7 +438,6 @@ function lowBaselineSection(ctx: Context): string {
               ctx.text('report.column.rule'),
               ctx.text('report.column.lang'),
               ctx.text('report.column.surface'),
-              ctx.text('report.column.gated'),
               ctx.text('report.column.baseline'),
               ctx.text('report.column.candidate'),
               ctx.text('report.column.verdict'),
@@ -453,7 +446,6 @@ function lowBaselineSection(ctx: Context): string {
               cell.ruleId,
               cell.lang,
               cell.surface,
-              cell.gated ? ctx.text('report.yes') : '',
               rateText(cell.baseline),
               rateText(cell.candidate),
               verdictText(ctx.lang, cell.verdict),

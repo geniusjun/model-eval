@@ -1,4 +1,5 @@
 import { compareCodeUnits } from '../adapter/canonical-json.js';
+import type { CallRecord } from '../adapter/protocol.js';
 import type { AttemptLine, TrialLine } from '../run/records.js';
 
 /**
@@ -51,16 +52,21 @@ export function isEmptyText(text: string): boolean {
   return BLANK.test(text);
 }
 
+/**
+ * A call with `errorKind` `config`, whatever its `outcome`: row 1 for the trial that carries it,
+ * and a stop condition for the run (data-model §Trial Outcomes).
+ */
+export function hasConfigCall(calls: readonly CallRecord[] | undefined): boolean {
+  return calls?.some((call) => call.errorKind === 'config') ?? false;
+}
+
 /** The first matching row decides. */
 export function classifyTrial(line: AttemptLine): TrialOutcome {
   if (line.status === 'stopped') {
     return 'stopped';
   }
-  // A config failure on any call is row 1 whatever the adapter reported, so resume resends it.
-  const configCall = line.calls?.some(
-    (call) => call.outcome !== 'ok' && call.errorKind === 'config',
-  );
-  if (configCall === true) {
+  // Row 1 whatever the adapter reported, so resume resends the trial after the fix.
+  if (hasConfigCall(line.calls)) {
     return 'config';
   }
   if (line.status === 'error') {

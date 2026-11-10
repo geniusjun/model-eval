@@ -5,6 +5,7 @@ import { exceedsCap } from '../../run/cap.js';
 import { prepareSwap, type SwapEnd } from '../../run/swap.js';
 import type { Warning } from '../../run/warning.js';
 import { gateExit } from '../../compare/gate.js';
+import { message } from '../../messages/index.js';
 import { resolveExit, stopExit, type ExitName } from '../exit-codes.js';
 import { overBudgetLine, planLines, startFailureLines, swapLines } from '../human/swap.js';
 import type { CommandHandler, CommandInvocation } from '../main.js';
@@ -54,6 +55,11 @@ async function swap(invocation: CommandInvocation, setup: RunSetup): Promise<Exi
   const candidate = variantOption(invocation, setup, 'swap', 'to');
   if (typeof candidate === 'string') {
     return candidate;
+  }
+  if (candidate.id === baseline.id) {
+    return refuse(invocation, 'swap', [
+      message(setup.lang, 'cli.sameVariant', { variant: candidate.id }),
+    ]);
   }
   const { settings, lang } = setup;
   const started = Date.now();
@@ -106,17 +112,19 @@ async function swap(invocation: CommandInvocation, setup: RunSetup): Promise<Exi
   const { end } = result;
   const exit = swapExit(end);
   const warnings = resultWarnings(end);
+  const { comparison } = end;
+  // The comparison and its warnings are redacted already; a second pass would change text a
+  // rule's replacement matches again. The IDs beside it hold no free text.
   output.envelope(
     'swap',
     exit,
     {
       swapId: end.record.swapId,
       runs: [end.runs.baseline.runId, end.runs.candidate.runId],
-      ...(end.comparison === undefined
-        ? {}
-        : { comparison: end.comparison, gate: end.comparison.gate }),
+      ...(comparison === undefined ? {} : { comparison, gate: comparison.gate }),
     },
-    [...startWarnings, ...warnings],
+    comparison === undefined ? [...startWarnings, ...warnings] : startWarnings,
+    comparison === undefined ? {} : { result: true, warnings },
   );
   const lines = swapLines(lang, {
     end,
@@ -127,7 +135,13 @@ async function swap(invocation: CommandInvocation, setup: RunSetup): Promise<Exi
       ? {}
       : { reportPath: path.relative(invocation.context.cwd, end.written.report) }),
   });
-  printAll(invocation, lines);
+  for (const line of lines) {
+    if (line.redacted) {
+      output.printRedacted(line.text);
+    } else {
+      output.print(line.text);
+    }
+  }
   showTimings(invocation, lang, { start: sending - started, run: Date.now() - sending });
   return exit;
 }

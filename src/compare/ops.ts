@@ -2,6 +2,7 @@ import { compareCodeUnits } from '../adapter/canonical-json.js';
 import { errorKindSchema, type ErrorKind, type Usage } from '../adapter/protocol.js';
 import type { ReportConfig } from '../config/schema.js';
 import { classifyTrial, completedGrade, isEmptyText, type TrialOutcome } from '../grade/outcome.js';
+import type { Redactor } from '../report/redact.js';
 import type { MetricRate, OpsChange, VariantOps } from '../report/schema.js';
 import { indexTrialLines, p95, type KeyLines } from '../run/cost.js';
 import { trialKeyId } from '../run/ids.js';
@@ -74,13 +75,23 @@ function completedTrials(run: OpsRun): Classified[] {
     );
 }
 
+/** Finished trials in one row of the outcome table, out of all finished trials. */
+export function outcomeShare(
+  finished: readonly AttemptLine[],
+  outcome: TrialOutcome,
+): { readonly count: number; readonly total: number } {
+  const count = finished.filter((line) => classifyTrial(line) === outcome).length;
+  return { count, total: finished.length };
+}
+
 function rates(run: OpsRun, zLower: number): VariantOps['rates'] {
   const graded = completedTrials(run);
   const ofGraded = (matches: (trial: Classified) => boolean) =>
     metricRate(graded.filter(matches).length, graded.length, zLower);
-  const outcomes = run.finished.map(classifyTrial);
-  const ofFinished = (outcome: TrialOutcome) =>
-    metricRate(outcomes.filter((each) => each === outcome).length, outcomes.length, zLower);
+  const ofFinished = (outcome: TrialOutcome) => {
+    const { count, total } = outcomeShare(run.finished, outcome);
+    return metricRate(count, total, zLower);
+  };
   return {
     rejection: ofGraded(({ outcome }) => outcome === 'permanent'),
     timeout: ofGraded(({ outcome }) => outcome === 'timeout'),
@@ -95,17 +106,23 @@ function rates(run: OpsRun, zLower: number): VariantOps['rates'] {
   };
 }
 
-function discardReasons(run: OpsRun): VariantOps['discardReasons'] {
+/** Reasons are grouped after redaction, so reasons that differ only in a redacted part merge. */
+function discardReasons(run: OpsRun, redactor: Redactor): VariantOps['discardReasons'] {
   const reasons = countBy(completedTrials(run), ({ line }) =>
-    line.status === 'ok' && line.finalKind === 'discarded' ? line.discardReason : undefined,
+    line.status === 'ok' && line.finalKind === 'discarded' && line.discardReason !== undefined
+      ? redactor.text(line.discardReason)
+      : undefined,
   );
   return [...reasons].sort(byFrequency).map(([discardReason, count]) => ({ discardReason, count }));
 }
 
-function topMessages(run: OpsRun): VariantOps['topMessages'] {
+/** Messages are grouped after redaction, like discard reasons. */
+function topMessages(run: OpsRun, redactor: Redactor): VariantOps['topMessages'] {
   return errorKindSchema.options.flatMap((kind) => {
     const messages = countBy(run.finished, (line) =>
-      line.status === 'error' && line.error.kind === kind ? line.error.message : undefined,
+      line.status === 'error' && line.error.kind === kind
+        ? redactor.text(line.error.message)
+        : undefined,
     );
     return [...messages]
       .sort(byFrequency)
@@ -136,11 +153,12 @@ function sideCallFailures(
   });
 }
 
-function abandoned(run: OpsRun): VariantOps['abandoned'] {
+/** Trials abandoned after a time-out or an adapter restart, by cause. */
+export function abandonedCounts(lines: readonly AttemptLine[]): VariantOps['abandoned'] {
   const cause = (line: AttemptLine) => (line.status === 'error' ? line.error.abandoned : undefined);
   return {
-    timeout: run.finished.filter((line) => cause(line) === 'timeout').length,
-    restart: run.finished.filter((line) => cause(line) === 'restart').length,
+    timeout: lines.filter((line) => cause(line) === 'timeout').length,
+    restart: lines.filter((line) => cause(line) === 'restart').length,
   };
 }
 
@@ -201,7 +219,12 @@ function perTrial(
   };
 }
 
-function variantOps(run: OpsRun, bothFinished: ReadonlySet<string>, zLower: number): VariantOps {
+function variantOps(
+  run: OpsRun,
+  bothFinished: ReadonlySet<string>,
+  zLower: number,
+  redactor: Redactor,
+): VariantOps {
   const index = indexTrialLines(run.lines);
   const shared = run.finished.filter((line) => bothFinished.has(trialKeyId(line)));
   const sharedLines = shared.flatMap((line) => {
@@ -217,10 +240,10 @@ function variantOps(run: OpsRun, bothFinished: ReadonlySet<string>, zLower: numb
       trials: run.systematic.length,
       cases: new Set(run.systematic.map((line) => line.caseId)).size,
     },
-    discardReasons: discardReasons(run),
-    topMessages: topMessages(run),
+    discardReasons: discardReasons(run, redactor),
+    topMessages: topMessages(run, redactor),
     sideCallFailures: sideCallFailures(run, index.keys),
-    abandoned: abandoned(run),
+    abandoned: abandonedCounts(run.finished),
     finishReasons: finishReasons(run),
     latencyMs: {
       p50: p50(latencies),
@@ -232,15 +255,19 @@ function variantOps(run: OpsRun, bothFinished: ReadonlySet<string>, zLower: numb
   };
 }
 
-/** `ops` of the comparison; Wilson intervals at z_L. */
-export function comparisonOps(runs: PerRole<OpsRun>, zLower: number): PerRole<VariantOps> {
+/** `ops` of the comparison, its free text redacted; Wilson intervals at z_L. */
+export function comparisonOps(
+  runs: PerRole<OpsRun>,
+  zLower: number,
+  redactor: Redactor,
+): PerRole<VariantOps> {
   const candidate = new Set(runs.candidate.finished.map(trialKeyId));
   const bothFinished = new Set(
     runs.baseline.finished.map(trialKeyId).filter((key) => candidate.has(key)),
   );
   return {
-    baseline: variantOps(runs.baseline, bothFinished, zLower),
-    candidate: variantOps(runs.candidate, bothFinished, zLower),
+    baseline: variantOps(runs.baseline, bothFinished, zLower, redactor),
+    candidate: variantOps(runs.candidate, bothFinished, zLower, redactor),
   };
 }
 

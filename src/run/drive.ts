@@ -69,23 +69,25 @@ export async function driveRuns(runs: readonly ActiveRun[], options: DriveOption
     const stopping = options.stop.reason !== undefined;
     if (!stopping) {
       const at = now();
-      const id = pickVariant(
+      const index = pickVariant(
         runs.map((run) => run.progress(at)),
         limit,
       );
-      const next = runs.find((run) => run.variantId === id);
-      if (next !== undefined) {
-        await next.sendNext(at);
+      const next = index === undefined ? undefined : runs[index];
+      // A pick that sent nothing waits below, so the loop never turns without yielding.
+      if (next !== undefined && (await next.sendNext(at))) {
         continue;
       }
     }
     const inFlight = runs.flatMap((run) => run.pending());
-    const retries = stopping
-      ? []
-      : runs.flatMap((run) => {
-          const at = run.nextRetryAt();
-          return at === undefined ? [] : [at];
-        });
+    // Read again: a send the cap refused has raised the stop since the read above.
+    const retries =
+      options.stop.reason !== undefined
+        ? []
+        : runs.flatMap((run) => {
+            const at = run.nextRetryAt();
+            return at === undefined ? [] : [at];
+          });
     if (inFlight.length === 0 && retries.length === 0) {
       return;
     }

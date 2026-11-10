@@ -109,6 +109,38 @@ describe('page payloads', () => {
     );
   });
 
+  it('001 FR-031 skips folders without a readable comparison instead of failing the list', async () => {
+    const output = outputDirectory();
+    const comparisons = path.join(output, 'comparisons');
+    const comparison = loadComparison('block');
+    const save = (name: string, text: string) => {
+      mkdirSync(path.join(comparisons, name), { recursive: true });
+      writeFileSync(path.join(comparisons, name, 'comparison.json'), text);
+    };
+    save(comparison.comparisonId, JSON.stringify(comparison));
+    save('cmp-000000000001', '{"cut');
+    save('cmp-000000000002', JSON.stringify({ ...comparison, schemaVersion: '0', cells: 'old' }));
+    mkdirSync(path.join(comparisons, 'cmp-000000000003'));
+    writeFileSync(path.join(comparisons, 'cmp-000000000004'), 'not a folder');
+    const page = await listPage(output, 'en');
+    expect(page.comparisons.map((entry) => entry.comparisonId)).toEqual([comparison.comparisonId]);
+  });
+
+  it('001 FR-031 names each entry by its folder and breaks ties in code-unit order', async () => {
+    const output = outputDirectory();
+    const comparisons = path.join(output, 'comparisons');
+    const comparison = loadComparison('no-gate');
+    for (const name of ['cmp-a', 'cmp-B']) {
+      mkdirSync(path.join(comparisons, name), { recursive: true });
+      writeFileSync(path.join(comparisons, name, 'comparison.json'), JSON.stringify(comparison));
+    }
+    const page = await listPage(output, 'en');
+    expect(page.comparisons.map(({ comparisonId, href }) => [comparisonId, href])).toEqual([
+      ['cmp-B', 'comparisons/cmp-B/report.html'],
+      ['cmp-a', 'comparisons/cmp-a/report.html'],
+    ]);
+  });
+
   it('001 FR-031 lists nothing before the first comparison', async () => {
     expect(await listPage(outputDirectory(), 'ko')).toEqual({
       schemaVersion: '1',

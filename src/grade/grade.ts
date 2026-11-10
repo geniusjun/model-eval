@@ -20,8 +20,12 @@ export interface RunCase {
   readonly lang: string;
   /** Case hash in the manifest. */
   readonly hash: Sha256;
-  /** The case in the current case files and its hash; absent when the case was deleted. */
-  readonly current?: { readonly definition: Case; readonly hash: Sha256 } | undefined;
+  /**
+   * The case in the current case files with its hash and language key, resolved as a run would
+   * resolve it now; absent when the case was deleted.
+   */
+  readonly current?:
+    { readonly definition: Case; readonly hash: Sha256; readonly lang: string } | undefined;
 }
 
 export interface ApplicableRule {
@@ -93,7 +97,7 @@ function gradeTrial(line: AttemptLine, runCase: RunCase, rules: readonly Rule[])
         ? rules.filter(
             (rule) => rule.scope === 'global' && matches(rule, runCase.target, runCase.lang),
           )
-        : applicableRules(rules, current.definition, runCase.lang).map(({ rule }) => rule);
+        : applicableRules(rules, current.definition, current.lang).map(({ rule }) => rule);
     return skipped.flatMap((rule) =>
       surfacesOf(rule).map((surface): Grade => ({ ...keyOf(rule), surface, outcome: 'skip' })),
     );

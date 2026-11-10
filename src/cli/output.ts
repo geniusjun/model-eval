@@ -20,7 +20,21 @@ export interface OutputOptions {
   readonly stderr: TextStream;
 }
 
-/** Every write goes through redaction (FR-031); `--json` keeps stdout for one envelope. */
+/**
+ * Parts of an envelope that went through the config's `redact` rules already, as a Comparison
+ * does when it is built; they are written as they are, so no free text is redacted twice.
+ */
+export interface RedactedParts {
+  /** The whole `result`: a Comparison and the IDs beside it. */
+  readonly result?: boolean;
+  /** Warnings written after the others, as they are. */
+  readonly warnings?: readonly EnvelopeWarning[];
+}
+
+/**
+ * Every write goes through redaction exactly once (FR-031); `--json` keeps stdout for one
+ * envelope.
+ */
 export interface Output {
   readonly json: boolean;
   /** Whether this command's envelope has been written. */
@@ -29,6 +43,8 @@ export interface Output {
   setRedactor(redactor: Redactor): void;
   /** Human result lines on stdout; dropped under `--json`, where the envelope carries the result. */
   print(line: string): void;
+  /** Like {@link print}, for a line made from text that went through redaction already. */
+  printRedacted(line: string): void;
   /** Progress and diagnostics on stderr, in both modes. */
   progress(line: string): void;
   /** Redacts before styling, so colour codes never split a redaction pattern. */
@@ -38,6 +54,7 @@ export interface Output {
     exit: ExitName,
     result: CommandResult<C> | null,
     warnings: readonly EnvelopeWarning[],
+    redacted?: RedactedParts,
   ): void;
   /** For usage and internal errors, where there is no result and maybe no known command. */
   envelopeWithoutResult(
@@ -63,7 +80,7 @@ export function createOutput(options: OutputOptions): Output {
   const { json, color, stdout, stderr } = options;
   let { redactor } = options;
   let envelopeWritten = false;
-  const writeEnvelope = (envelope: Envelope<Command | null>): void => {
+  const writeEnvelope = (envelope: Envelope<Command | null>, redacted: RedactedParts): void => {
     if (!json) {
       return;
     }
@@ -71,7 +88,21 @@ export function createOutput(options: OutputOptions): Output {
       throw new Error('the --json envelope is written once per command');
     }
     envelopeWritten = true;
-    stdout.write(`${JSON.stringify(redactor.json(envelope))}\n`);
+    // The same fields as redacting the whole envelope, without the parts redacted already.
+    const written = {
+      ...envelope,
+      result: redacted.result === true ? envelope.result : redactor.json(envelope.result),
+      warnings: [
+        ...envelope.warnings.map((warning) => redactor.json(warning)),
+        ...(redacted.warnings ?? []),
+      ],
+    };
+    stdout.write(`${JSON.stringify(written)}\n`);
+  };
+  const write = (line: string): void => {
+    if (!json) {
+      stdout.write(`${line}\n`);
+    }
   };
   return {
     json,
@@ -82,9 +113,10 @@ export function createOutput(options: OutputOptions): Output {
       redactor = next;
     },
     print(line) {
-      if (!json) {
-        stdout.write(`${redactor.text(line)}\n`);
-      }
+      write(redactor.text(line));
+    },
+    printRedacted(line) {
+      write(line);
     },
     progress(line) {
       stderr.write(`${redactor.text(line)}\n`);
@@ -93,23 +125,17 @@ export function createOutput(options: OutputOptions): Output {
       const redacted = redactor.text(text);
       return color ? styleText(format, redacted, { validateStream: false }) : redacted;
     },
-    envelope(command, exit, result, warnings) {
-      writeEnvelope({
-        schemaVersion: SCHEMA_VERSION,
-        command,
-        exit: exitStatus(exit),
-        result,
-        warnings,
-      });
+    envelope(command, exit, result, warnings, redacted = {}) {
+      writeEnvelope(
+        { schemaVersion: SCHEMA_VERSION, command, exit: exitStatus(exit), result, warnings },
+        redacted,
+      );
     },
     envelopeWithoutResult(command, exit, warnings) {
-      writeEnvelope({
-        schemaVersion: SCHEMA_VERSION,
-        command,
-        exit: exitStatus(exit),
-        result: null,
-        warnings,
-      });
+      writeEnvelope(
+        { schemaVersion: SCHEMA_VERSION, command, exit: exitStatus(exit), result: null, warnings },
+        {},
+      );
     },
   };
 }

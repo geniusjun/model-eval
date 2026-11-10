@@ -4,23 +4,14 @@ import type { Lang } from '../config/schema.js';
 import { writeFolderAtomic } from '../run/writer.js';
 import { COMPARISON_FILE, COMPARISONS_DIR, REPORT_MARKDOWN_FILE } from './layout.js';
 import { renderReport } from './markdown.js';
-import type { Redactor } from './redact.js';
-import { comparisonSchema, type Comparison } from './schema.js';
-
-/**
- * Applies the config `redact` rules to the free text of a Comparison (FR-031). Every surface
- * written from a comparison starts from this one result, so redaction runs exactly once.
- */
-export function redactComparison(comparison: Comparison, redactor: Redactor): Comparison {
-  return comparisonSchema.parse(redactor.json(comparison));
-}
+import type { Comparison } from './schema.js';
 
 export interface ComparisonWriteOptions {
   readonly outputDir: string;
+  /** The redacted Comparison of `buildComparison`, written as it is. */
   readonly comparison: Comparison;
   /** The language of the command, for the text of `report.md`. */
   readonly lang: Lang;
-  readonly redactor: Redactor;
 }
 
 export interface WrittenComparison {
@@ -30,16 +21,19 @@ export interface WrittenComparison {
 }
 
 /**
- * Writes `comparisons/<comparisonId>/` with the redacted `comparison.json` and `report.md`
- * (plan D6, item 2): a new folder is written under a temporary name and renamed; when the folder
- * exists, also because another process created it first, each file is replaced on its own.
+ * Writes `comparisons/<comparisonId>/` with `comparison.json` and `report.md` (plan D6, item 2):
+ * a new folder is written under a temporary name and renamed; when the folder exists, also
+ * because another process created it first, each file is replaced on its own.
  */
-export async function writeComparison(options: ComparisonWriteOptions): Promise<WrittenComparison> {
-  const comparison = redactComparison(options.comparison, options.redactor);
-  const dir = path.join(options.outputDir, COMPARISONS_DIR, comparison.comparisonId);
+export async function writeComparison({
+  outputDir,
+  comparison,
+  lang,
+}: ComparisonWriteOptions): Promise<WrittenComparison> {
+  const dir = path.join(outputDir, COMPARISONS_DIR, comparison.comparisonId);
   await writeFolderAtomic(dir, {
     [COMPARISON_FILE]: `${JSON.stringify(comparison, null, 2)}\n`,
-    [REPORT_MARKDOWN_FILE]: renderReport(comparison, options.lang),
+    [REPORT_MARKDOWN_FILE]: renderReport(comparison, lang),
   });
   return {
     dir,

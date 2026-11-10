@@ -20,3 +20,12 @@ export function finishedTrials(
     })
     .sort((a, b) => compareCodeUnits(a.caseId, b.caseId) || a.repeat - b.repeat);
 }
+
+/** Lines grouped by case, each group in line order. */
+export function byCase(lines: readonly AttemptLine[]): Map<string, AttemptLine[]> {
+  const cases = new Map<string, AttemptLine[]>();
+  for (const line of lines) {
+    cases.set(line.caseId, [...(cases.get(line.caseId) ?? []), line]);
+  }
+  return cases;
+}

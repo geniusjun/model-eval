@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-
 import { z } from 'zod';
 
 import { canonicalJson, compareCodeUnits, hashValue, shortHex } from '../adapter/canonical-json.js';
@@ -9,9 +6,12 @@ import type { Case, Config, Rule } from '../config/schema.js';
 import type { RunCase } from '../grade/grade.js';
 import type { GradeSet } from '../grade/grade-set.js';
 import type { Grade } from '../grade/record.js';
+import { savedComparisons } from '../report/layout.js';
 import { createRedactor, type Redactor } from '../report/redact.js';
 import {
   comparedRunSchema,
+  comparisonSchema,
+  sampleTextSchema,
   type Comparison,
   type ComparedRun,
   type Coverage,
@@ -21,13 +21,12 @@ import { trialKeyId } from '../run/ids.js';
 import type { Manifest } from '../run/manifest.js';
 import type { AttemptLine, TrialLine } from '../run/records.js';
 import type { Warning } from '../run/warning.js';
-import { listResultEntries } from '../run/writer.js';
 import { zValues, type PerRole } from '../stats/interval.js';
-import { aggregates, cellEvidence, cellOf, type CellEvidence } from './cells.js';
+import { aggregates, cellEvidence, cellId, cellOf, type CellEvidence } from './cells.js';
 import { commonCases, type CommonCase } from './common-cases.js';
 import { finishedTrials } from './finished.js';
 import {
-  cellId,
+  applicableToTargets,
   completionRates,
   decideGate,
   excludedFromGateWarnings,
@@ -36,10 +35,10 @@ import {
   type CellTrials,
   type FailingTrial,
 } from './gate.js';
-import { comparisonOps, reviewOps } from './ops.js';
+import { abandonedCounts, comparisonOps, reviewOps } from './ops.js';
 import { comparisonSamples, decisionSummary, judgedScope, type ComparedCase } from './summary.js';
 import { systematicFailures } from './systematic.js';
-import { comparisonWarnings, groupWarnings, partialRunWarnings } from './warnings.js';
+import { comparisonWarnings, groupRedactedWarnings, partialRunWarnings } from './warnings.js';
 
 // data-model §Comparison: one comparison of two runs from their records and grade sets.
 
@@ -58,14 +57,15 @@ export interface ComparedRunRecords {
   readonly manifest: Manifest;
   /** Every complete line of the run's `trials.jsonl`, in file order. */
   readonly lines: readonly TrialLine[];
-  /** The run's grade set, made with the current rules (FR-019). */
+  /** The run's grade set, made with the current rules (FR-019), its evidence redacted (FR-031). */
   readonly gradeSet: GradeSet;
 }
 
-/** A case of the current case files with its case hash. */
+/** A case of the current case files with its case hash and resolved language key. */
 export interface CurrentCase {
   readonly definition: Case;
   readonly hash: Sha256;
+  readonly lang: string;
 }
 
 export type ComparisonConfig = Pick<Config, 'gate' | 'stats' | 'report' | 'redact'>;
@@ -148,15 +148,6 @@ function comparedRun({ manifest, gradeSet }: ComparedRunRecords): ComparedRun {
   };
 }
 
-/** Active rules whose targets cover a compared target, or that name no target. */
-function applicableToTargets(rules: readonly Rule[], targets: readonly string[]): Rule[] {
-  return rules.filter(
-    (rule) =>
-      rule.status === 'active' &&
-      (rule.targets.length === 0 || rule.targets.some((target) => targets.includes(target))),
-  );
-}
-
 function ruleSummary(rule: Rule, gateMargin: number): RuleSummary {
   return {
     id: rule.id,
@@ -212,14 +203,6 @@ function cellFailures(
   return cells;
 }
 
-const abandonedCounts = (lines: readonly AttemptLine[]) => {
-  const cause = (line: AttemptLine) => (line.status === 'error' ? line.error.abandoned : undefined);
-  return {
-    timeout: lines.filter((line) => cause(line) === 'timeout').length,
-    restart: lines.filter((line) => cause(line) === 'restart').length,
-  };
-};
-
 /** The candidate's failing trials per cell, and abandoned systematic failures of `completed`. */
 function cellTrialsOf(
   evidence: readonly CellEvidence[],
@@ -244,49 +227,16 @@ function cellTrialsOf(
 
 const priorRunSchema = comparedRunSchema.pick({ runId: true, variant: true });
 const priorComparisonSchema = z.object({ baseline: priorRunSchema, candidate: priorRunSchema });
-type PriorComparison = z.infer<typeof priorComparisonSchema>;
-
-function isMissing(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    (error.code === 'ENOENT' || error.code === 'ENOTDIR')
-  );
-}
-
-/** A folder without a readable comparison is not a result and is not counted. */
-async function readPriorComparison(file: string): Promise<PriorComparison | undefined> {
-  let text: string;
-  try {
-    text = await readFile(file, 'utf8');
-  } catch (error) {
-    if (isMissing(error)) {
-      return undefined;
-    }
-    throw error;
-  }
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-  const parsed = priorComparisonSchema.safeParse(value);
-  return parsed.success ? parsed.data : undefined;
-}
 
 /**
  * Distinct run pairs among saved comparisons with the same two variant fingerprints in the same
- * roles, the current pair excluded; temporary names are skipped.
+ * roles, the current pair excluded.
  */
 async function priorComparisons(outputDir: string, runs: PerRole<Manifest>): Promise<number> {
-  const folder = path.join(outputDir, 'comparisons');
   const pairId = (baseline: string, candidate: string) => canonicalJson([baseline, candidate]);
   const pairs = new Set<string>();
-  for (const name of await listResultEntries(folder)) {
-    const prior = await readPriorComparison(path.join(folder, name, 'comparison.json'));
+  for (const { comparison: prior } of await savedComparisons(outputDir, priorComparisonSchema)) {
     if (
-      prior !== undefined &&
       prior.baseline.variant.fingerprint === runs.baseline.variant.fingerprint &&
       prior.candidate.variant.fingerprint === runs.candidate.variant.fingerprint
     ) {
@@ -299,8 +249,10 @@ async function priorComparisons(outputDir: string, runs: PerRole<Manifest>): Pro
 
 /**
  * The Comparison of two runs over their common, unchanged cases (FR-027): cells and their
- * verdicts, the gate, metrics, warnings, the decision summary and samples. Not yet redacted;
- * the comparison writer redacts what it writes.
+ * verdicts, the gate, metrics, warnings, the decision summary and samples, redacted (FR-031).
+ * `ops`, `gate` and `warnings` group free text, so they are built from redacted text; the
+ * evidence of failing samples comes redacted from the grade sets; the rest, sample texts
+ * included, is redacted here, so no text is redacted twice.
  */
 export async function buildComparison(input: ComparisonInput): Promise<Comparison> {
   const { runs, config } = input;
@@ -329,10 +281,7 @@ export async function buildComparison(input: ComparisonInput): Promise<Compariso
     systematic,
     finished,
   });
-  const isGated = gatedCellTest(
-    gateRules(rules, targets, config.gate).gated,
-    config.report.lowBaseline,
-  );
+  const isGated = gatedCellTest(gateRules(rules, config.gate).gated, config.report.lowBaseline);
   const gatedCells = evidence.filter(isGated).length;
   const z = zValues(config.stats.confidence, gatedCells);
   const cells = evidence.map((cell) =>
@@ -358,6 +307,7 @@ export async function buildComparison(input: ComparisonInput): Promise<Compariso
       systematic: systematic[role],
     })),
     z.zLower,
+    redactor,
   );
   const opsReview = reviewOps(
     ops,
@@ -373,7 +323,6 @@ export async function buildComparison(input: ComparisonInput): Promise<Compariso
     })),
     completion,
     rules,
-    targets,
     gate: config.gate,
     cells,
     cellTrials,
@@ -388,14 +337,14 @@ export async function buildComparison(input: ComparisonInput): Promise<Compariso
     excludedFromGateWarnings(gate.excluded),
     partialRunWarnings(gate),
   ];
-  const warnings = groupWarnings(warningSources.flat());
+  const warnings = groupRedactedWarnings(warningSources.flat(), redactor);
   const scope = judgedScope(rules, targets, cells);
   const comparedCases: ComparedCase[] = common.flatMap(({ id, lang: caseLang }) => {
     const definition = current.get(id)?.definition;
     return definition === undefined ? [] : [{ definition, lang: caseLang }];
   });
 
-  return {
+  const comparison: Comparison = {
     comparisonId: comparisonIdOf(runs, config),
     createdAt: input.now().toISOString(),
     baseline: comparedRun(runs.baseline),
@@ -429,4 +378,22 @@ export async function buildComparison(input: ComparisonInput): Promise<Compariso
     },
     config: { gate: config.gate, stats: config.stats, report: config.report },
   };
+  const {
+    ops: redactedOps,
+    gate: redactedGate,
+    warnings: redactedWarnings,
+    samples,
+    ...rest
+  } = comparison;
+  const redacted = comparisonSchema
+    .omit({ ops: true, gate: true, warnings: true, samples: true })
+    .parse(redactor.json(rest));
+  const texts = samples.texts.map((text) => sampleTextSchema.parse(redactor.json(text)));
+  return comparisonSchema.parse({
+    ...redacted,
+    ops: redactedOps,
+    gate: redactedGate,
+    warnings: redactedWarnings,
+    samples: { ...samples, texts },
+  });
 }

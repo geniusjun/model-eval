@@ -7,6 +7,7 @@ import {
   completedGrade,
   effectiveAttempts,
   finalSurfaceText,
+  hasConfigCall,
   isEmptyText,
   mayBeSystematic,
   rawSurfaceText,
@@ -150,7 +151,12 @@ describe('trial outcomes', () => {
     const okConfigKind = okLine({
       calls: [{ model: 'model-b', outcome: 'ok', errorKind: 'config' }],
     });
-    expect(classifyTrial(okConfigKind)).toBe('complete');
+    expect(classifyTrial(okConfigKind)).toBe('config');
+    expect(hasConfigCall(okConfigKind.calls)).toBe(true);
+    expect(hasConfigCall([{ model: 'model-b', outcome: 'failed', errorKind: 'transient' }])).toBe(
+      false,
+    );
+    expect(hasConfigCall(undefined)).toBe(false);
   });
 
   it('001 FR-018 stopped attempts leave every rule', () => {

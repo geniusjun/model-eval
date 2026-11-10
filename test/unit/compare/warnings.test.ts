@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   comparisonWarnings,
+  groupRedactedWarnings,
   groupWarnings,
   type WarningRun,
 } from '../../../src/compare/warnings.js';
 import type { Sha256 } from '../../../src/config/identifiers.js';
 import { reportConfigSchema } from '../../../src/config/schema.js';
+import { createRedactor } from '../../../src/report/redact.js';
 import { manifestSchema, type Manifest } from '../../../src/run/manifest.js';
 import type { AttemptLine } from '../../../src/run/records.js';
 import type { Warning } from '../../../src/run/warning.js';
@@ -243,6 +245,35 @@ describe('grouping', () => {
       { code: 'budget-overrun', params: { overrunUsd: { current: 0.1 } }, variants: ['current'] },
       { code: 'estimate-low-accuracy', params: { inputTokens: 100 }, variants: ['current'] },
       { code: 'estimate-low-accuracy', params: { inputTokens: 200 }, variants: ['next'] },
+    ]);
+  });
+
+  it('001 FR-031 groups on redacted text, so sentences that differ only in a redacted part merge', () => {
+    const redactor = createRedactor([
+      { pattern: 'req-[0-9]+', replace: 'req' },
+      { pattern: 'miss', replace: 'miss-x' },
+    ]);
+    const grouped = groupRedactedWarnings(
+      [
+        {
+          code: 'adapter-warnings',
+          params: { sentence: 'cache miss req-1', trials: { current: 1 } },
+          variants: ['current'],
+        },
+        {
+          code: 'adapter-warnings',
+          params: { sentence: 'cache miss req-2', trials: { next: 2 } },
+          variants: ['next'],
+        },
+      ],
+      redactor,
+    );
+    expect(grouped).toEqual([
+      {
+        code: 'adapter-warnings',
+        params: { sentence: 'cache miss-x req', trials: { current: 1, next: 2 } },
+        variants: ['current', 'next'],
+      },
     ]);
   });
 });

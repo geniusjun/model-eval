@@ -169,6 +169,43 @@ describe('redaction of stdout and stderr', () => {
     expect(written.result.errors[0]?.file).toBe('cases/010-1234-5678.yaml');
   });
 
+  it('001 FR-031 writes parts redacted already as they are, and redacts the rest once', () => {
+    const again = createRedactor([{ pattern: 'fail', replace: 'fail-x' }]);
+    const stdout = capture();
+    const human = createOutput({
+      json: false,
+      color: false,
+      redactor: again,
+      stdout,
+      stderr: capture(),
+    });
+    human.print('a fail');
+    human.printRedacted('a fail-x');
+    expect(stdout.chunks).toEqual(['a fail-x\n', 'a fail-x\n']);
+
+    const jsonOut = capture();
+    const json = createOutput({
+      json: true,
+      color: false,
+      redactor: again,
+      stdout: jsonOut,
+      stderr: capture(),
+    });
+    const quoted = (quote: string) => ({
+      code: 'anchor-missing' as const,
+      params: { quote },
+      caseIds: ['greet-ko'],
+    });
+    json.envelope('report', 'ok', { comparisonId: 'cmp-0123456789ab' }, [quoted('a fail')], {
+      result: true,
+      warnings: [quoted('a fail-x')],
+    });
+    expect(JSON.parse(jsonOut.chunks[0] ?? '')).toMatchObject({
+      result: { comparisonId: 'cmp-0123456789ab' },
+      warnings: [quoted('a fail-x'), quoted('a fail-x')],
+    });
+  });
+
   it('001 FR-031 keeps $& in the replacement literal', () => {
     const redactor = createRedactor([{ pattern: 'secret', replace: '[$&]' }]);
     expect(redactor.text('a secret b')).toBe('a [$&] b');

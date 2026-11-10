@@ -7,6 +7,8 @@ import { compareCodeUnits, hashValue, shortHex } from '../adapter/canonical-json
 import type { JsonValue } from '../adapter/json-value.js';
 import type { Sha256 } from '../config/identifiers.js';
 import type { Rule } from '../config/schema.js';
+import type { Redactor } from '../report/redact.js';
+import { asJsonValue } from '../run/hashes.js';
 import type { TrialLine } from '../run/records.js';
 import { writeFileAtomic } from '../run/writer.js';
 import { gradeRun, type RunCase } from './grade.js';
@@ -28,15 +30,17 @@ export interface GradeSet {
   readonly grades: readonly Grade[];
 }
 
-export interface GradeSetInput extends Omit<GradeSetIdentity, 'casesHash'> {
+export interface GradeSetInput extends Omit<GradeSetIdentity, 'casesHash' | 'trialsFingerprint'> {
   /** The run directory; grade sets live in its `grades/` folder. */
   readonly runDir: string;
   /** Every rule of the current rule files; `rulesHash` must be theirs. */
   readonly rules: readonly Rule[];
   /** Every case of the run's manifest with its current definition; gives `casesHash`. */
   readonly cases: readonly RunCase[];
-  /** The complete lines of `trials.jsonl` in file order; `trialsFingerprint` must be theirs. */
+  /** The complete lines of `trials.jsonl` in file order; give `trialsFingerprint`. */
   readonly lines: readonly TrialLine[];
+  /** The config `redact` rules, applied to the evidence a new grade set writes (FR-031). */
+  readonly redactor: Redactor;
 }
 
 export class GradeSetReadError extends Error {
@@ -76,7 +80,8 @@ export function gradeSetPath(runDir: string, gradeSetId: string): string {
 
 /**
  * Returns the grade set of these inputs, reusing `grades/<gradeSetId>.jsonl` when it exists and
- * otherwise grading the effective attempt lines and writing the file atomically (plan D6).
+ * otherwise grading the effective attempt lines and writing the file atomically (plan D6). The
+ * returned grades are the ones written, evidence redacted, so a reused set reads the same.
  */
 export async function ensureGradeSet(
   input: GradeSetInput,
@@ -85,7 +90,7 @@ export async function ensureGradeSet(
     runId: input.runId,
     rulesHash: input.rulesHash,
     checkerVersion: input.checkerVersion,
-    trialsFingerprint: input.trialsFingerprint,
+    trialsFingerprint: trialsFingerprintOf(input.lines.map(asJsonValue)),
     casesHash: casesHashOf(input.cases),
   };
   const gradeSetId = gradeSetIdOf(identity);
@@ -99,7 +104,7 @@ export async function ensureGradeSet(
       rules: input.rules,
       cases: input.cases,
       trials: effectiveAttempts(input.lines),
-    }),
+    }).map((grade) => redactGrade(grade, input.redactor)),
   };
   const file = gradeSetPath(input.runDir, gradeSetId);
   await mkdir(path.dirname(file), { recursive: true });
@@ -108,6 +113,12 @@ export async function ensureGradeSet(
     [gradeSet.header, ...gradeSet.grades].map((line) => `${JSON.stringify(line)}\n`).join(''),
   );
   return { gradeSet, reused: false };
+}
+
+function redactGrade(grade: Grade, redactor: Redactor): Grade {
+  return grade.evidence === undefined
+    ? grade
+    : { ...grade, evidence: grade.evidence.map((text) => redactor.text(text)) };
 }
 
 /** The stored grade set, or `undefined` when it was never written. */

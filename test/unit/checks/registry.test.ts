@@ -22,6 +22,8 @@ const TEXTS = [
   '{"reply": "hi"}',
   '',
   '你好 Sky',
+  '"😀"',
+  '😀 좋아요',
 ];
 
 const values = { input: { nickname: 'Sky' }, params: { words: ['짜증'] } };
@@ -43,9 +45,27 @@ describe('check registry', () => {
         'not',
       ]),
     );
-    for (const check of CHECKS) {
-      expect(['pass', 'fail']).toContain(runCheck(check, TEXTS[0] ?? '', values).outcome);
-    }
+    // One row per check, one column per text; every pair of types differs on some text, so a
+    // check dispatched to the wrong type shows.
+    const expected = {
+      script: ['pass', 'pass', 'fail', 'pass', 'fail', 'pass', 'pass'],
+      emoji: ['pass', 'fail', 'pass', 'pass', 'pass', 'fail', 'fail'],
+      pattern: ['fail', 'pass', 'pass', 'pass', 'pass', 'pass', 'fail'],
+      phrases: ['fail', 'pass', 'pass', 'pass', 'pass', 'pass', 'pass'],
+      overlap: ['pass', 'fail', 'pass', 'pass', 'pass', 'pass', 'pass'],
+      length: ['fail', 'fail', 'fail', 'pass', 'pass', 'pass', 'pass'],
+      json: ['fail', 'fail', 'pass', 'fail', 'fail', 'fail', 'fail'],
+      all: ['pass', 'fail', 'pass', 'fail', 'pass', 'fail', 'fail'],
+      any: ['pass', 'fail', 'pass', 'pass', 'pass', 'pass', 'fail'],
+      not: ['fail', 'pass', 'fail', 'fail', 'fail', 'pass', 'pass'],
+    };
+    const actual = Object.fromEntries(
+      CHECKS.map((check) => [
+        check.type,
+        TEXTS.map((text) => runCheck(check, text, values).outcome),
+      ]),
+    );
+    expect(actual).toEqual(expected);
   });
 
   it('001 FR-017 gives the same result for the same text and definition every time', () => {

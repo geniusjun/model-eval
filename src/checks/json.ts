@@ -23,19 +23,20 @@ const compiled = new Map<string, CompiledSchema>();
 
 /**
  * Fails when the text is not JSON (as data-model §Canonical JSON reads it) or violates the
- * schema. The evidence names each violation by instance path and validator message.
+ * schema. The evidence names each violation by instance path and validator message. A schema
+ * that does not compile is an error for every text, so it shows whatever the answer.
  */
 export function checkJson(check: CheckOfType<'json'>, text: string): CheckResult {
+  const schema = check.schema === undefined ? undefined : compile(check.schema);
+  if (schema?.ok === false) {
+    return checkError({ code: 'invalid-schema', detail: schema.detail });
+  }
   const parsed = parseJsonText(text);
   if (!parsed.ok) {
     return fail([]);
   }
-  if (check.schema === undefined) {
+  if (schema === undefined) {
     return PASS;
-  }
-  const schema = compile(check.schema);
-  if (!schema.ok) {
-    return checkError({ code: 'invalid-schema', detail: schema.detail });
   }
   return schema.validate(parsed.value) ? PASS : fail((schema.validate.errors ?? []).map(describe));
 }

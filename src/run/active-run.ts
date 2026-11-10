@@ -3,9 +3,10 @@ import type { CallRecord, CallsParams, Usage } from '../adapter/protocol.js';
 import type { Sha256 } from '../config/identifiers.js';
 import type { Config, Rule } from '../config/schema.js';
 import type { RunCase } from '../grade/grade.js';
-import { ensureGradeSet, trialsFingerprintOf, type GradeSet } from '../grade/grade-set.js';
-import { classifyTrial } from '../grade/outcome.js';
+import { ensureGradeSet, type GradeSet } from '../grade/grade-set.js';
+import { classifyTrial, hasConfigCall } from '../grade/outcome.js';
 import { finishedTrials } from '../compare/finished.js';
+import { createRedactor } from '../report/redact.js';
 import { trialWarnings } from '../compare/warnings.js';
 import { budgetOverrunWarning, overrunUsd, type CapLedger, type VariantProjection } from './cap.js';
 import type { CallsRouter, RequestTrial } from './calls-router.js';
@@ -25,18 +26,18 @@ import {
   type ProfileMap,
   type ReservationState,
 } from './cost.js';
-import { asJsonValue } from './hashes.js';
 import { trialKeyId, trialSeed, type TrialKey } from './ids.js';
 import type { HeldLock } from './lock.js';
 import type { Manifest, RunStatus, StopReason } from './manifest.js';
 import type { VariantProgress } from './order.js';
 import type { AttemptLine, CostLine, SendLine, TrialLine } from './records.js';
-import { hasConfigCall, recordAttempt } from './attempt.js';
+import { recordAttempt } from './attempt.js';
 import type { RunCaseSpec } from './run-cases.js';
 import { exceedsTransientRate, type StopSignal } from './stopping.js';
 import { addUsages, runTotals } from './totals.js';
 import type { TrialBook } from './trial-book.js';
 import type { Warning } from './warning.js';
+import { LiveWarningCodes } from './live-warnings.js';
 import { hasNewWarningCode, writeManifest, type TrialLog } from './writer.js';
 
 // One run of one variant while it sends (data-model §Send Order, §Trial, §Stopping, §Cost).
@@ -98,6 +99,9 @@ export class ActiveRun {
   readonly variantId: string;
   private readonly lines: TrialLine[] = [];
   private readonly attempts = new Map<string, AttemptRecord>();
+  /** The charge context of each attempt at its send, keyed like {@link attempts}. */
+  private readonly sendContexts = new Map<string, ChargeContext>();
+  private readonly liveCodes: LiveWarningCodes;
   private readonly inFlight = new Set<Promise<void>>();
   private readonly specs: ReadonlyMap<string, RunCaseSpec>;
   private reservation: ReservationState;
@@ -116,6 +120,12 @@ export class ActiveRun {
     this.runId = setup.runId;
     this.variantId = setup.manifest.variant.id;
     this.specs = new Map(setup.cases.map((spec) => [spec.id, spec]));
+    this.liveCodes = new LiveWarningCodes({
+      retries: setup.manifest.limits.retries,
+      caseIds: new Set(this.specs.keys()),
+      prompts: setup.manifest.prompts ?? {},
+      transientRate: setup.config.report.warn.transientRate,
+    });
     this.reservation = initialReservationState(setup.previous);
     this.manifest = setup.manifest;
     this.writtenWarnings = setup.manifest.warnings;
@@ -142,7 +152,6 @@ export class ActiveRun {
   progress(now: number): VariantProgress {
     const { book } = this.setup;
     return {
-      id: this.variantId,
       finished: book.finished,
       started: book.started,
       hasSendable: this.canSend() && book.next(now) !== undefined,
@@ -161,13 +170,14 @@ export class ActiveRun {
 
   /**
    * Sends the next trial in order through the cap check: the send line is written before the
-   * attempt goes to the adapter. A failed cap check stops every run with `budget`.
+   * attempt goes to the adapter. A failed cap check stops every run with `budget`. Resolves to
+   * whether an attempt went out.
    */
-  async sendNext(now: number): Promise<void> {
+  async sendNext(now: number): Promise<boolean> {
     const { book, ledger, stop, client } = this.setup;
     const key = this.canSend() ? book.next(now) : undefined;
     if (key === undefined) {
-      return;
+      return false;
     }
     const spec = this.spec(key.caseId);
     const context = this.chargeContext(spec);
@@ -175,10 +185,12 @@ export class ActiveRun {
     const reservation = ledger.trySend(reserved.costUsd);
     if (reservation === undefined) {
       stop.raise('budget');
-      return;
+      return false;
     }
     const attempt = book.nextAttempt(key);
     book.markSent(key);
+    // Without usage, the attempt and its unanswered calls are charged the reservation made here.
+    this.sendContexts.set(this.attemptId(key, attempt), context);
     const send: SendLine = {
       caseId: key.caseId,
       repeat: key.repeat,
@@ -209,7 +221,7 @@ export class ActiveRun {
       )
       .then((outcome) => {
         const base = { caseId: key.caseId, repeat: key.repeat, attempt, segment: SEGMENT, seed };
-        const recorded = recordAttempt(base, outcome, this.chargeContext(spec));
+        const recorded = recordAttempt(base, outcome, context);
         reservation.settle(recorded.charge.costUsd);
         this.attemptLine(recorded.line, recorded.charge, spec);
         if (requestId !== undefined) {
@@ -220,6 +232,7 @@ export class ActiveRun {
       this.inFlight.delete(tracked);
     });
     this.inFlight.add(tracked);
+    return true;
   }
 
   /** Re-estimate points reached since the last call. */
@@ -299,10 +312,10 @@ export class ActiveRun {
         runId: setup.runId,
         rulesHash: setup.rulesHash,
         checkerVersion: setup.checkerVersion,
-        trialsFingerprint: trialsFingerprintOf(this.lines.map(asJsonValue)),
         rules: setup.rules,
         cases: this.runCases(),
         lines: this.lines,
+        redactor: createRedactor(setup.config.redact),
       });
       return {
         runId: setup.runId,
@@ -370,6 +383,7 @@ export class ActiveRun {
 
   private append(line: TrialLine): Promise<void> {
     this.lines.push(line);
+    this.liveCodes.add(line);
     return this.setup.log.append(line);
   }
 
@@ -402,7 +416,11 @@ export class ActiveRun {
 
   private costLine(trial: RequestTrial, calls: readonly CallRecord[]): void {
     const spec = this.spec(trial.key.caseId);
-    const charge = attemptCharge({ answered: true, calls }, this.chargeContext(spec));
+    const context = this.sendContexts.get(this.attemptId(trial.key, trial.attempt));
+    if (context === undefined) {
+      throw new RangeError(`no send of ${this.attemptId(trial.key, trial.attempt)} in this run`);
+    }
+    const charge = attemptCharge({ answered: true, calls }, context);
     const usage = callsUsage(calls);
     const line: KeyedCostLine = {
       caseId: trial.key.caseId,
@@ -473,25 +491,37 @@ export class ActiveRun {
    * start (`estimate-low-accuracy`).
    */
   private warnings(): Warning[] {
-    const facts = {
-      variantId: this.variantId,
-      maxCostUsd: this.setup.ledger.maxCostUsd,
-      unpricedModels: [...this.unpricedModels],
-      cachedInputUnpricedModels: [...this.cachedInputUnpricedModels],
-    };
     const overrun = budgetOverrunWarning(this.variantId, overrunUsd(this.lines));
     const finished = finishedTrials(this.lines, this.retries, new Set(this.specs.keys()));
     return [
       ...this.setup.manifest.warnings,
       ...trialWarnings({ manifest: this.manifest, finished }, this.setup.config.report),
       ...(overrun === undefined ? [] : [overrun]),
-      ...pricingWarnings(facts),
+      ...this.pricingWarnings(),
     ];
   }
 
+  private pricingWarnings(): Warning[] {
+    return pricingWarnings({
+      variantId: this.variantId,
+      maxCostUsd: this.setup.ledger.maxCostUsd,
+      unpricedModels: [...this.unpricedModels],
+      cachedInputUnpricedModels: [...this.cachedInputUnpricedModels],
+    });
+  }
+
+  /**
+   * Rewrites the manifest when a code appears that the written warnings lack. The codes come
+   * from {@link LiveWarningCodes}, so only a rewrite counts the warnings over every line.
+   */
   private rewriteOnNewWarning(): void {
-    const current = this.warnings();
-    if (hasNewWarningCode(this.writtenWarnings, current)) {
+    const codes = [
+      ...this.setup.manifest.warnings.map((warning) => warning.code),
+      ...this.liveCodes.codes(),
+      ...this.pricingWarnings().map((warning) => warning.code),
+    ];
+    if (hasNewWarningCode(this.writtenWarnings, codes)) {
+      const current = this.warnings();
       this.manifest = { ...this.manifest, warnings: current };
       this.writeManifest().catch((error: unknown) => {
         this.writeError ??= error instanceof Error ? error : new Error(String(error));
@@ -513,7 +543,7 @@ export class ActiveRun {
       target: spec.target,
       lang: spec.lang,
       hash: spec.hash,
-      current: { definition: spec.definition, hash: spec.hash },
+      current: { definition: spec.definition, hash: spec.hash, lang: spec.lang },
     }));
   }
 }

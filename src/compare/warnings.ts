@@ -1,11 +1,14 @@
 import { canonicalJson, compareCodeUnits } from '../adapter/canonical-json.js';
 import type { ReportConfig } from '../config/schema.js';
-import { classifyTrial } from '../grade/outcome.js';
+import { isRecord } from '../report/code-text.js';
+import type { Redactor } from '../report/redact.js';
 import type { Gate } from '../report/schema.js';
 import type { Manifest } from '../run/manifest.js';
 import type { AttemptLine } from '../run/records.js';
 import { warningSchema, type Warning, type WarningCode } from '../run/warning.js';
 import type { PerRole } from '../stats/interval.js';
+import { byCase } from './finished.js';
+import { outcomeShare } from './ops.js';
 
 // data-model §Warnings: what a comparison re-raises from both runs and how it groups warnings.
 
@@ -28,14 +31,6 @@ const COPIED_CODES: ReadonlySet<WarningCode> = new Set([
 const sortedUnique = (values: readonly string[]): string[] =>
   [...new Set(values)].sort(compareCodeUnits);
 
-function byCase(lines: readonly AttemptLine[]): Map<string, AttemptLine[]> {
-  const cases = new Map<string, AttemptLine[]>();
-  for (const line of lines) {
-    cases.set(line.caseId, [...(cases.get(line.caseId) ?? []), line]);
-  }
-  return cases;
-}
-
 /** Response model snapshots of the run's `ok` trials, sorted. */
 function snapshots(run: WarningRun): string[] {
   return sortedUnique(
@@ -46,9 +41,8 @@ function snapshots(run: WarningRun): string[] {
 }
 
 function transientRate(run: WarningRun, threshold: number): Warning[] {
-  const { finished } = run;
-  const transient = finished.filter((line) => classifyTrial(line) === 'transient').length;
-  const rate = finished.length === 0 ? 0 : transient / finished.length;
+  const { count, total } = outcomeShare(run.finished, 'transient');
+  const rate = total === 0 ? 0 : count / total;
   const id = run.manifest.variant.id;
   return rate > threshold
     ? [{ code: 'transient-rate', params: { rates: { [id]: rate }, threshold }, variants: [id] }]
@@ -178,10 +172,6 @@ function isList(value: unknown): value is readonly unknown[] {
   return Array.isArray(value);
 }
 
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 const sameValue = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 /** Lists merge as sorted sets, objects by key, and other values must be equal. */
@@ -253,4 +243,9 @@ export function groupWarnings(warnings: readonly Warning[]): Warning[] {
     groups.set(key, addToGroup(group, warning));
   }
   return [...groups].sort(([a], [b]) => compareCodeUnits(a, b)).flatMap(([, group]) => group);
+}
+
+/** {@link groupWarnings} over redacted warnings, so texts that differ only in a redacted part merge. */
+export function groupRedactedWarnings(warnings: readonly Warning[], redactor: Redactor): Warning[] {
+  return groupWarnings(warnings.map((warning) => warningSchema.parse(redactor.json(warning))));
 }

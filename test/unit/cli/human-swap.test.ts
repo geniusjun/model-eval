@@ -86,7 +86,9 @@ function cellOf(cells: readonly Cell[], ruleId: string, lang: string): Cell {
 
 function output(comparison: Comparison, lang: 'en' | 'ko' = 'en'): string {
   const view = { end: swapEnd(comparison), expectedUsd: 0.26, conservativeUsd: 0.85 };
-  return swapLines(lang, { ...view, warnings: comparison.warnings }).join('\n');
+  return swapLines(lang, { ...view, warnings: comparison.warnings })
+    .map((line) => line.text)
+    .join('\n');
 }
 
 const lineWith = (text: string, part: string): string =>
@@ -102,8 +104,18 @@ describe('swap human output', () => {
   it('001 FR-028 writes margins without decimals, latency in seconds and cost per trial in dollars', () => {
     const text = output(block());
     expect(lineWith(text, '✗ ')).toMatch(/margin\s+10pp\s+Regressed/);
-    expect(text).toMatch(/\n {2}Latency p95 +1\.9s +2\.6s \(×1\.37\)\n/);
-    expect(text).toMatch(/\n {2}Cost per trial +\$0\.00017 +\$0\.00038 \(×2\.20\)/);
+    expect(text).toMatch(/\n {2}latency p95 +1\.9s +2\.6s \(×1\.37\)\n/);
+    expect(text).toMatch(/\n {2}cost per trial +\$0\.00017 +\$0\.00038 \(×2\.20\)/);
+  });
+
+  it('001 FR-028 labels operational rows and changes as contracts/cli.md does', () => {
+    const text = output(block());
+    for (const label of ['rejections', 'time-outs', 'transient', 'discards', 'fallbacks']) {
+      expect(text).toMatch(new RegExp(`\\n {2}${label} +\\d`));
+    }
+    expect(lineWith(text, 'Operations   ')).toMatch(
+      /discard rate [\d.]+% → [\d.]+%.* · cost per trial ×2\.20 · latency p95 ×1\.37/,
+    );
   });
 
   it('001 FR-009 names the transient and adapter errors a completed cell left out', () => {

@@ -50,7 +50,7 @@ function runCase(
     target: 'chat',
     lang,
     hash,
-    current: current === null ? undefined : { definition, hash: current },
+    current: current === null ? undefined : { definition, hash: current, lang },
   };
 }
 
@@ -344,6 +344,49 @@ describe('cell evidence', () => {
     );
     expect(only(evidence, 'no-emoji', 'raw').masked).toEqual({ baseline: 1 / 3, candidate: null });
     expect(only(evidence, 'no-emoji', 'final').masked).toBeUndefined();
+  });
+
+  it('001 FR-009 masked counts the K paired cases only', () => {
+    const evidence = cellEvidence(
+      input({
+        grades: {
+          baseline: [
+            ...grades('a-ko', 'no-emoji', 'raw', ['pass', 'pass']),
+            ...grades('a-ko', 'no-emoji', 'final', ['pass', 'pass']),
+          ],
+          candidate: [
+            ...grades('a-ko', 'no-emoji', 'raw', ['pass', 'pass']),
+            ...grades('a-ko', 'no-emoji', 'final', ['pass', 'pass']),
+            ...grades('b-ko', 'no-emoji', 'raw', ['fail', 'fail']),
+            ...grades('b-ko', 'no-emoji', 'final', ['pass', 'pass']),
+          ],
+        },
+      }),
+    );
+    const raw = only(evidence, 'no-emoji', 'raw');
+    expect(raw.droppedCases).toBe(1);
+    expect(raw.masked).toEqual({ baseline: 0, candidate: 0 });
+  });
+
+  it('001 FR-009 a trial with a config call is not a left-out adapter error, whatever the adapter reported', () => {
+    const configCall = { model: 'm', outcome: 'failed', errorKind: 'config' };
+    const finished = {
+      baseline: [],
+      candidate: [errorLine('adapter', { caseId: 'a-ko', repeat: 0, calls: [configCall] })],
+    };
+    const evidence = cellEvidence(
+      input({
+        finished,
+        grades: {
+          baseline: grades('a-ko', 'completed', 'trial', passes(1)),
+          candidate: grades('a-ko', 'completed', 'trial', ['skip']),
+        },
+      }),
+    );
+    expect(only(evidence, 'completed', 'trial').excluded?.candidate).toEqual({
+      transient: 0,
+      adapter: 0,
+    });
   });
 
   it('001 FR-021 cells follow rule order, then language, then raw, final, trial', () => {
