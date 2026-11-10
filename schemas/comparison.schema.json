@@ -1342,6 +1342,56 @@
           ],
           "additionalProperties": false
         },
+        "excluded": {
+          "type": "object",
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "properties": {
+                "transient": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "adapter": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "transient",
+                "adapter"
+              ],
+              "additionalProperties": false
+            },
+            "candidate": {
+              "type": "object",
+              "properties": {
+                "transient": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "adapter": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "transient",
+                "adapter"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "baseline",
+            "candidate"
+          ],
+          "additionalProperties": false
+        },
         "baseline": {
           "$ref": "#/$defs/Rate"
         },
@@ -2323,7 +2373,7 @@
           "additionalProperties": false
         },
         "tokensPerTrial": {
-          "$ref": "#/$defs/Usage"
+          "$ref": "#/$defs/TokenMeans"
         },
         "costPerTrialUsd": {
           "anyOf": [
@@ -2374,33 +2424,28 @@
       ],
       "additionalProperties": false
     },
-    "Usage": {
+    "TokenMeans": {
       "type": "object",
       "properties": {
         "input": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
+          "type": "number",
+          "minimum": 0
         },
         "cachedInput": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
+          "type": "number",
+          "minimum": 0
         },
         "cacheWrite": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
+          "type": "number",
+          "minimum": 0
         },
         "output": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
+          "type": "number",
+          "minimum": 0
         },
         "reasoning": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
+          "type": "number",
+          "minimum": 0
         }
       },
       "additionalProperties": false

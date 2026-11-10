@@ -131,7 +131,14 @@ export const manifestSchema = z
     adapter: adapterInfoSchema,
     service: serviceSchema,
     variant: variantRecordSchema,
-    cases: z.array(z.object({ id: idSchema, lang: z.string().min(1), hash: sha256Schema })),
+    cases: z.array(
+      z.object({
+        id: idSchema,
+        target: z.string().min(1),
+        lang: z.string().min(1),
+        hash: sha256Schema,
+      }),
+    ),
     rulesHash: sha256Schema,
     prompts: z.record(idSchema, sha256Schema).optional(),
     sampling: z.object({

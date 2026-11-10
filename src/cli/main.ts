@@ -3,6 +3,8 @@ import { parseArgs, type ParseArgsConfig } from 'node:util';
 import type { Lang } from '../config/schema.js';
 import { isLang, message, type MessageKey, type MessageParams } from '../messages/index.js';
 import { createRedactor } from '../report/redact.js';
+import { runCommand } from './commands/run.js';
+import { swapCommand } from './commands/swap.js';
 import { EXIT_CODES, type ExitCode, type ExitName } from './exit-codes.js';
 import { colorEnabled, createOutput, type Output, type TextStream } from './output.js';
 import { COMMANDS, type Command } from './results.js';
@@ -42,7 +44,10 @@ export interface CommandHandler {
   run(invocation: CommandInvocation): Promise<ExitName>;
 }
 
-export const COMMAND_HANDLERS: Partial<Record<Command, CommandHandler>> = {};
+export const COMMAND_HANDLERS: Partial<Record<Command, CommandHandler>> = {
+  run: runCommand,
+  swap: swapCommand,
+};
 
 const COMMON_OPTIONS = {
   config: { type: 'string', default: DEFAULT_CONFIG_PATH },
@@ -58,8 +63,19 @@ const TOP_LEVEL_OPTIONS = {
   help: { type: 'boolean', short: 'h', default: false },
 } as const satisfies OptionSpecs;
 
-/** Common options that take a value, so the word after them is not the command. */
-const VALUE_OPTIONS: ReadonlySet<string> = new Set(['--config', '--lang']);
+/** Options that take a value, so the word after them is not the command. */
+function valueOptions(): ReadonlySet<string> {
+  const handlers = Object.values(COMMAND_HANDLERS);
+  return new Set([
+    '--config',
+    '--lang',
+    ...handlers.flatMap((handler) =>
+      Object.entries(handler.options).flatMap(([name, spec]) =>
+        spec.type === 'string' ? [`--${name}`] : [],
+      ),
+    ),
+  ]);
+}
 
 interface Scan {
   /** Index of the command word in argv, if any. */
@@ -74,6 +90,7 @@ interface Scan {
  * usage error still honours `--json`, `--no-color` and `--lang` wherever they appear.
  */
 function scan(argv: readonly string[]): Scan {
+  const takesValue = valueOptions();
   let commandIndex: number | undefined;
   let json = false;
   let noColor = false;
@@ -85,7 +102,7 @@ function scan(argv: readonly string[]): Scan {
     }
     if (arg.startsWith('--lang=')) {
       lang = arg.slice('--lang='.length);
-    } else if (VALUE_OPTIONS.has(arg)) {
+    } else if (takesValue.has(arg)) {
       if (arg === '--lang') {
         lang = argv[index + 1];
       }

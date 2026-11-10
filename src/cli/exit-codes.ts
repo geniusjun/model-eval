@@ -1,3 +1,5 @@
+import type { StopReason } from '../run/status.js';
+
 /** Exit codes and names of contracts/cli.md §Exit Codes, a public contract. */
 export const EXIT_CODES = {
   ok: 0,
@@ -39,4 +41,19 @@ export function resolveExit(names: readonly ExitName[]): ExitName {
 
 export function exitStatus(name: ExitName): { code: ExitCode; name: ExitName } {
   return { code: EXIT_CODES[name], name };
+}
+
+/** The exit of a stopped run or swap (data-model §Stopping). */
+export function stopExit(reason: StopReason): ExitName {
+  switch (reason) {
+    case 'config-error':
+      return 'config-error';
+    case 'budget':
+    case 'budget-projected':
+      return 'over-budget';
+    case 'adapter-errors':
+    case 'transient-errors':
+    case 'interrupted':
+      return 'run-failed';
+  }
 }

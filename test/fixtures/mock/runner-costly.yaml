@@ -1,0 +1,10 @@
+# Answers far longer than the configured output estimate, without an output limit on the request.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+variants:
+  '*':
+    calls: true
+    usage: { input: 400, output: 2000 }

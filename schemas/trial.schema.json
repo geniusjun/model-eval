@@ -35,8 +35,15 @@
           "maximum": 9007199254740991
         },
         "reservedUsd": {
-          "type": "number",
-          "minimum": 0
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "sending": {
           "type": "boolean",

@@ -12,6 +12,7 @@ import {
   type ProtocolVariant,
 } from './protocol.js';
 import {
+  behaviourFor,
   delayFor,
   generateTrial,
   initializeResult,
@@ -33,6 +34,10 @@ process.stderr.write(`mock: started pid=${String(process.pid)}\n`);
 
 let variant: ProtocolVariant | undefined;
 let inFlight = 0;
+/** `generate` requests per trial key, for outcomes limited to the first sends. */
+const sends = new Map<string, number>();
+/** Background work still to report, which `shutdown` waits for. */
+const background = new Set<Promise<void>>();
 
 function send(message: object): void {
   process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
@@ -52,15 +57,25 @@ async function handle(id: number, method: string, params: unknown): Promise<void
       variant = initializeParamsSchema.parse(params).variant;
       send({ id, result: initializeResult(scenario) });
       return;
-    case 'render':
-      send({ id, result: renderCase(scenario, renderParamsSchema.parse(params)) });
+    case 'render': {
+      const request = renderParamsSchema.parse(params);
+      if (request.caseId !== undefined && scenario.renderErrors.includes(request.caseId)) {
+        send({ id, error: { code: -32603, message: `mock render failed for ${request.caseId}` } });
+        return;
+      }
+      send({ id, result: renderCase(scenario, request) });
       return;
+    }
     case 'generate': {
       if (variant === undefined) {
         send({ id, error: { code: -32600, message: 'generate before initialize' } });
         return;
       }
       const request = generateParamsSchema.parse(params);
+      const key = `${request.caseId}:${String(request.repeat)}`;
+      const count = (sends.get(key) ?? 0) + 1;
+      sends.set(key, count);
+      const { beforeCalls, afterCalls, afterCallsDelayMs } = behaviourFor(scenario, variant);
       inFlight += 1;
       if (scenario.reportInflight) {
         send({
@@ -70,11 +85,25 @@ async function handle(id: number, method: string, params: unknown): Promise<void
       }
       await wait(delayFor(scenario, variant, request.seed));
       inFlight -= 1;
-      sendReply(id, generateTrial(scenario, variant, request));
+      if (beforeCalls.length > 0) {
+        send({ method: 'calls', params: { id, calls: beforeCalls } });
+      }
+      sendReply(id, generateTrial(scenario, variant, request, count));
+      if (afterCalls.length > 0) {
+        const report = wait(afterCallsDelayMs).then(() => {
+          send({ method: 'calls', params: { id, calls: afterCalls } });
+        });
+        background.add(report);
+        void report.finally(() => background.delete(report));
+      }
       return;
     }
     case 'shutdown':
       process.stderr.write('mock: shutdown\n');
+      await Promise.all(background);
+      if (scenario.shutdownCalls.length > 0) {
+        send({ method: 'calls', params: { calls: scenario.shutdownCalls } });
+      }
       send({ id, result: null });
       lines.close();
       return;

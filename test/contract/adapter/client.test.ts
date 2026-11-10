@@ -7,7 +7,7 @@ import {
   type AdapterClient,
   type StartOptions,
 } from '../../../src/adapter/client.js';
-import type { LogParams } from '../../../src/adapter/protocol.js';
+import type { CallsParams, LogParams } from '../../../src/adapter/protocol.js';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const MOCK = fileURLToPath(new URL('../../../dist/adapter/mock.js', import.meta.url));
@@ -372,5 +372,23 @@ describe('adapter client against the mock adapter', () => {
     });
     expect(await client.shutdown()).toEqual(CLEAN_EXIT);
     expect(received).toContain('last words');
+  });
+
+  it('001 FR-007 reports the generate request id that calls notifications name', async () => {
+    const notified: CallsParams[] = [];
+    const client = await started('runner-late-calls', {
+      onCalls: (params) => notified.push(params),
+    });
+    const ids: number[] = [];
+    const outcome = await client.generate(
+      { target: 'chat', lang: 'ko', input: { user: 'hi' }, caseId: 'greet-ko', repeat: 0, seed: 7 },
+      { onRequest: (id) => ids.push(id) },
+    );
+    expect(outcome.kind).toBe('result');
+    await client.shutdown();
+    expect(ids).toHaveLength(1);
+    const keyed = notified.filter((params) => params.id !== undefined);
+    expect(keyed).toHaveLength(2);
+    expect(keyed.map((params) => params.id)).toEqual([ids[0], ids[0]]);
   });
 });

@@ -25,7 +25,7 @@ export const sendLineSchema = z
     repeat,
     attempt,
     segment,
-    reservedUsd: usd,
+    reservedUsd: costUsd,
     sending: z.literal(true),
   })
   .meta({ id: 'SendLine' });

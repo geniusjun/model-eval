@@ -79,12 +79,17 @@ export interface ShutdownOutcome {
   readonly forced: boolean;
 }
 
+export interface GenerateOptions {
+  /** The JSON-RPC `id` of the request, which `calls` notifications name; called once it is sent. */
+  readonly onRequest?: (id: number) => void;
+}
+
 export interface AdapterClient {
   readonly info: InitializeResult;
   /** The smaller of `run.concurrency` and the adapter's `maxConcurrency`. */
   readonly concurrency: number;
   render(params: RenderParams): Promise<CallOutcome<RenderResult>>;
-  generate(params: GenerateParams): Promise<CallOutcome<GenerateResult>>;
+  generate(params: GenerateParams, options?: GenerateOptions): Promise<CallOutcome<GenerateResult>>;
   shutdown(): Promise<ShutdownOutcome>;
 }
 
@@ -218,13 +223,18 @@ function createClient(
     method: string,
     params: RequestParams,
     schema: z.ZodType<T>,
+    onRequest?: (id: number) => void,
   ): Promise<CallOutcome<T>> =>
-    toOutcome(await connection.limited(() => connection.request(method, params)), schema);
+    toOutcome(
+      await connection.limited(() => connection.request(method, params, undefined, onRequest)),
+      schema,
+    );
   return {
     info,
     concurrency,
     render: (params) => call('render', params, renderResultSchema),
-    generate: (params) => call('generate', params, generateResultSchema),
+    generate: (params, options) =>
+      call('generate', params, generateResultSchema, options?.onRequest),
     shutdown: () => shutdownAdapter(connection, timeoutMs),
   };
 }
@@ -339,11 +349,17 @@ class Connection {
     }
   }
 
-  request(method: string, params?: RequestParams, timeoutMs?: number): Promise<RawResponse> {
+  request(
+    method: string,
+    params?: RequestParams,
+    timeoutMs?: number,
+    onRequest?: (id: number) => void,
+  ): Promise<RawResponse> {
     if (this.lost !== undefined) {
       return Promise.resolve({ kind: 'lost', ...this.lost });
     }
     const id = this.nextId++;
+    onRequest?.(id);
     return new Promise((resolve) => {
       const timer =
         timeoutMs === undefined

@@ -6,7 +6,6 @@ import {
   finishReasonSchema,
   helperSchema,
   serviceSchema,
-  usageSchema,
 } from '../adapter/protocol.js';
 import {
   comparisonIdSchema,
@@ -55,13 +54,26 @@ export const cellNoteSchema = z.enum([
   'clear-drop-too-few-cases',
 ]);
 
+const tokenMean = z.number().min(0);
+
+/** Mean tokens per trial: averages of whole token counts, so not whole themselves. */
+const tokenMeansSchema = z
+  .object({
+    input: tokenMean.optional(),
+    cachedInput: tokenMean.optional(),
+    cacheWrite: tokenMean.optional(),
+    output: tokenMean.optional(),
+    reasoning: tokenMean.optional(),
+  })
+  .meta({ id: 'TokenMeans' });
+
 export const cellKeyFields = {
   ruleId: idSchema,
   lang: z.string().min(1),
   surface: surfaceSchema,
 };
 
-/** Statistics are `null` when the cell has no judged trial for that variant. */
+/** Counted over the cell's common cases; statistics are `null` when there is none. */
 export const rateSchema = z
   .object({
     cases: count,
@@ -100,6 +112,7 @@ export const cellSchema = z
     cases: count,
     droppedCases: count,
     systematic: perRole(z.object({ trials: count, cases: count })).optional(),
+    excluded: perRole(z.object({ transient: count, adapter: count })).optional(),
     baseline: rateSchema,
     candidate: rateSchema,
     diff: z.object({ estimate: z.number(), low: z.number(), high: z.number() }).nullable(),
@@ -196,7 +209,7 @@ export const variantOpsSchema = z
       p95: z.number().min(0).nullable(),
       values: z.array(z.number().min(0)),
     }),
-    tokensPerTrial: usageSchema,
+    tokensPerTrial: tokenMeansSchema,
     costPerTrialUsd: usd.nullable(),
     responseModels: z.array(z.object({ model: z.string().min(1), trials: count })),
   })

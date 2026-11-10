@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { canonicalJson, hashValue } from './canonical-json.js';
 import { jsonObjectSchema } from './json-value.js';
 import {
+  callRecordSchema,
   capabilitiesSchema,
   helperSchema,
   PROTOCOL_VERSION,
@@ -68,6 +69,8 @@ const behaviourSchema = z.strictObject({
         probability,
         message: z.string().optional(),
         retryAfterMs: z.int().min(0).optional(),
+        /** The row applies only to the first N `generate` requests of a trial key. */
+        firstSends: z.int().min(1).optional(),
       }),
     )
     .default([]),
@@ -78,7 +81,16 @@ const behaviourSchema = z.strictObject({
   latencyMs: z.number().min(0).default(100),
   /** Real wait before answering, drawn per trial between min and max. */
   delayMs: z.strictObject({ min: z.int().min(0), max: z.int().min(0) }).default({ min: 0, max: 0 }),
+  /** `{repeat}` is filled in, so a snapshot can change between repeats. */
   modelSnapshot: z.string().min(1).optional(),
+  /** `other` reports a request fingerprint that differs from the render's. */
+  requestFingerprint: z.enum(['render', 'other']).default('render'),
+  /** Sent as a `calls` notification for the request before its response. */
+  beforeCalls: z.array(callRecordSchema).default([]),
+  /** Sent as a `calls` notification for the request after its response. */
+  afterCalls: z.array(callRecordSchema).default([]),
+  /** Waits this long after the response before sending `afterCalls`; `shutdown` waits for them. */
+  afterCallsDelayMs: z.int().min(0).default(0),
 });
 
 export const scenarioSchema = z.strictObject({
@@ -107,6 +119,10 @@ export const scenarioSchema = z.strictObject({
   maxOutputTokens: z.int().min(1).optional(),
   /** Sends a `log` notification with the number of requests in flight at each `generate`. */
   reportInflight: z.boolean().default(false),
+  /** Cases whose `render` answers with a JSON-RPC error. */
+  renderErrors: z.array(z.string().min(1)).default([]),
+  /** Sent as a `calls` notification without an `id` before the `shutdown` response. */
+  shutdownCalls: z.array(callRecordSchema).default([]),
   /** Behaviour per variant ID; `*` applies to variants without their own entry. */
   variants: z.record(z.string().min(1), behaviourSchema),
 });
@@ -173,13 +189,15 @@ export function renderCase(scenario: Scenario, params: RenderParams): RenderResu
   };
 }
 
+/** `sends` counts the `generate` requests of this trial key so far, this one included. */
 export function generateTrial(
   scenario: Scenario,
   variant: ProtocolVariant,
   params: GenerateParams,
+  sends = 1,
 ): MockReply {
   const behaviour = behaviourFor(scenario, variant);
-  const outcome = pickOutcome(behaviour, params.seed);
+  const outcome = pickOutcome(behaviour, params.seed, sends);
 
   if (outcome.row === 'adapter') {
     return { error: { code: -32603, message: outcome.message ?? 'mock adapter exception' } };
@@ -212,9 +230,9 @@ export function generateTrial(
   }
 
   const { raw, shipped } = texts(behaviour, params);
-  const fingerprint = scenario.capabilities.render
-    ? renderCase(scenario, params).fingerprint
-    : undefined;
+  const fingerprint = requestFingerprint(scenario, behaviour, params);
+  const modelSnapshot =
+    behaviour.modelSnapshot === undefined ? undefined : fill(behaviour.modelSnapshot, params);
   const common = {
     raw: outcome.row === 'empty-raw' ? '' : raw,
     answers: behaviour.answers,
@@ -225,9 +243,9 @@ export function generateTrial(
         : ('stop' as const),
     ...(behaviour.stages ? { stages: [{ name: 'postprocess', text: shipped }] } : {}),
     ...(behaviour.usage === undefined ? {} : { usage: behaviour.usage }),
-    ...(behaviour.modelSnapshot === undefined ? {} : { modelSnapshot: behaviour.modelSnapshot }),
+    ...(modelSnapshot === undefined ? {} : { modelSnapshot }),
     ...(fingerprint === undefined ? {} : { fingerprint }),
-    ...withCalls([answerCallRecord(behaviour, variant)], behaviour.calls),
+    ...withCalls([answerCallRecord(behaviour, variant, modelSnapshot)], behaviour.calls),
   };
   switch (outcome.row) {
     case 'discarded':
@@ -261,10 +279,13 @@ type ScenarioOutcome = Behaviour['outcomes'][number];
 
 const NORMAL: ScenarioOutcome = { row: 'normal', probability: 1 };
 
-function pickOutcome(behaviour: Behaviour, seed: number): ScenarioOutcome {
+function pickOutcome(behaviour: Behaviour, seed: number, sends: number): ScenarioOutcome {
   const u = draw(seed, 'outcome');
   let cumulative = 0;
   for (const outcome of behaviour.outcomes) {
+    if (outcome.firstSends !== undefined && sends > outcome.firstSends) {
+      continue;
+    }
     cumulative += outcome.probability;
     if (u < cumulative) {
       return outcome;
@@ -292,13 +313,30 @@ function texts(behaviour: Behaviour, params: GenerateParams): { raw: string; shi
   };
 }
 
-function answerCallRecord(behaviour: Behaviour, variant: ProtocolVariant): CallRecord {
+function requestFingerprint(
+  scenario: Scenario,
+  behaviour: Behaviour,
+  params: GenerateParams,
+): string | undefined {
+  if (!scenario.capabilities.render) {
+    return undefined;
+  }
+  return behaviour.requestFingerprint === 'render'
+    ? renderCase(scenario, params).fingerprint
+    : hashValue({ messages: [], tools: null });
+}
+
+function answerCallRecord(
+  behaviour: Behaviour,
+  variant: ProtocolVariant,
+  modelSnapshot: string | undefined,
+): CallRecord {
   return {
     model: variant.model,
     outcome: 'ok',
     branch: 'answer',
     latencyMs: behaviour.latencyMs,
-    ...(behaviour.modelSnapshot === undefined ? {} : { responseModel: behaviour.modelSnapshot }),
+    ...(modelSnapshot === undefined ? {} : { responseModel: modelSnapshot }),
     ...(behaviour.usage === undefined ? {} : { usage: behaviour.usage }),
   };
 }

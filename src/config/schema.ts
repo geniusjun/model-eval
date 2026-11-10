@@ -256,7 +256,7 @@ export const reportConfigSchema = z.strictObject({
 });
 
 export const redactRuleSchema = z
-  .strictObject({ pattern: z.string().min(1), replace: z.string() })
+  .strictObject({ pattern: z.string().min(1), replace: z.string().min(1) })
   .refine((rule) => isValidRegex(rule.pattern, 'gu'), {
     message: 'is not a valid regular expression with the u flag',
     path: ['pattern'],

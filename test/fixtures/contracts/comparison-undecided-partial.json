@@ -980,7 +980,7 @@
     "method": "newcombe-hybrid-score with case-cluster design effect",
     "gatedCells": 4,
     "zLower": 1.959964,
-    "zUpper": 2.39398,
+    "zUpper": 2.497705,
     "minCases": 3
   },
   "config": {

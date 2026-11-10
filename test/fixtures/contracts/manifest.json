@@ -40,11 +40,13 @@
   "cases": [
     {
       "id": "greet-ko",
+      "target": "chat",
       "lang": "ko",
       "hash": "sha256:efad142bd258c59017c521d56b338c07b7439a5d35997247facbbcdb9e822ab6"
     },
     {
       "id": "greet-ja",
+      "target": "chat",
       "lang": "ja",
       "hash": "sha256:f0e02d1b2ae37b7c5db972d03df9df9c697ea67eea088e39bf17a6bef7dd2cc4"
     }
