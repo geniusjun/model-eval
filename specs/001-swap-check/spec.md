@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: In Progress
 
 **Input**: User description: "Check whether the prompt rules and post-processing fixes of an LLM service still hold when the service moves to another model, with repeated trials and statistical verdicts per rule and language."
 
