@@ -90,6 +90,7 @@ The output directory has a list page of all comparisons, so people can open an e
 - **What if model text contains markup or script?** It is rendered as text only (FR-009).
 - **What if the page is opened offline or from a mail attachment?** It works the same, because everything is inside the file (FR-001).
 - **What if the reader prefers Korean or a dark theme?** The page switches language and follows the system colour scheme (FR-013, FR-014).
+- **What if a variant declares no post-processing?** The page says so in place of that variant's post-processing figures (FR-016).
 - **What if the comparison is large?** Each trial text is stored once and referenced by key, and failing examples are limited per cell (FR-015).
 
 ## Requirements *(mandatory)*
@@ -101,8 +102,8 @@ The output directory has a list page of all comparisons, so people can open an e
 - **FR-003**: The page MUST show a rule × language grid per output surface in which every cell states its verdict in text as well as colour.
 - **FR-004**: The cell detail MUST show both rates with an interval chart, the difference and its interval, the failure-rate ratio, the masked rate, failing examples (raw and final), the anchored prompt sentence and the rule's origin.
 - **FR-005**: The page MUST offer a side-by-side view of baseline and candidate samples of the same case for `review` rules and failing examples, with navigation across cases and repeats.
-- **FR-006**: The page MUST show operational metrics per variant: rates with intervals, the latency distribution, cost and tokens per trial, finish reasons and typical error messages.
-- **FR-007**: The page MUST show the judged scope and reproduction details (runs, variants, versions, statistics settings), and a withheld banner at the top for a comparison of unfinished runs.
+- **FR-006**: The page MUST show the operational metrics of each variant: the eight rates with their counts and intervals, systematic failures, discard reasons, typical error messages per error kind, side-call failures, abandoned trials per cause, finish reasons, the latency distribution with p50 and p95, tokens and cost per trial, and response model snapshots; and the warnings of the comparison.
+- **FR-007**: The page MUST show the judged scope (targets; judged, not judged, `review` and excluded rules; coverage; the baseline completion rate per language), reproduction details (comparison ID, runs, grade sets, variants, versions, statistics settings, the settings used and the commands that reproduce the comparison), and a withheld banner at the top for a comparison of unfinished runs.
 - **FR-008**: The output directory MUST contain an `index.html` that lists every comparison and opens each one's page.
 - **FR-009**: The page MUST treat every model, service and provider string as text and never interpret it as markup.
 - **FR-010**: The page MUST make no network request while it loads or is used.
@@ -111,6 +112,7 @@ The output directory has a list page of all comparisons, so people can open an e
 - **FR-013**: The page MUST offer English and Korean text, starting in the language chosen for the command (001 FR-034) and switchable in the page.
 - **FR-014**: The page MUST support light and dark colour schemes.
 - **FR-015**: The page MUST store each trial text once per (variant, case, repeat) and reference it from cells, and include at most the configured number of failing examples per cell.
+- **FR-016**: The page MUST show everything the Markdown report (001 FR-029) shows for the same comparison. Beyond FR-002 to FR-007 this is: the gated cell count and the number of prior comparisons with the gate result; per cell whether it is gated, its cases and dropped cases, its margin, its note and its systematic failures; the pooled rate per rule and surface; the post-processing figures of each variant (masked rates, discard, fallback and regeneration rates, discard reasons) or that it declares no post-processing; the cells whose baseline compliance is below the configured level; and the anchors and origins of every rule.
 
 ### Key Entities *(include if feature involves data)*
 

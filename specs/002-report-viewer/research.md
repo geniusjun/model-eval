@@ -8,7 +8,7 @@
 
 1. One HTML file per comparison (`report.html`) with the redacted comparison inside and React drawing the screen. It opens without a server or network and can be attached to a pull request or a message.
 2. A comparison list (`index.html`) at the output root.
-3. Regions in decision order: decision summary (001 FR-028), rule × language grid, cell detail (interval chart, failure-rate ratio, masked rate, failing examples, anchored sentence, origin), side by side, operational metrics, scope and reproduction.
+3. Regions in decision order: decision summary (001 FR-028), rule × language grid, cell detail (interval chart, failure-rate ratio, masked rate, failing examples, anchored sentence, origin), side by side, operational metrics, scope and reproduction. Together they show everything `report.md` shows, so nobody has to fall back to the Markdown report to decide.
 4. Hand-drawn SVG for interval bars and latency distributions, no chart library.
 5. The page built from the synthetic example is published on GitHub Pages as a demo and rebuilt by CI when `main` changes.
 
