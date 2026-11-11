@@ -26,7 +26,7 @@ A React app in `viewer/` is built with Vite into one HTML template that inlines 
 
 **Constraints**: `file://` only: no server, no network, no dynamic imports or extra chunks
 
-**Scale/Scope**: Six regions (decision summary, grid, cell detail, side by side, operational metrics, scope and reproduction) plus the list page
+**Scale/Scope**: Six regions (decision summary, grid, cell detail, side by side, operational metrics, scope and reproduction) plus the list page; together the regions show everything `report.md` shows (FR-016)
 
 ## Constitution Check
 
@@ -78,10 +78,10 @@ viewer/
     │   └── ComparisonListPage.tsx
     ├── domains/
     │   ├── summary/              # DecisionSummary, WithheldBanner
-    │   ├── grid/                 # RuleLanguageGrid, GridCell, CellDetail, useSelectedCell, buildGrid
+    │   ├── grid/                 # RuleLanguageGrid, GridCell, CellDetail, PooledRates, LowBaselineCells, useSelectedCell, buildGrid
     │   ├── side-by-side/         # SideBySide, useSampleCursor
-    │   ├── metrics/              # MetricsTable, LatencyChart
-    │   └── scope/                # ScopePanel, ReproductionPanel
+    │   ├── metrics/              # MetricsTable, LatencyChart, PostprocessPanel, WarningList
+    │   └── scope/                # ScopePanel, ReproductionPanel, RuleList
     ├── report/                   # readEmbeddedReport.ts, uses the shared schema from src/report/schema.ts
     ├── components/               # shared pieces: IntervalBar, VerdictBadge, CodeText
     ├── hooks/                    # useHashParam.ts
@@ -123,7 +123,7 @@ Local `useState` covers everything else. No router library.
 
 1. The data block is escaped and inserted as [page-data §Embedded Block](contracts/page-data.md#embedded-block) defines, so `</script>`, `<!--` or `$&` in the data can neither end the block nor alter it.
 2. The page validates the data once before the first render (D4).
-3. Text enters the page only as React text nodes. `dangerouslySetInnerHTML` is banned by lint (`react/no-danger`).
+3. Text enters the page only as React text nodes. `dangerouslySetInnerHTML` is banned by lint (`react-dom/no-dangerously-set-innerhtml` of `eslint-plugin-react-dom`).
 4. The build has no dynamic import and no extra chunk, because `file://` cannot load them.
 5. `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-…'; style-src 'unsafe-inline'; img-src data:">` blocks every outside request. The script hash is computed at build time, so the page itself guarantees that data stays on the machine.
 
@@ -135,7 +135,7 @@ Interval bars for rates and differences, and a latency distribution. Each SVG ha
 
 ### D7. Accessible by structure
 
-The grid is a real `<table>` with a `<button>` per cell that opens its detail; verdicts are text plus colour; focus returns to the cell when the detail closes. `eslint-plugin-jsx-a11y` runs with `control-has-associated-label` turned on, so lint rejects any button without a text label or `aria-label`.
+The grid is a real `<table>` with a `<button>` per cell that opens its detail; verdicts are text plus colour; focus returns to the cell when the detail closes. Lint is the first line: `eslint-plugin-jsx-a11y-x` runs with `control-has-associated-label` turned on, so lint rejects any button without a text label or `aria-label`. The guarantee is an axe check (`@axe-core/playwright`) in the browser tests, which finds no violation on the rendered pages, so accessibility does not rest on one lint plugin.
 
 ### D8. English and Korean messages in files
 
@@ -150,6 +150,7 @@ CSS Modules for components and CSS custom properties in `styles/tokens.css` for 
 - vitest for pure utilities (`buildGrid`, formatting, hash parsing).
 - vitest with Testing Library for components, queried by role (`getByRole('button', {name: …})`) so tests follow what assistive technology sees.
 - Playwright opens the built `report.html` over `file://` for SC-001, SC-002 and SC-004, records network requests and drives the grid by keyboard. This is the only test that proves the single-file build works.
+- `@axe-core/playwright` runs axe on the rendered pages in those browser tests (WCAG 2.1 A and AA and best-practice rules); it is the accessibility guarantee of D7.
 
 ### D11. Public demo
 
