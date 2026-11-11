@@ -4,27 +4,31 @@ import { createCapLedger } from '../../../src/run/cap.js';
 import { createStopSignal } from '../../../src/run/stopping.js';
 import { beginRuns } from '../../../src/run/swap.js';
 
-/** A run whose steps write what happened to `log`. */
-function fakeRun(role: string, log: string[]) {
+/** A run whose steps write what happened to `log`; `failing` names a step that fails. */
+function fakeRun(role: string, log: string[], failing?: 'shutdown' | 'finish') {
   return {
     shutdown: () => {
       log.push(`${role} shutdown`);
-      return Promise.resolve();
+      return failing === 'shutdown'
+        ? Promise.reject(new Error(`${role} did not shut down`))
+        : Promise.resolve();
     },
     finish: () => {
       log.push(`${role} finish`);
-      return Promise.resolve(`${role} end`);
+      return failing === 'finish'
+        ? Promise.reject(new Error(`${role} did not finish`))
+        : Promise.resolve(`${role} end`);
     },
   };
 }
 
-function fakeClaim(role: string, log: string[], fails = false) {
+function fakeClaim(role: string, log: string[], fails = false, failing?: 'shutdown' | 'finish') {
   return {
     begin: () => {
       log.push(`${role} begin`);
       return fails
         ? Promise.reject(new Error(`${role} did not begin`))
-        : Promise.resolve(fakeRun(role, log));
+        : Promise.resolve(fakeRun(role, log, failing));
     },
     abandon: () => {
       log.push(`${role} abandon`);
@@ -98,4 +102,26 @@ describe('beginning both runs of a swap', () => {
     ).rejects.toThrow('candidate did not begin');
     expect(log.at(-1)).toBe('close record after baseline end');
   });
+
+  it.each(['shutdown', 'finish'] as const)(
+    '001 FR-032 reports the begin failure when the baseline %s fails too',
+    async (failing) => {
+      const log: string[] = [];
+      await expect(
+        beginRuns(
+          {
+            baseline: fakeClaim('baseline', log, false, failing),
+            candidate: fakeClaim('candidate', log, true),
+          },
+          shared(),
+          closeSwap(log),
+        ),
+      ).rejects.toThrow('candidate did not begin');
+      expect(log.slice(2)).toEqual([
+        'baseline shutdown',
+        'baseline finish',
+        ...(failing === 'finish' ? [] : ['close record after baseline end']),
+      ]);
+    },
+  );
 });

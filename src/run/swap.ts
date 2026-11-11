@@ -318,7 +318,8 @@ interface BegunSide<E> {
  * that did not begin cleans up after itself and the candidate claim is abandoned; a candidate
  * that did not begin cleans up after itself, the begun baseline ends as a `config-error` stop
  * does, shut down and finished `partial`, and `closeSwap` writes the swap record of that stop.
- * The begin failure is what the caller sees, even when closing the record fails too.
+ * The begin failure is what the caller sees, even when shutting down or finishing the baseline,
+ * or closing the record, fails too.
  */
 export async function beginRuns<E, R extends BegunSide<E>>(
   claimed: PerRole<ClaimedSide<R>>,
@@ -336,12 +337,17 @@ export async function beginRuns<E, R extends BegunSide<E>>(
     return { baseline, candidate: await claimed.candidate.begin(shared) };
   } catch (error) {
     shared.stop.raise('config-error');
-    await baseline.shutdown();
-    const ended = await baseline.finish();
+    // The begin failure is the error to report; a step that fails here leaves the baseline's
+    // records and the swap record as written so far.
     try {
-      await closeSwap(ended);
+      await baseline.shutdown();
     } catch {
-      // The record stays as written at the start; the begin failure is the error to report.
+      // The adapter process is already gone or will be when this process exits.
+    }
+    try {
+      await closeSwap(await baseline.finish());
+    } catch {
+      // The swap record stays as written at the start.
     }
     throw error;
   }

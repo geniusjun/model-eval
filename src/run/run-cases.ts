@@ -1,10 +1,11 @@
-import { matchesGlob, relative } from 'node:path';
+import { relative } from 'node:path';
 
 import type { Target } from '../adapter/protocol.js';
 import type { Project } from '../config/load.js';
 import type { Sha256 } from '../config/identifiers.js';
 import type { Case } from '../config/schema.js';
 import { NO_LANGUAGE } from '../grade/grade.js';
+import { caseGlobMatcher } from './case-glob.js';
 import { caseHash } from './hashes.js';
 import type { OrderedCase } from './order.js';
 
@@ -52,10 +53,11 @@ export function runCases(
 ): RunCasesResult {
   const cases: RunCaseSpec[] = [];
   const problems: CaseProblem[] = [];
+  const selected = filter === null ? () => true : caseGlobMatcher(filter);
   for (const file of project.caseFiles) {
     const shown = relative(project.paths.configDir, file.path);
     file.data.cases.forEach((definition, position) => {
-      if (filter !== null && !matchesGlob(definition.id, filter)) {
+      if (!selected(definition.id)) {
         return;
       }
       const target = targets.find((item) => item.name === definition.target);

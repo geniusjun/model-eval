@@ -414,8 +414,8 @@ async function claimRun(started: Started): Promise<ClaimResult> {
     );
     const locked = await acquireRunLock(runDir, { now: started.startedAt });
     if (!locked.ok) {
-      // The folder is still empty; the catch below shuts the adapter down if this throws.
-      await rmdir(runDir);
+      // Another process took the new folder first; its lock stays, and the refusal is reported.
+      await rmdir(runDir).catch(() => undefined);
       await client.shutdown();
       return { ok: false, failure: { kind: 'lock', refusal: locked.refusal } };
     }

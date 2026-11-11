@@ -1,9 +1,9 @@
 import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { hostname, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { LogParams } from '../../../src/adapter/protocol.js';
 import { loadProject, type Project } from '../../../src/config/load.js';
@@ -14,6 +14,26 @@ import { trialLineSchema, type TrialLine } from '../../../src/run/records.js';
 import { executeRun, type RunRequest, type RunResult } from '../../../src/run/runner.js';
 import { executeSwap } from '../../../src/run/swap.js';
 import { RUN_FILES } from '../../../src/run/writer.js';
+
+/** When set, another process takes `run.lock` of the new run folder just before this run does. */
+const lockRace = vi.hoisted(() => ({
+  owner: null as null | { pid: number; host: string; startedAt: string },
+}));
+
+vi.mock('../../../src/run/lock.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/run/lock.js')>();
+  const { writeFile: write } = await import('node:fs/promises');
+  const nodePath = await import('node:path');
+  return {
+    ...actual,
+    acquireRunLock: async (...args: Parameters<typeof actual.acquireRunLock>) => {
+      if (lockRace.owner !== null) {
+        await write(nodePath.join(args[0], actual.LOCK_FILE), JSON.stringify(lockRace.owner));
+      }
+      return actual.acquireRunLock(...args);
+    },
+  };
+});
 
 const MOCK = fileURLToPath(new URL('../../../dist/adapter/mock.js', import.meta.url));
 const TOOL = { name: 'model-eval', version: '0.0.0-test' };
@@ -49,6 +69,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  lockRace.owner = null;
   await rm(root, { recursive: true, force: true });
 });
 
@@ -322,6 +343,25 @@ describe('runner start', () => {
     expect(second.end.runId).toBe('20261110-120000-current-bbbb');
     expect(await readFile(path.join(first.end.runDir, RUN_FILES.trials), 'utf8')).toBe(before);
     expect((await readManifest(second.end.runDir)).runId).toBe(second.end.runId);
+  });
+
+  it('001 FR-013 refuses with the lock when another process takes the new run folder first', async () => {
+    const loaded = await project('runner-chat');
+    const owner = { pid: process.pid, host: hostname(), startedAt: '2026-11-10T12:00:00.000Z' };
+    lockRace.owner = owner;
+    const result = await executeRun(request(loaded));
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.failure).toMatchObject({
+      kind: 'lock',
+      refusal: { reason: 'live-owner', owner },
+    });
+    const runs = path.join(loaded.paths.outputDir, 'runs');
+    const [folder, ...others] = await readdir(runs);
+    expect(others).toEqual([]);
+    expect(await readdir(path.join(runs, folder ?? ''))).toEqual(['run.lock']);
+    expect(JSON.parse(await readFile(path.join(runs, folder ?? '', 'run.lock'), 'utf8'))).toEqual(
+      owner,
+    );
   });
 
   it('001 FR-011 bases the next estimate on the previous complete run of the same variant', async () => {
