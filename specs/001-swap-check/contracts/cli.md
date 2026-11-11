@@ -37,10 +37,10 @@ Given without a command:
 
 | Option | Meaning |
 |---|---|
-| `--render` | Check anchors through the adapter's `render`; also checks adapter conformance (handshake, stdout contamination) |
+| `--render` | Check anchors through the adapter's `render`; also checks adapter conformance (handshake, stdout contamination). An adapter without the `render` capability is `adapter-failed` |
 | `--variant <id>` | Render only this variant. Default: every variant, since variant parameters can change prompt blocks |
 | `--max-warnings <n>` | Exit 1 when warnings exceed n. Info codes (`unanchored`) do not count. `0` in CI blocks pull requests on missing anchors |
-| `--no-adapter` | Do not start the adapter; skip input-schema and anchor checks |
+| `--no-adapter` | Do not start the adapter; skip input-schema, target and anchor checks. Together with `--render` it is a usage error (exit 4) |
 
 Without `--render`, lint still starts the adapter with the first variant to obtain input schemas. If the adapter fails to start or breaks the protocol (stdout contamination included), lint reports `adapter-failed` and exits 4, as every command treats adapter problems as configuration problems.
 
@@ -79,7 +79,7 @@ Exit code 4 covers:
 6. A model call, side calls included, failed on authentication, model, quota, billing or TLS certificate.
 7. A restarted adapter declares a different adapter or helper version or service code.
 8. Resume problems: generation conditions differ from the record, `--variant`, `--from`/`--to`, `--repeats` or `--cases` differ from the record, the run or swap is `complete`, a run that belongs to a swap is resumed with `run`, or another process holds the lock.
-9. The command line is invalid: an unknown command or option, or an invalid option value, such as `swap --from` and `--to` naming the same variant.
+9. The command line is invalid: an unknown command or option, or an invalid option value, such as `swap --from` and `--to` naming the same variant, or `lint --render` with `--no-adapter`.
 
 - A stopped run exits with the code of its `stopReason` (`config-error` if present, else the first reason). Other overlaps resolve in the order 6, 4, 5, 3, 1, 2, 0. A `swap` stopped by the cap exits 5 whatever its comparison says; the comparison is still in `result.gate`.
 - File errors exit 1 from `lint`, where they are findings, and 4 from commands that call models, where they prevent the start.

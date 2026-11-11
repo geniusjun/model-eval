@@ -626,8 +626,9 @@ Lint codes. Info does not count as a warning, is not limited by `--max-warnings`
 | `duplicate-id` | error | Duplicate rule, case or variant ID | `{kind: rule | case | variant, id}` |
 | `unknown-rule` | error | A case names a rule that does not exist | —; the rule in `ruleId`, the case in `caseIds` |
 | `input-schema` | error | A case input violates the target's input schema | `{target, detail}` |
+| `unknown-target` | error | A case names a target the adapter does not declare; `run` refuses it too | `{target}` |
 | `missing-lang` | error | A case of a multi-language target has no `lang` | `{target}` |
-| `unresolved-ref` | error | A required reference (`anyFrom`) is missing from the case | `{path}` |
+| `unresolved-ref` | error | A required reference (`anyFrom`) is missing from the case, or a `…From` value is neither text nor a list of text | `{path}` |
 | `derived-tracked` | error | A `derived` case file is tracked by git, or sits in a git work tree without being ignored | `{cause: tracked | not-ignored}` |
 | `example-mismatch` | error | A rule example gives a different result than expected | `{example, expected: pass | fail}` |
 | `adapter-failed` | error | The adapter did not start or initialise, or broke the protocol, so checks that need it could not run. Unlike other lint errors it exits with code 4 | `{detail}` |
@@ -642,6 +643,6 @@ Lint codes. Info does not count as a warning, is not limited by `--max-warnings`
 | `excluded-from-gate` | warning | Same as the run warning of that name (§Warnings), raised by lint | `{cause: review | uncalibrated-judge}` |
 | `vcs-unknown` | warning | Not a git work tree, so `derived-tracked` cannot be decided | — |
 | `helper-outdated` | warning | The adapter's helper is older than the one bundled with this tool; copy it again with `init` | `{version, bundled}` |
-| `unanchored` | info | A rule and language without an anchor; a notice, not something to fix (for example a rule kept by post-processing alone) | — |
+| `unanchored` | info | A rule without an anchor for a language of the cases it applies to; a notice, not something to fix (for example a rule kept by post-processing alone) | — |
 
-- Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema` and anchor checks.
+- Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema`, `unknown-target` and anchor checks. Under `--render`, an adapter that does not declare `capabilities.render` is `adapter-failed`, since the anchors asked for cannot be checked.

@@ -147,7 +147,7 @@
 
 > Write these tests first and make sure they fail before the implementation.
 
-- [ ] T077 [P] [US2] Write reference tests in `test/unit/lint/references.test.ts`: `duplicate-id`, `unknown-rule` with file and position, `missing-lang`, `unresolved-ref`, `input-schema`, `rule-filter-mismatch`, `rule-without-case`, `language-gap`, `completed-not-gated`, `excluded-from-gate` (FR-001, FR-002)
+- [ ] T077 [P] [US2] Write reference tests in `test/unit/lint/references.test.ts`: `duplicate-id`, `unknown-rule` with file and position, `missing-lang`, `unresolved-ref`, `input-schema`, `unknown-target`, `rule-filter-mismatch`, `rule-without-case`, `language-gap`, `completed-not-gated`, `excluded-from-gate` (FR-001, FR-002)
 - [ ] T078 [P] [US2] Write provenance tests in `test/unit/lint/derived.test.ts`: `derived-tracked` and `vcs-unknown` per [data-model §Validation Rules](data-model.md#validation-rules) (FR-003)
 - [ ] T079 [P] [US2] Write example tests in `test/unit/lint/examples.test.ts`: `example-mismatch` both ways; `input` and `params` of `examples` feed `…From` (FR-005)
 - [ ] T080 [P] [US2] Write end-to-end lint tests in `test/e2e/lint.test.ts`: acceptance scenarios 1 to 6 of User Story 2; anchors checked per variant and reported once per rule, language and quote; an anchor present in some languages only is reported; `unanchored` info not counted by `--max-warnings`; `few-cases` and `margin-unreachable`; `--no-adapter`; `adapter-failed` exits 4; `render-failed`; human output; `lint --json` validates against `schemas/lint.schema.json` (FR-004, FR-006, FR-030)
