@@ -51,7 +51,7 @@ Without `--render`, lint still starts the adapter with the first variant to obta
 | `--repeats <n>` | Repeats for this run; overrides `sampling.repeats` |
 | `--cases <glob>` | Run only cases whose ID matches, case-sensitively; `*`, `?`, `[...]` (`!` or `^` negates), `{a,b}` and `\` escapes; an unclosed bracket or brace and braces without a comma are literal. Comparisons use common cases |
 | `--max-cost-usd <x>` | Override `budget.maxCostUsd` once; `none` runs without a cap. Allowed on resume, where the cap includes earlier spend |
-| `--dry-run` | Show calls, tokens, expected and conservative cost with their basis (previous run or first-run assumption), reservation per attempt, and planned trials and n_min per gated cell, then exit. Exit 4 when input tokens cannot be estimated, 5 when the expected cost exceeds the cap, else 0. With `--resume`, change nothing and show remaining trials and the re-estimated total; exit 5 when it exceeds the cap |
+| `--dry-run` | Show calls, tokens, expected and conservative cost with their basis (previous run or first-run assumption), reservation per attempt, and planned trials and n_min per gated cell, then exit. Exit 4 when input tokens cannot be estimated, 5 when the expected cost exceeds the cap, else 0. With `--resume`, change nothing, take or check no lock, and show remaining trials and the re-estimated total; exit 5 when it exceeds the cap |
 | `--concurrency <n>` | Concurrent requests per adapter process (per variant), at most the adapter's `maxConcurrency` |
 | `--resume <id>` | `runId` for `run`, `swapId` for `swap`. Resumes only stopped runs; see [data-model §Resume and Locking](../data-model.md#resume-and-locking) for what is resent, kept and refused |
 
