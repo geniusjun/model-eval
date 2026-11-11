@@ -5,19 +5,41 @@ import type { Helper, InitializeResult, Service } from './protocol.js';
 
 export type AdapterChange = 'adapter-version' | 'helper-version' | 'service';
 
-function sameHelper(a: Helper | undefined, b: Helper | undefined): boolean {
+export function sameHelper(a: Helper | undefined, b: Helper | undefined): boolean {
   return a?.language === b?.language && a?.version === b?.version;
+}
+
+/** A part of the service code that a comparison could not check. */
+export type UnverifiedService = 'service-version' | 'tree-hash';
+
+export interface ServiceComparison {
+  readonly changed: boolean;
+  readonly unverified?: UnverifiedService;
 }
 
 /**
  * `treeHash` when both sides have one, else `version` and `dirty`, so a new commit with identical
- * content is the same service and a hash missing on one side cannot count as a change.
+ * content is the same service. A version missing on either side, or a dirty tree without
+ * `treeHash`, cannot be verified and is not a change (data-model §Resume and Locking, rule 6).
  */
-export function sameServiceCode(a: Service | undefined, b: Service | undefined): boolean {
+export function compareServiceCode(
+  a: Service | undefined,
+  b: Service | undefined,
+): ServiceComparison {
   if (a?.treeHash !== undefined && b?.treeHash !== undefined) {
-    return a.treeHash === b.treeHash;
+    return { changed: a.treeHash !== b.treeHash };
   }
-  return a?.version === b?.version && a?.dirty === b?.dirty;
+  if (a?.version === undefined || b?.version === undefined) {
+    return { changed: false, unverified: 'service-version' };
+  }
+  if (a.version !== b.version || a.dirty !== b.dirty) {
+    return { changed: true };
+  }
+  return b.dirty === true ? { changed: false, unverified: 'tree-hash' } : { changed: false };
+}
+
+export function sameServiceCode(a: Service | undefined, b: Service | undefined): boolean {
+  return !compareServiceCode(a, b).changed;
 }
 
 /** What a later start declares differently from the first. */

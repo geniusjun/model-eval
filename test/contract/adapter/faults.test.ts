@@ -339,6 +339,47 @@ describe('lost adapter processes', SLOW, () => {
     await client.shutdown();
   });
 
+  it('001 FR-013 ends a process the adapter left in its group after the adapter itself exited', async () => {
+    // The adapter starts a helper that keeps running and holds its output pipes, then runs the
+    // mock, which exits after `shutdown`.
+    const pidFile = path.join(stateDir, 'helper.pid');
+    const wrapper = path.join(stateDir, 'leaves-helper.mjs');
+    await writeFile(
+      wrapper,
+      [
+        "import { spawn } from 'node:child_process';",
+        "import { writeFileSync } from 'node:fs';",
+        "import { pathToFileURL } from 'node:url';",
+        'const [pidFile, mock, scenarioFile] = process.argv.slice(2);',
+        "const helper = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {",
+        "  stdio: ['ignore', 'inherit', 'inherit'],",
+        '});',
+        'writeFileSync(pidFile, String(helper.pid));',
+        // The adapter does not wait for its helper, so it exits after `shutdown`.
+        'helper.unref();',
+        'process.argv = [process.argv[0], mock, scenarioFile];',
+        'await import(pathToFileURL(mock).href);',
+      ].join('\n'),
+    );
+    const base = options('fault-version');
+    const started = await startAdapter({
+      ...base,
+      launch: {
+        ...base.launch,
+        command: [process.execPath, wrapper, pidFile, MOCK, scenario('fault-version')],
+      },
+      shutdownGraceMs: 200,
+    });
+    if (!started.ok) {
+      throw new Error(started.error.message);
+    }
+    const helper = Number(await readFile(pidFile, 'utf8'));
+    const ended = await started.client.shutdown();
+    expect(ended.answered).toBe(true);
+    expect(ended.forced).toBe(true);
+    expect(() => process.kill(helper, 0)).toThrow();
+  });
+
   it('001 FR-008 refuses a restarted adapter that declares another version', async () => {
     const { client, faults } = await supervised('fault-version');
     expect(kindOf(await client.generate(trial('crash-1')))).toBe('lost');
@@ -350,6 +391,14 @@ describe('lost adapter processes', SLOW, () => {
     expect(faults[1]).toEqual({ kind: 'restart-changed', changes: ['adapter-version'] });
     const exit = await client.shutdown();
     expect(exit.answered).toBe(true);
+  });
+
+  it('001 FR-013 keeps a restarted adapter that declares no service version, since that cannot be verified', async () => {
+    const { client, faults } = await supervised('fault-version-unknown');
+    expect(kindOf(await client.generate(trial('crash-1')))).toBe('lost');
+    expect(kindOf(await client.generate(trial('ok-1')))).toBe('result');
+    expect(faults.map((fault) => fault.kind)).toEqual(['restarting', 'restarted']);
+    await client.shutdown();
   });
 
   it('001 FR-008 compares service code by treeHash when present, else by version and dirty flag', () => {
@@ -378,6 +427,12 @@ describe('lost adapter processes', SLOW, () => {
     expect(adapterChanges(base, { ...noTree, service: { version: 'c2', dirty: false } })).toEqual([
       'service',
     ]);
+    // A version missing on either side cannot be verified, which is not a change (§Resume 6).
+    const unknown = { ...base, service: {} };
+    expect(adapterChanges(noTree, unknown)).toEqual([]);
+    expect(adapterChanges(unknown, noTree)).toEqual([]);
+    const { service: _service, ...undeclared } = base;
+    expect(adapterChanges(noTree, undeclared)).toEqual([]);
     const helper = {
       ...base,
       adapter: { ...base.adapter, helper: { language: 'python', version: '0.2.0' } },

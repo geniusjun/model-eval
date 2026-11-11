@@ -1,0 +1,17 @@
+# Copied into the project: greet-ko-2 never answers until it is cancelled or the copy is edited,
+# every other trial answers at once.
+targets:
+  - name: chat
+    languages: [ko, en]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, cancel: true, maxConcurrency: 4 }
+prompts:
+  ko: 짧게 답한다.
+  en: Answer briefly.
+inputTokens: 300
+maxOutputTokens: 200
+variants:
+  '*':
+    usage: { input: 30, cachedInput: 270, cacheWrite: 0, output: 20, reasoning: 0 }
+    outcomes:
+      - { row: hang, probability: 1, caseIds: [greet-ko-2] }

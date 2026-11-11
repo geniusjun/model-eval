@@ -1,3 +1,5 @@
+import process from 'node:process';
+
 import type { z } from 'zod';
 
 import type { AdapterFault } from '../../adapter/client.js';
@@ -10,6 +12,7 @@ import { milliseconds } from '../../report/format.js';
 import { createRedactor } from '../../report/redact.js';
 import type { RunEnd } from '../../run/active-run.js';
 import type { RunCaseSpec } from '../../run/run-cases.js';
+import { processInterrupts } from '../../run/signals.js';
 import type { ToolVersion, VariantPlan } from '../../run/runner.js';
 import type { Warning } from '../../run/warning.js';
 import type { ExitName } from '../exit-codes.js';
@@ -33,9 +36,14 @@ export const RUN_OPTIONS = {
   'max-cost-usd': { type: 'string' },
   'dry-run': { type: 'boolean', default: false },
   concurrency: { type: 'string' },
+  resume: { type: 'string' },
 } as const satisfies CommandHandler['options'];
 
 export interface RunSettings {
+  /** `--resume`: the run or swap to resume. */
+  readonly resume?: string;
+  /** What `--repeats` and `--cases` set on the command line, which a resume compares. */
+  readonly given: { readonly repeats?: number; readonly cases?: string };
   readonly repeats: number;
   /** `--cases`; `null` runs every case. */
   readonly caseFilter: string | null;
@@ -153,14 +161,21 @@ export async function setUpRun(
   if (!maxCostUsd.ok) {
     return refused(maxCostUsd.error);
   }
+  const resume = stringOption(invocation, 'resume');
+  const cases = stringOption(invocation, 'cases');
   return {
     ok: true,
     setup: {
       project,
       lang,
       settings: {
+        ...(resume === undefined ? {} : { resume }),
+        given: {
+          ...(stringOption(invocation, 'repeats') === undefined ? {} : { repeats: repeats.value }),
+          ...(cases === undefined ? {} : { cases }),
+        },
         repeats: repeats.value,
-        caseFilter: stringOption(invocation, 'cases') ?? null,
+        caseFilter: cases ?? null,
         maxCostUsd: maxCostUsd.value,
         concurrency: concurrency.value,
         dryRun: invocation.values['dry-run'] === true,
@@ -245,6 +260,21 @@ export function adapterRelay(invocation: CommandInvocation) {
     },
     onLog: (params: LogParams) => {
       output.progress(`[${params.level}] ${params.message}`);
+    },
+  };
+}
+
+/**
+ * SIGINT and SIGTERM while trials go out (data-model §Stopping); the first says on stderr that
+ * the run is stopping and how to stop at once.
+ */
+export function interruptRelay(invocation: CommandInvocation, lang: Lang) {
+  return {
+    interrupts: processInterrupts(process),
+    onInterrupt: (count: number) => {
+      if (count === 1) {
+        invocation.output.progress(message(lang, 'human.interrupt.stopping'));
+      }
     },
   };
 }

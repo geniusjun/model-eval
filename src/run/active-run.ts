@@ -20,6 +20,7 @@ import {
   attemptCharge,
   attemptReservation,
   costProfiles,
+  indexTrialLines,
   initialReservationState,
   lateCostLineUsd,
   observeAttempt,
@@ -38,7 +39,10 @@ import type { HeldLock } from './lock.js';
 import type { Manifest, RunStatus, StopReason } from './manifest.js';
 import type { VariantProgress } from './order.js';
 import type { AttemptLine, CostLine, SendLine, TrialLine } from './records.js';
-import { lateCosts, recordAttempt } from './attempt.js';
+import { mergeListWarnings } from './merge-warnings.js';
+import { segmentSpentUsd } from './resume.js';
+import { joinedToolPaths } from './resume-check.js';
+import { lateCosts, recordAttempt, stoppedAttempt, type RecordedAttempt } from './attempt.js';
 import type { RunCaseSpec } from './run-cases.js';
 import { exceedsAdapterErrorRate, exceedsTransientRate, type StopSignal } from './stopping.js';
 import { addUsages, runTotals } from './totals.js';
@@ -52,7 +56,8 @@ import { hasNewWarningCode, writeManifest, type TrialLog } from './writer.js';
 /** A re-estimate point of data-model §Cap Check. */
 export type ProjectionTrigger =
   | { readonly trigger: 'first-batch' }
-  | { readonly trigger: 'repeat-round'; readonly repeat: number };
+  | { readonly trigger: 'repeat-round'; readonly repeat: number }
+  | { readonly trigger: 'resume' };
 
 /** A fault that stops the run: the loss limit, or a new process that failed or changed. */
 export type StoppingFault = Extract<
@@ -86,6 +91,17 @@ export interface RunEnd {
 
 export interface ActiveRunSetup {
   readonly runId: string;
+  /**
+   * Lines of earlier segments, closing lines included, for a resumed run; empty for a new one.
+   * The last of `manifest.segments` is the segment this run writes.
+   */
+  readonly earlier: readonly TrialLine[];
+  /**
+   * Warnings this segment's lines do not raise: `estimate-low-accuracy`, and for a resumed run
+   * the resume warnings of every segment and the pricing warnings of earlier segments, which
+   * depend on the prices and cap each segment had.
+   */
+  readonly startWarnings: readonly Warning[];
   readonly runDir: string;
   readonly config: Config;
   readonly rules: readonly Rule[];
@@ -117,7 +133,21 @@ interface AttemptRecord {
   readonly costLines: KeyedCostLine[];
 }
 
-const SEGMENT = 1;
+/** An attempt in flight, which a second interrupt records as `stopped`. */
+interface Flying {
+  cut(): void;
+}
+
+/** The duration of the segments that ended; a killed segment has no end and adds nothing. */
+function earlierDurationMs(segments: Manifest['segments']): number {
+  return segments.reduce(
+    (total, segment) =>
+      segment.endedAt === undefined
+        ? total
+        : total + Date.parse(segment.endedAt) - Date.parse(segment.startedAt),
+    0,
+  );
+}
 
 /** A cost line's usage is the sum of its calls' usage; none when no call reported any. */
 function callsUsage(calls: readonly CallRecord[]): Usage | undefined {
@@ -134,6 +164,7 @@ export class ActiveRun {
   private readonly sendContexts = new Map<string, ChargeContext>();
   private readonly liveCodes: LiveWarningCodes;
   private readonly inFlight = new Set<Promise<void>>();
+  private readonly flying = new Set<Flying>();
   private readonly specs: ReadonlyMap<string, RunCaseSpec>;
   private reservation: ReservationState;
   private readonly unpricedModels = new Set<string>();
@@ -146,9 +177,13 @@ export class ActiveRun {
    * since later lines may be missing.
    */
   private writeError: Error | undefined;
-  private firstBatchReported = false;
+  private firstBatchReported: boolean;
   private roundsReported = 0;
+  /** The segment this run writes; 1 for a new run. */
+  private readonly segment: number;
   private readonly startedAt: Date;
+  /** Duration of the earlier segments that ended. */
+  private readonly earlierMs: number;
   /** Set when this run's adapter raised the stop. */
   private adapterStop: { readonly fault?: StoppingFault } | undefined;
 
@@ -162,10 +197,25 @@ export class ActiveRun {
       prompts: setup.manifest.prompts ?? {},
       transientRate: setup.config.report.warn.transientRate,
     });
-    this.reservation = initialReservationState(setup.previous);
     this.manifest = setup.manifest;
     this.writtenWarnings = setup.manifest.warnings;
-    this.startedAt = new Date(setup.manifest.tool.startedAt);
+    const { segments } = setup.manifest;
+    const current = segments.at(-1);
+    if (current === undefined) {
+      throw new RangeError('a manifest has at least one segment');
+    }
+    this.segment = current.segment;
+    this.startedAt = new Date(current.startedAt);
+    this.earlierMs = earlierDurationMs(segments.slice(0, -1));
+    this.reservation = this.seedEarlier(setup);
+    // Re-estimate points an earlier segment passed are not reached again.
+    this.firstBatchReported = setup.book.firstBatchFinished();
+    while (
+      this.roundsReported < this.manifest.sampling.repeats &&
+      setup.book.roundFinished(this.roundsReported)
+    ) {
+      this.roundsReported += 1;
+    }
     setup.router.attach({
       keyed: (trial, params) => {
         this.costLine(trial, params.calls);
@@ -180,6 +230,15 @@ export class ActiveRun {
         this.onAdapterFault(fault);
       },
     });
+  }
+
+  /**
+   * Writes the manifest of a resumed segment's start, its warnings recounted from every line, so a
+   * run killed again still has them.
+   */
+  writeSegmentStart(): Promise<void> {
+    this.manifest = { ...this.manifest, warnings: this.warnings() };
+    return this.writeManifest();
   }
 
   get concurrency(): number {
@@ -237,14 +296,57 @@ export class ActiveRun {
       caseId: key.caseId,
       repeat: key.repeat,
       attempt,
-      segment: SEGMENT,
+      segment: this.segment,
       reservedUsd: reservation.reservedUsd,
       sending: true,
     };
-    await this.append(send);
-    const seed = trialSeed(this.setup.config.sampling.seed, key.caseId, key.repeat);
+    const seed = trialSeed(this.manifest.sampling.seed, key.caseId, key.repeat);
+    const base = { caseId: key.caseId, repeat: key.repeat, attempt, segment: this.segment, seed };
     let requestId: number | undefined;
-    const sent = client
+    /** Whether the attempt line was written, and whether the request went to the adapter. */
+    const progress = { recorded: false, reachedAdapter: false };
+    let release: () => void = () => undefined;
+    let fail: (reason: unknown) => void = () => undefined;
+    const settled = new Promise<void>((resolve, reject) => {
+      release = resolve;
+      fail = reject;
+    });
+    // The attempt line is written once: from the adapter's answer, or as `stopped` on a cut.
+    const record = (attemptRecord: RecordedAttempt): void => {
+      if (progress.recorded) {
+        return;
+      }
+      progress.recorded = true;
+      reservation.settle(attemptRecord.charge.costUsd);
+      this.attemptLine(attemptRecord.line, attemptRecord.charge, spec);
+      if (requestId !== undefined) {
+        this.setup.router.written(requestId);
+      }
+      release();
+    };
+    const flying: Flying = {
+      // Cut while its send line was being written, the attempt never reached the adapter and
+      // costs nothing; once sent, it is charged its reservation.
+      cut: () => {
+        record(
+          progress.reachedAdapter
+            ? stoppedAttempt(base, context)
+            : recordAttempt(base, { kind: 'refused', message: 'cut before it was sent' }, context),
+        );
+      },
+    };
+    const tracked = settled.finally(() => {
+      this.inFlight.delete(tracked);
+      this.flying.delete(flying);
+    });
+    this.inFlight.add(tracked);
+    this.flying.add(flying);
+    await this.append(send);
+    if (progress.recorded) {
+      return true;
+    }
+    progress.reachedAdapter = true;
+    void client
       .generate(
         {
           target: spec.target,
@@ -270,19 +372,21 @@ export class ActiveRun {
         },
       )
       .then((outcome) => {
-        const base = { caseId: key.caseId, repeat: key.repeat, attempt, segment: SEGMENT, seed };
-        const recorded = recordAttempt(base, outcome, context);
-        reservation.settle(recorded.charge.costUsd);
-        this.attemptLine(recorded.line, recorded.charge, spec);
-        if (requestId !== undefined) {
-          this.setup.router.written(requestId);
-        }
-      });
-    const tracked = sent.finally(() => {
-      this.inFlight.delete(tracked);
-    });
-    this.inFlight.add(tracked);
+        record(recordAttempt(base, outcome, context));
+      })
+      .catch(fail);
     return true;
+  }
+
+  /**
+   * The second interrupt: every attempt in flight becomes `stopped`, charged its reservation, and
+   * the adapter is told to give its requests up; their answers are not awaited.
+   */
+  cut(): void {
+    for (const flying of [...this.flying]) {
+      flying.cut();
+    }
+    this.setup.client.cancel();
   }
 
   /** Re-estimate points reached since the last call. */
@@ -343,7 +447,10 @@ export class ActiveRun {
       const stopReason = setup.stop.reason;
       const status: RunStatus = stopReason === undefined ? 'complete' : 'partial';
       const endedAt = setup.now();
-      const totals = runTotals(this.lines, endedAt.getTime() - this.startedAt.getTime());
+      const totals = runTotals(
+        this.lines,
+        this.earlierMs + endedAt.getTime() - this.startedAt.getTime(),
+      );
       this.manifest = {
         ...this.manifest,
         status,
@@ -352,8 +459,12 @@ export class ActiveRun {
         costProfile: costProfiles(this.lines, (caseId) => this.spec(caseId).lang, this.retries),
         warnings: this.warnings(),
         segments: this.manifest.segments.map((segment) =>
-          segment.segment === SEGMENT
-            ? { ...segment, endedAt: endedAt.toISOString(), spentUsd: totals.costUsd }
+          segment.segment === this.segment
+            ? {
+                ...segment,
+                endedAt: endedAt.toISOString(),
+                spentUsd: segmentSpentUsd(this.lines, this.segment),
+              }
             : segment,
         ),
       };
@@ -383,6 +494,26 @@ export class ActiveRun {
     } finally {
       await setup.lock.release();
     }
+  }
+
+  /** Earlier segments' lines, and what the reservation saw in them. */
+  private seedEarlier(setup: ActiveRunSetup): ReservationState {
+    for (const line of setup.earlier) {
+      this.lines.push(line);
+      this.liveCodes.add(line);
+    }
+    let state = initialReservationState(setup.previous);
+    for (const { key, attempts, costLines } of indexTrialLines(setup.earlier).keys.values()) {
+      const lang = this.specs.get(key.caseId)?.lang;
+      if (lang === undefined) {
+        continue;
+      }
+      for (const attempt of attempts) {
+        const own = costLines.filter((line) => line.attempt === attempt.attempt);
+        state = observeAttempt(state, lang, attempt, own);
+      }
+    }
+    return state;
   }
 
   private get retries(): number {
@@ -456,7 +587,7 @@ export class ActiveRun {
     if (classifyTrial(line) === 'config') {
       this.setup.stop.raise('config-error');
     }
-    const finished = this.setup.book.finishedIn(SEGMENT);
+    const finished = this.setup.book.finishedIn(this.segment);
     if (exceedsTransientRate(finished, this.setup.config.run.maxTransientRate)) {
       this.setup.stop.raise('transient-errors');
     }
@@ -497,7 +628,7 @@ export class ActiveRun {
       caseId: trial.key.caseId,
       repeat: trial.key.repeat,
       attempt: trial.attempt,
-      segment: SEGMENT,
+      segment: this.segment,
       source: 'late',
       costUsd: reservedUsd === null ? null : lateCostLineUsd(charge, reservedUsd),
       ...(charge.estimated ? { costEstimated: true } : {}),
@@ -555,15 +686,14 @@ export class ActiveRun {
 
   /** The paths every earlier start of this run was sent, and those the globs match again. */
   private async restartToolPaths(): Promise<readonly string[]> {
-    const sent = this.manifest.segments.find((segment) => segment.segment === SEGMENT);
-    return [...new Set([...(sent?.toolPaths ?? []), ...(await this.setup.matchedToolPaths())])];
+    return joinedToolPaths(this.manifest.segments, await this.setup.matchedToolPaths());
   }
 
   private recordToolPaths(toolPaths: readonly string[]): void {
     this.manifest = {
       ...this.manifest,
       segments: this.manifest.segments.map((segment) =>
-        segment.segment === SEGMENT ? { ...segment, toolPaths: [...toolPaths] } : segment,
+        segment.segment === this.segment ? { ...segment, toolPaths: [...toolPaths] } : segment,
       ),
     };
     this.writeManifest().catch((error: unknown) => {
@@ -583,7 +713,7 @@ export class ActiveRun {
       caseId: trial.key.caseId,
       repeat: trial.key.repeat,
       attempt: trial.attempt,
-      segment: SEGMENT,
+      segment: this.segment,
       source: 'calls',
       costUsd: charge.costUsd,
       ...(charge.estimated ? { costEstimated: true } : {}),
@@ -604,7 +734,7 @@ export class ActiveRun {
     const charge = attemptCharge({ answered: true, calls: params.calls }, this.unkeyedContext());
     const usage = callsUsage(params.calls);
     const line: CostLine = {
-      segment: SEGMENT,
+      segment: this.segment,
       source: 'calls',
       costUsd: charge.costUsd,
       ...(charge.estimated ? { costEstimated: true } : {}),
@@ -650,15 +780,15 @@ export class ActiveRun {
   private warnings(): Warning[] {
     const overrun = budgetOverrunWarning(this.variantId, overrunUsd(this.lines));
     const finished = finishedTrials(this.lines, this.retries, new Set(this.specs.keys()));
-    return [
-      ...this.setup.manifest.warnings,
+    return mergeListWarnings([
+      ...this.setup.startWarnings,
       ...trialWarnings(
         { manifest: this.manifest, lines: this.lines, finished },
         this.setup.config.report,
       ),
       ...(overrun === undefined ? [] : [overrun]),
       ...this.pricingWarnings(),
-    ];
+    ]);
   }
 
   private pricingWarnings(): Warning[] {
@@ -676,7 +806,7 @@ export class ActiveRun {
    */
   private rewriteOnNewWarning(): void {
     const codes = [
-      ...this.setup.manifest.warnings.map((warning) => warning.code),
+      ...this.setup.startWarnings.map((warning) => warning.code),
       ...this.liveCodes.codes(),
       ...this.pricingWarnings().map((warning) => warning.code),
     ];

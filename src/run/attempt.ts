@@ -173,3 +173,12 @@ export function recordAttempt(
       };
   }
 }
+
+/**
+ * An attempt the tool stopped waiting for on a second interrupt: `stopped`, charged its
+ * reservation since the request reached the adapter, and sent again on resume.
+ */
+export function stoppedAttempt(base: AttemptBase, context: ChargeContext): RecordedAttempt {
+  const charge = attemptCharge({ answered: false }, context);
+  return { line: { ...base, status: 'stopped', ...chargeFields(charge) }, charge };
+}

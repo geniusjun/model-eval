@@ -30,6 +30,11 @@ import {
 
 /** How long an adapter may take to exit after `shutdown` before it gets a termination signal. */
 export const SHUTDOWN_GRACE_MS = 5000;
+/**
+ * On POSIX the adapter runs in a process group of its own, so an interrupt from the terminal
+ * reaches only the tool, which decides what the adapter receives (adapter-protocol §Transport).
+ */
+const OWN_GROUP = process.platform !== 'win32';
 /** Losses of the adapter process in a row after which no new process is started. */
 export const LOSSES_IN_A_ROW = 3;
 const SHOWN_LINE_CHARS = 200;
@@ -157,6 +162,11 @@ export interface AdapterClient {
    */
   supervise(recovery: Recovery): void;
   shutdown(): Promise<ShutdownOutcome>;
+  /**
+   * Gives up every request in flight without waiting: sends `cancel` for each when declared,
+   * starts no new process and closes stdin, so the adapter exits within the grace period.
+   */
+  cancel(): void;
 }
 
 type RequestParams = InitializeParams | RenderParams | GenerateParams;
@@ -223,6 +233,7 @@ async function launch(
     env: { ...process.env, ...options.launch.env },
     stdio: ['pipe', 'pipe', 'pipe'],
     shell: false,
+    detached: OWN_GROUP,
   });
   const connection = new Connection(child, options, ids);
   const spawned = await connection.spawned;
@@ -399,6 +410,10 @@ class SupervisedClient implements AdapterClient {
   private refusal: string | undefined;
   private restarting: Promise<void> | undefined;
   private shuttingDown = false;
+  /** Set by {@link cancel}: the process is being terminated and nothing waits for it. */
+  private cancelled = false;
+  /** Ends the wait of each `generate` still waiting for its answer. */
+  private readonly waiters = new Set<() => void>();
   private stuckTimer: NodeJS.Timeout | undefined;
 
   constructor(
@@ -456,8 +471,23 @@ class SupervisedClient implements AdapterClient {
   async shutdown(): Promise<ShutdownOutcome> {
     this.shuttingDown = true;
     clearTimeout(this.stuckTimer);
+    if (this.cancelled) {
+      return { ...(await this.connection.terminate()), forced: true, answered: false };
+    }
     await this.restarting;
     return shutdownAdapter(this.connection, this.timeoutMs);
+  }
+
+  cancel(): void {
+    this.shuttingDown = true;
+    this.cancelled = true;
+    clearTimeout(this.stuckTimer);
+    this.connection.abandonAll(this.declared.capabilities.cancel);
+    // An answer that still arrives goes to `onLate`, which only corrects the cost.
+    for (const giveUp of [...this.waiters]) {
+      giveUp();
+    }
+    void this.connection.terminate();
   }
 
   /** Called once per lost process; only the running process of a supervised client counts. */
@@ -576,16 +606,25 @@ class SupervisedClient implements AdapterClient {
   ): Promise<GenerateOutcome> {
     return new Promise((resolve) => {
       let waiting = true;
-      const timer = setTimeout(() => {
+      const stopWaiting = (outcome: GenerateOutcome): void => {
         waiting = false;
+        clearTimeout(timer);
+        this.waiters.delete(giveUp);
+        resolve(outcome);
+      };
+      const giveUp = (): void => {
+        stopWaiting({ kind: 'timed-out', message: 'the tool gave the request up' });
+      };
+      const timer = setTimeout(() => {
         if (sent.id !== undefined) {
           this.abandon(connection, sent.id);
         }
-        resolve({
+        stopWaiting({
           kind: 'timed-out',
           message: `no response to generate within ${String(this.timeoutMs)} ms`,
         });
       }, this.timeoutMs);
+      this.waiters.add(giveUp);
       void sent.response.then((response) => {
         clearTimeout(timer);
         if (response.kind !== 'lost' && connection === this.connection) {
@@ -593,8 +632,7 @@ class SupervisedClient implements AdapterClient {
         }
         const outcome = toOutcome(response, readGenerate);
         if (waiting) {
-          waiting = false;
-          resolve(outcome);
+          stopWaiting(outcome);
         } else if (outcome.kind !== 'lost') {
           options.onLate?.(outcome);
         }
@@ -643,6 +681,7 @@ class Connection {
     private readonly options: StartOptions,
     private readonly ids: () => number,
   ) {
+    endWithTool(this);
     this.spawned = new Promise((resolve) => {
       child.once('spawn', () => {
         resolve({ ok: true });
@@ -654,6 +693,7 @@ class Connection {
     });
     this.exited = new Promise((resolve) => {
       child.once('close', (exitCode, signal) => {
+        running.delete(this);
         if (this.stderrBuffer !== '') {
           this.options.onStderr?.(this.stderrBuffer);
           this.stderrBuffer = '';
@@ -753,6 +793,13 @@ class Connection {
     }
   }
 
+  /** Nobody waits for any request in flight any more. */
+  abandonAll(cancel: boolean): void {
+    for (const id of this.pending.keys()) {
+      this.abandon(id, cancel);
+    }
+  }
+
   /** Gives the process up: requests in flight are lost and the process is signalled. */
   abort(message: string): void {
     this.lose('stuck', message);
@@ -772,15 +819,33 @@ class Connection {
   /** SIGTERM, then SIGKILL after the grace period, so the wait is always bounded. */
   terminate(): Promise<Exit> {
     this.terminating ??= (async () => {
-      this.child.kill('SIGTERM');
+      this.signal('SIGTERM');
       const exit = await Promise.race([this.exited, delay(this.graceMs)]);
       if (exit !== undefined) {
         return exit;
       }
-      this.child.kill('SIGKILL');
+      this.signal('SIGKILL');
       return this.exited;
     })();
     return this.terminating;
+  }
+
+  /** Signals the adapter's process group, so processes it started end with it. */
+  signal(signal: NodeJS.Signals): void {
+    const { pid } = this.child;
+    // Also after the adapter exited: POSIX reuses no ID while a group of that ID has members.
+    if (!OWN_GROUP || pid === undefined) {
+      this.child.kill(signal);
+      return;
+    }
+    try {
+      process.kill(-pid, signal);
+    } catch (error) {
+      // ESRCH: every process of the group has ended.
+      if (!(error instanceof Error && 'code' in error && error.code === 'ESRCH')) {
+        throw error;
+      }
+    }
   }
 
   private onStdout(chunk: string): void {
@@ -878,6 +943,26 @@ class Connection {
     this.pending.clear();
     this.abandonedIds.clear();
     this.listener?.(this, lost);
+  }
+}
+
+/** Adapter processes that have not ended, whose groups are killed when the tool exits. */
+const running = new Set<Connection>();
+let killOnExit = false;
+
+/**
+ * Whatever way the tool exits (an uncaught failure included), no adapter group outlives it; a
+ * normal end has shut every adapter down before.
+ */
+function endWithTool(connection: Connection): void {
+  running.add(connection);
+  if (!killOnExit) {
+    killOnExit = true;
+    process.once('exit', () => {
+      for (const each of running) {
+        each.signal('SIGKILL');
+      }
+    });
   }
 }
 

@@ -3,6 +3,7 @@ import type { GroupCounts } from './cap.js';
 import { trialKeyId, type TrialKey } from './ids.js';
 import { nextKey, type SendPlan } from './order.js';
 import type { AttemptLine } from './records.js';
+import { resumedState, type ResumedState } from './resume.js';
 import { trialState, type RandomSource, type TrialState } from './retry.js';
 
 // Where each trial key of one run stands while it runs (data-model §Send Order, §Stopping).
@@ -11,7 +12,8 @@ interface KeyEntry {
   readonly key: TrialKey;
   readonly lang: string;
   readonly attempts: AttemptLine[];
-  state: TrialState;
+  /** A resumed segment starts from {@link resumedState}; each new attempt line moves it on. */
+  state: TrialState | ResumedState;
   inFlight: boolean;
   /** When a transient trial may be sent again, in `now()` milliseconds. */
   retryAt: number;
@@ -27,18 +29,30 @@ export interface FinishedCounts {
 export class TrialBook {
   private readonly entries = new Map<string, KeyEntry>();
 
+  /**
+   * `earlier` holds the attempt lines of earlier segments, in file order, so retries are counted
+   * across segments and attempt numbers continue.
+   */
   constructor(
     private readonly plan: SendPlan,
     langOf: (caseId: string) => string,
     private readonly retries: number,
     private readonly random: RandomSource,
+    earlier: readonly AttemptLine[] = [],
   ) {
+    const byKey = new Map<string, AttemptLine[]>();
+    for (const line of earlier) {
+      const id = trialKeyId(line);
+      byKey.set(id, [...(byKey.get(id) ?? []), line]);
+    }
     for (const key of plan.keys) {
-      this.entries.set(trialKeyId(key), {
+      const id = trialKeyId(key);
+      const attempts = byKey.get(id) ?? [];
+      this.entries.set(id, {
         key,
         lang: langOf(key.caseId),
-        attempts: [],
-        state: { kind: 'unsent' },
+        attempts,
+        state: resumedState(attempts, retries),
         inFlight: false,
         retryAt: 0,
       });
@@ -54,8 +68,11 @@ export class TrialBook {
         if (entry === undefined || entry.inFlight) {
           return false;
         }
+        const { state } = entry;
         return (
-          entry.state.kind === 'unsent' || (entry.state.kind === 'retry' && entry.retryAt <= now)
+          state.kind === 'unsent' ||
+          state.kind === 'resend' ||
+          (state.kind === 'retry' && entry.retryAt <= now)
         );
       },
     });

@@ -57,6 +57,26 @@ async function reestimateAt(runs: readonly ActiveRun[], options: DriveOptions): 
 }
 
 /**
+ * The re-estimate a resume makes before sending, recorded in every run. Above the cap, the runs
+ * stop with `budget-projected` and send nothing; raise the cap and resume again.
+ */
+export async function reestimateAtResume(
+  runs: readonly ActiveRun[],
+  options: DriveOptions,
+): Promise<void> {
+  const total = reestimate(
+    options.ledger.spentUsd,
+    runs.map((run) => run.projection()),
+  );
+  for (const run of runs) {
+    await run.recordProjection({ trigger: 'resume' }, total);
+  }
+  if (runs.some((run) => run.hasRemaining) && exceedsCap(total, options.ledger.maxCostUsd)) {
+    options.stop.raise('budget-projected');
+  }
+}
+
+/**
  * Sends until every trial finished or a stop condition holds; once stopping, sends nothing new
  * and waits for the attempts in flight. Neither run gets ahead of another by the smallest
  * concurrency limit or more.

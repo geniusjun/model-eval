@@ -8,7 +8,7 @@ import {
   type StartFailure as AdapterStartFailure,
 } from '../adapter/client.js';
 import { AdapterLog, StderrTail } from '../adapter/logs.js';
-import { PROTOCOL_VERSION, type LogParams } from '../adapter/protocol.js';
+import { PROTOCOL_VERSION, type LogParams, type ProtocolVariant } from '../adapter/protocol.js';
 import { expandGlob, type Project } from '../config/load.js';
 import type { Sha256 } from '../config/identifiers.js';
 import type { Price, Rule, Variant } from '../config/schema.js';
@@ -41,6 +41,12 @@ import { newRunId, type SuffixSource } from './ids.js';
 import { acquireRunLock, type HeldLock, type LockRefusal } from './lock.js';
 import type { Manifest } from './manifest.js';
 import { sendOrder } from './order.js';
+import {
+  watchInterrupts,
+  type InterruptListener,
+  type Interrupts,
+  type InterruptWatch,
+} from './signals.js';
 import { renderCases, type RenderedCases, type RenderFailure } from './render-cases.js';
 import type { RandomSource } from './retry.js';
 import { runCases, targetLanguages, type CaseProblem, type RunCaseSpec } from './run-cases.js';
@@ -79,6 +85,10 @@ export interface RunRequest {
   readonly onStderr?: (line: string) => void;
   /** Restarts and stops of the adapter while the run sends. */
   readonly onAdapterFault?: (variantId: string, fault: AdapterFault) => void;
+  /** SIGINT and SIGTERM while the run sends (data-model §Stopping); none when absent. */
+  readonly interrupts?: Interrupts;
+  /** Hears each interrupt, for example to say that the run is stopping. */
+  readonly onInterrupt?: InterruptListener;
 }
 
 /** Why a run did not start. Each ends as a configuration error (exit code 4) before any call. */
@@ -119,6 +129,7 @@ export interface PreparedRun {
   /** The cases this run will send, in file order. */
   readonly cases: readonly RunCaseSpec[];
   readonly plan: VariantPlan;
+  readonly signals: RunSignals;
   /**
    * Creates the run directory under a run ID no other run has and takes `run.lock`; nothing else
    * is written yet. A failure shuts the adapter down.
@@ -166,7 +177,7 @@ export function toolPaths(project: Project): string[] {
 }
 
 /** {@link toolPaths} with the rule and case globs matched again, for a restarted adapter. */
-async function matchedToolPaths(project: Project): Promise<string[]> {
+export async function matchedToolPaths(project: Project): Promise<string[]> {
   const { files } = project.config.data;
   const { configFile, configDir, outputDir } = project.paths;
   const [rules, cases] = await Promise.all([
@@ -176,13 +187,16 @@ async function matchedToolPaths(project: Project): Promise<string[]> {
   return [...new Set([configFile, ...rules, ...cases, outputDir])];
 }
 
-function variantPrice(pricing: Readonly<Record<string, Price>>, model: string): Price | undefined {
+export function variantPrice(
+  pricing: Readonly<Record<string, Price>>,
+  model: string,
+): Price | undefined {
   const choice = priceFor(pricing, model);
   return choice.kind === 'none' ? undefined : choice.price;
 }
 
 /** The largest attempt reservation over the cases, before anything was measured. */
-function startReservationUsd(
+export function startReservationUsd(
   pricing: Readonly<Record<string, Price>>,
   variant: Variant,
   plans: readonly CasePlan[],
@@ -234,24 +248,65 @@ export async function prepareRun(request: RunRequest): Promise<PrepareResult> {
   const now = request.now ?? (() => new Date());
   const startedAt = now();
   const paths = toolPaths(project);
+  const launched = await launchAdapter(request, {
+    variant: {
+      id: variant.id,
+      model: variant.model,
+      ...(variant.params === undefined ? {} : { params: variant.params }),
+    },
+    timeoutMs: config.adapter.timeoutMs,
+    toolPaths: paths,
+  });
+  if (!launched.ok) {
+    return launched;
+  }
+  const { adapter } = launched;
+  try {
+    return await renderedRun(request, startedAt, paths, adapter);
+  } catch (error) {
+    await adapter.client.shutdown();
+    throw error;
+  }
+}
+
+/** What one start of a run's adapter sends in `initialize`. */
+export interface AdapterStart {
+  readonly variant: ProtocolVariant;
+  /** `adapter.timeoutMs`, or the time limit a resumed run recorded. */
+  readonly timeoutMs: number;
+  readonly toolPaths: readonly string[];
+}
+
+export type LaunchResult =
+  | { readonly ok: true; readonly adapter: Listened }
+  | { readonly ok: false; readonly failure: RunStartFailure };
+
+/**
+ * Starts and `initialize`s the adapter, with its `log` notifications going to `adapter.log` once
+ * the run directory is open and its `calls` notifications to the run's router.
+ */
+export async function launchAdapter(
+  request: Pick<RunRequest, 'project' | 'tool' | 'concurrency' | 'now' | 'onLog' | 'onStderr'>,
+  start: AdapterStart,
+): Promise<LaunchResult> {
+  const config = request.project.config.data;
   const router = createCallsRouter();
-  const adapterLog = new AdapterLog(createRedactor(config.redact), now);
+  const adapterLog = new AdapterLog(
+    createRedactor(config.redact),
+    request.now ?? (() => new Date()),
+  );
   const stderr = new StderrTail();
   const started = await startAdapter({
     launch: {
       command: config.adapter.command,
-      cwd: project.paths.adapterCwd,
+      cwd: request.project.paths.adapterCwd,
       env: config.adapter.env,
     },
     initialize: {
       client: { name: request.tool.name, version: request.tool.version },
-      variant: {
-        id: variant.id,
-        model: variant.model,
-        ...(variant.params === undefined ? {} : { params: variant.params }),
-      },
-      timeoutMs: config.adapter.timeoutMs,
-      toolPaths: paths,
+      variant: start.variant,
+      timeoutMs: start.timeoutMs,
+      toolPaths: [...start.toolPaths],
     },
     concurrency: request.concurrency,
     onCalls: (params) => {
@@ -272,17 +327,11 @@ export async function prepareRun(request: RunRequest): Promise<PrepareResult> {
       failure: { kind: 'adapter', error: started.error, stderrTail: stderr.lines() },
     };
   }
-  const { client } = started;
-  try {
-    return await renderedRun(request, startedAt, paths, { client, router, adapterLog, stderr });
-  } catch (error) {
-    await client.shutdown();
-    throw error;
-  }
+  return { ok: true, adapter: { client: started.client, router, adapterLog, stderr } };
 }
 
 /** The running adapter and what listens to it. */
-interface Listened {
+export interface Listened {
   readonly client: AdapterClient;
   readonly router: CallsRouter;
   readonly adapterLog: AdapterLog;
@@ -352,6 +401,7 @@ async function renderedRun(
       estimate: prepared.estimate,
       trials,
       cases: selected.cases,
+      signals: runSignals(request),
       plan: {
         variant: variant.id,
         trials,
@@ -515,6 +565,8 @@ async function beginRun(
   return new ActiveRun({
     runId,
     runDir,
+    earlier: [],
+    startWarnings: manifest.warnings,
     config,
     rules: started.rules,
     cases: started.cases,
@@ -526,7 +578,7 @@ async function beginRun(
     book: new TrialBook(
       plan,
       (caseId) => langOf.get(caseId) ?? NO_LANGUAGE,
-      config.run.retries,
+      manifest.limits.retries,
       request.random ?? Math.random,
     ),
     log,
@@ -596,14 +648,59 @@ export async function startRun(run: PreparedRun, maxCostUsd: number | null): Pro
   }
   const shared: SharedRun = { ledger: createCapLedger(maxCostUsd, 0), stop: createStopSignal() };
   const active = await claimed.run.begin(shared);
+  const watch = watchRuns(run.signals, shared, [active]);
   try {
-    await driveRuns([active], shared);
+    await sendAll([active], shared, watch);
+    return {
+      ok: true,
+      end: await active.finish(),
+      startWarnings: conservativeWarning(run.estimate.conservativeUsd, maxCostUsd),
+    };
   } finally {
-    await active.shutdown();
+    watch.dispose();
   }
+}
+
+/** Where a run hears interrupts while it sends. */
+export interface RunSignals {
+  readonly interrupts?: Interrupts;
+  readonly onInterrupt?: InterruptListener;
+}
+
+export function runSignals(request: RunSignals): RunSignals {
   return {
-    ok: true,
-    end: await active.finish(),
-    startWarnings: conservativeWarning(run.estimate.conservativeUsd, maxCostUsd),
+    ...(request.interrupts === undefined ? {} : { interrupts: request.interrupts }),
+    ...(request.onInterrupt === undefined ? {} : { onInterrupt: request.onInterrupt }),
   };
+}
+
+/**
+ * Interrupts from the first send until the command has graded, compared and written; the caller
+ * disposes the watch at its end (data-model §Stopping).
+ */
+export function watchRuns(
+  signals: RunSignals,
+  shared: SharedRun,
+  runs: readonly ActiveRun[],
+): InterruptWatch {
+  return watchInterrupts(signals.interrupts, shared.stop, runs, signals.onInterrupt);
+}
+
+/**
+ * Drives the runs, then shuts their adapters down, which waits for late notifications and
+ * responses unless a second interrupt cut them. From then on the watch lets the command finish.
+ */
+export async function sendAll(
+  runs: readonly ActiveRun[],
+  shared: SharedRun,
+  watch: InterruptWatch,
+  beforeSending?: () => Promise<void>,
+): Promise<void> {
+  try {
+    await beforeSending?.();
+    await driveRuns(runs, shared);
+  } finally {
+    await Promise.all(runs.map((run) => run.shutdown()));
+    watch.finishing();
+  }
 }

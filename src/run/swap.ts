@@ -7,18 +7,33 @@ import type { Lang, Variant } from '../config/schema.js';
 import type { Comparison } from '../report/schema.js';
 import { writeComparison, type WrittenComparison } from '../report/write.js';
 import type { PerRole } from '../stats/interval.js';
-import type { RunEnd } from './active-run.js';
+import type { ActiveRun, RunEnd } from './active-run.js';
 import { createCapLedger, exceedsCap } from './cap.js';
-import { driveRuns } from './drive.js';
+import { reestimateAtResume } from './drive.js';
 import { newSwapId } from './ids.js';
 import type { StopReason, SwapRecord } from './manifest.js';
 import type { RandomSource } from './retry.js';
+import { segmentSpentUsd } from './resume.js';
+import {
+  prepareResume,
+  resumeTotalUsd,
+  type PreparedResume,
+  type ResumeFailure,
+  type ResumeRequest,
+} from './resume-run.js';
+import type { SetOptions } from './resume-check.js';
+import { readSwapRecord, type RunReadProblem } from './run-records.js';
+import type { RunCaseSpec } from './run-cases.js';
 import {
   conservativeWarning,
   prepareRun,
+  runSignals,
+  sendAll,
+  watchRuns,
   type OverBudget,
   type PreparedRun,
   type RunRequest,
+  type RunSignals,
   type RunStartFailure,
   type SharedRun,
   type ToolVersion,
@@ -33,7 +48,7 @@ import { writeSwapRecord } from './writer.js';
 type Role = keyof PerRole<unknown>;
 const ROLES: readonly Role[] = ['baseline', 'candidate'];
 
-export interface SwapRequest {
+export interface SwapRequest extends RunSignals {
   readonly project: Project;
   /** `--from`. */
   readonly baseline: Variant;
@@ -68,6 +83,11 @@ export interface SwapEnd {
   /** Absent when the swap stopped on `config-error` or finished no trial (FR-032 item 3). */
   readonly comparison?: Comparison;
   readonly written?: WrittenComparison;
+  /**
+   * A second interrupt came after sending: nothing was compared and `record` stays as written
+   * at the start, `running`, so `swap --resume` compares without sending.
+   */
+  readonly quit?: true;
 }
 
 export type SwapResult =
@@ -219,30 +239,41 @@ export async function executeSwap(request: SwapRequest): Promise<SwapResult> {
   return prepared.ok ? prepared.swap.start() : prepared;
 }
 
-function swapRecord(
-  swap: PreparedSwap,
-  runIds: PerRole<string>,
-  startedAt: Date,
-  progress: {
-    readonly spentUsd: number | null;
-    readonly endedAt?: Date;
-    readonly stopReason?: StopReason;
-    readonly comparisonId?: string;
-  },
-): SwapRecord {
+/** What every write of one segment's swap record shares. */
+interface SwapSegment {
+  readonly swapId: string;
+  readonly runIds: PerRole<string>;
+  readonly maxCostUsd: number | null;
+  /** Segments of earlier starts; none for a new swap. */
+  readonly earlier: SwapRecord['segments'];
+  readonly startedAt: Date;
+}
+
+interface SwapProgress {
+  /** Spend of both runs over every segment. */
+  readonly spentUsd: number | null;
+  /** Spend of this segment; the whole spend when absent. */
+  readonly segmentSpentUsd?: number | null;
+  readonly endedAt?: Date;
+  readonly stopReason?: StopReason;
+  readonly comparisonId?: string;
+}
+
+function swapRecord(segment: SwapSegment, progress: SwapProgress): SwapRecord {
   const { endedAt, stopReason, comparisonId } = progress;
   return {
-    swapId: swap.swapId,
-    baselineRunId: runIds.baseline,
-    candidateRunId: runIds.candidate,
-    budget: { maxCostUsd: swap.maxCostUsd, scope: 'swap' },
+    swapId: segment.swapId,
+    baselineRunId: segment.runIds.baseline,
+    candidateRunId: segment.runIds.candidate,
+    budget: { maxCostUsd: segment.maxCostUsd, scope: 'swap' },
     spentUsd: progress.spentUsd,
     segments: [
+      ...segment.earlier,
       {
-        segment: 1,
-        startedAt: startedAt.toISOString(),
+        segment: (segment.earlier.at(-1)?.segment ?? 0) + 1,
+        startedAt: segment.startedAt.toISOString(),
         ...(endedAt === undefined ? {} : { endedAt: endedAt.toISOString() }),
-        spentUsd: progress.spentUsd,
+        spentUsd: progress.segmentSpentUsd ?? progress.spentUsd,
       },
     ],
     status: endedAt === undefined ? 'running' : stopReason === undefined ? 'complete' : 'partial',
@@ -267,10 +298,10 @@ function comparesAfterStop(stopReason: StopReason | undefined, runs: PerRole<Run
 }
 
 /** The cases both runs send, with their case hashes; the comparison keeps the common ones. */
-function currentCases(runs: PerRole<PreparedRun>): CurrentCase[] {
+function currentCases(runs: PerRole<readonly RunCaseSpec[]>): CurrentCase[] {
   const cases = new Map<string, CurrentCase>();
   for (const role of ROLES) {
-    for (const spec of runs[role].cases) {
+    for (const spec of runs[role]) {
       if (!cases.has(spec.id)) {
         cases.set(spec.id, { definition: spec.definition, hash: spec.hash, lang: spec.lang });
       }
@@ -279,9 +310,16 @@ function currentCases(runs: PerRole<PreparedRun>): CurrentCase[] {
   return [...cases.values()];
 }
 
+/** What the comparison of a swap needs besides its runs. */
+interface CompareSetting {
+  readonly project: Project;
+  readonly lang: Lang;
+  readonly now?: () => Date;
+}
+
 async function compareRuns(
-  swap: PreparedSwap,
-  request: SwapRequest,
+  request: CompareSetting,
+  cases: PerRole<readonly RunCaseSpec[]>,
   runs: PerRole<RunEnd>,
 ): Promise<{ comparison: Comparison; written: WrittenComparison }> {
   const { project } = request;
@@ -293,7 +331,7 @@ async function compareRuns(
       gradeSet: runs[role].gradeSet,
     })),
     rules: project.ruleFiles.flatMap((file) => file.data.rules),
-    cases: currentCases(swap.runs),
+    cases: currentCases(cases),
     config,
     outputDir: project.paths.outputDir,
     now: request.now ?? (() => new Date()),
@@ -383,49 +421,267 @@ async function startSwap(
     const { role, failure } = claimed;
     return { ok: false, failure: { kind: 'start', variantId: runs[role].variantId, failure } };
   }
-  const runIds = byRole((role) => claimed.runs[role].runId);
-  const shared: SharedRun = { ledger: createCapLedger(maxCostUsd, 0), stop: createStopSignal() };
+  const end = await runClaimedSwap(request, claimed.runs, {
+    segment: {
+      swapId: swap.swapId,
+      runIds: byRole((role) => claimed.runs[role].runId),
+      maxCostUsd,
+      earlier: [],
+      startedAt,
+    },
+    cases: byRole((role) => runs[role].cases),
+    spentUsd: 0,
+  });
+  return { ok: true, end };
+}
+
+/** How {@link runClaimedSwap} starts: a new swap or a resumed one. */
+interface SwapStart {
+  readonly segment: SwapSegment;
+  readonly cases: PerRole<readonly RunCaseSpec[]>;
+  /** Spend of earlier segments, which the cap includes. */
+  readonly spentUsd: number | null;
+  /** The resume re-estimate, before any trial goes out. */
+  readonly beforeSending?: (runs: readonly ActiveRun[], shared: SharedRun) => Promise<void>;
+}
+
+interface ClaimedSwapSide extends ClaimedSide<ActiveRun> {
+  readonly runId: string;
+}
+
+/**
+ * Both claimed runs under one cap ledger and one stop: when one run stops, both stop with the
+ * same `stopReason`. Both adapters are shut down, which waits for late notifications and
+ * responses, before the runs end and are graded. A stopped swap still compares what finished,
+ * withheld by the gate, except as FR-032 item 3 says.
+ */
+async function runClaimedSwap(
+  request: SwapRequest | SwapResumeRequest,
+  claimed: PerRole<ClaimedSwapSide>,
+  start: SwapStart,
+): Promise<SwapEnd> {
+  const { segment } = start;
+  const shared: SharedRun = {
+    ledger: createCapLedger(segment.maxCostUsd, start.spentUsd),
+    stop: createStopSignal(),
+  };
   const { outputDir } = request.project.paths;
   // The record is written before either manifest names the swap, so every run with a swapId has
   // one.
   try {
-    await writeSwapRecord(outputDir, swapRecord(swap, runIds, startedAt, { spentUsd: 0 }));
+    await writeSwapRecord(outputDir, swapRecord(segment, { spentUsd: start.spentUsd }));
   } catch (error) {
-    await Promise.all(ROLES.map((role) => claimed.runs[role].abandon()));
+    await Promise.all(ROLES.map((role) => claimed[role].abandon()));
     throw error;
   }
   const now = request.now ?? (() => new Date());
-  // Only the baseline began, so its spend is the swap's; the record says what a normal stop says.
-  const begun = await beginRuns(claimed.runs, shared, (baseline: RunEnd) =>
-    writeSwapRecord(
+  // Only the baseline began, so this segment's spend is its own; the record says what a normal
+  // stop says.
+  const begun = await beginRuns(claimed, shared, (baseline: RunEnd) => {
+    const segmentSpent = currentSegmentSpentUsd(baseline);
+    return writeSwapRecord(
       outputDir,
-      swapRecord(swap, runIds, startedAt, {
-        spentUsd: baseline.manifest.totals.costUsd,
+      swapRecord(segment, {
+        spentUsd: addUsd([start.spentUsd, segmentSpent]),
+        segmentSpentUsd: segmentSpent,
         endedAt: now(),
         stopReason: 'config-error',
       }),
-    ),
-  );
-  try {
-    await driveRuns([begun.baseline, begun.candidate], shared);
-  } finally {
-    await Promise.all(ROLES.map((role) => begun[role].shutdown()));
-  }
-  const [baselineEnd, candidateEnd] = await Promise.all([
-    begun.baseline.finish(),
-    begun.candidate.finish(),
-  ]);
-  const ended: PerRole<RunEnd> = { baseline: baselineEnd, candidate: candidateEnd };
-  const stopReason = shared.stop.reason;
-  const compared = comparesAfterStop(stopReason, ended)
-    ? await compareRuns(swap, request, ended)
-    : undefined;
-  const record = swapRecord(swap, runIds, startedAt, {
-    spentUsd: addUsd(ROLES.map((role) => ended[role].manifest.totals.costUsd)),
-    endedAt: now(),
-    ...(stopReason === undefined ? {} : { stopReason }),
-    ...(compared === undefined ? {} : { comparisonId: compared.comparison.comparisonId }),
+    );
   });
-  await writeSwapRecord(outputDir, record);
-  return { ok: true, end: { record, runs: ended, ...compared } };
+  const both = [begun.baseline, begun.candidate];
+  const watch = watchRuns(runSignals(request), shared, both);
+  try {
+    const { beforeSending } = start;
+    await sendAll(
+      both,
+      shared,
+      watch,
+      beforeSending === undefined ? undefined : () => beforeSending(both, shared),
+    );
+    const [baselineEnd, candidateEnd] = await Promise.all([
+      begun.baseline.finish(),
+      begun.candidate.finish(),
+    ]);
+    const ended: PerRole<RunEnd> = { baseline: baselineEnd, candidate: candidateEnd };
+    // A second interrupt exits at once and compares nothing (data-model §Run and Swap Status).
+    // While grading it left the runs as they ended, so the record stays `running` rather than
+    // claim a stop the runs did not make.
+    if (watch.quit && !watch.cut) {
+      return { record: swapRecord(segment, { spentUsd: start.spentUsd }), runs: ended, quit: true };
+    }
+    const compared =
+      !watch.cut && comparesAfterStop(shared.stop.reason, ended)
+        ? await compareRuns(request, start.cases, ended)
+        : undefined;
+    const stopReason = shared.stop.reason;
+    const record = swapRecord(segment, {
+      spentUsd: addUsd(ROLES.map((role) => ended[role].manifest.totals.costUsd)),
+      segmentSpentUsd: addUsd(ROLES.map((role) => currentSegmentSpentUsd(ended[role]))),
+      endedAt: now(),
+      ...(stopReason === undefined ? {} : { stopReason }),
+      ...(compared === undefined ? {} : { comparisonId: compared.comparison.comparisonId }),
+    });
+    await writeSwapRecord(outputDir, record);
+    return { record, runs: ended, ...compared };
+  } finally {
+    watch.dispose();
+  }
+}
+
+function currentSegmentSpentUsd(end: RunEnd): number | null {
+  const current = end.manifest.segments.at(-1)?.segment ?? 1;
+  return segmentSpentUsd(end.lines, current);
+}
+
+// Resuming a swap check (data-model §Resume and Locking, rule 12).
+
+export interface SwapResumeRequest extends RunSignals {
+  readonly project: Project;
+  readonly swapId: string;
+  /** `--from` and `--to` when given; they must name the recorded variants. */
+  readonly from?: string;
+  readonly to?: string;
+  /** `--repeats` and `--cases` when given; they must match the records. */
+  readonly repeats?: number;
+  readonly cases?: string;
+  readonly concurrency: number;
+  /** One cap over both runs and every earlier segment. */
+  readonly maxCostUsd: number | null;
+  readonly tool: ToolVersion;
+  readonly lang: Lang;
+  readonly now?: () => Date;
+  readonly random?: RandomSource;
+  readonly onLog?: (params: LogParams) => void;
+  readonly onStderr?: (line: string) => void;
+  readonly onAdapterFault?: (variantId: string, fault: AdapterFault) => void;
+}
+
+/** Every failure ends as a configuration error (exit code 4) before any model call. */
+export type SwapResumeFailure =
+  | { readonly kind: 'swap-record'; readonly swapId: string; readonly problem: RunReadProblem }
+  /** Resume finishes stopped swaps; a complete one is not resent. */
+  | { readonly kind: 'swap-complete'; readonly swapId: string }
+  | { readonly kind: 'run'; readonly runId: string; readonly failure: ResumeFailure };
+
+export interface PreparedSwapResume {
+  readonly swapId: string;
+  readonly runs: PerRole<PreparedResume>;
+  /** The re-estimated total: spent over both runs and earlier segments plus what remains. */
+  readonly expectedUsd: number | null;
+  readonly maxCostUsd: number | null;
+  /** Resume warnings of both runs' new segments. */
+  readonly warnings: readonly Warning[];
+  start(): Promise<SwapResumeResult>;
+  abandon(): Promise<void>;
+}
+
+export type PrepareSwapResumeResult =
+  | { readonly ok: true; readonly swap: PreparedSwapResume }
+  | { readonly ok: false; readonly failure: SwapResumeFailure };
+
+export type SwapResumeResult =
+  | { readonly ok: true; readonly end: SwapEnd }
+  | { readonly ok: false; readonly failure: SwapResumeFailure };
+
+/**
+ * Prepares both runs of the swap with their recorded variants. When both finished but the swap
+ * did not (killed before comparing), nothing is sent and the swap compares.
+ */
+export async function prepareSwapResume(
+  request: SwapResumeRequest,
+): Promise<PrepareSwapResumeResult> {
+  const { swapId, project } = request;
+  const read = await readSwapRecord(project.paths.outputDir, swapId);
+  if (!read.ok) {
+    return { ok: false, failure: { kind: 'swap-record', swapId, problem: read.problem } };
+  }
+  const { record } = read;
+  if (record.status === 'complete') {
+    return { ok: false, failure: { kind: 'swap-complete', swapId } };
+  }
+  const runIds: PerRole<string> = {
+    baseline: record.baselineRunId,
+    candidate: record.candidateRunId,
+  };
+  const chosen: PerRole<string | undefined> = { baseline: request.from, candidate: request.to };
+  const option = (role: Role): SetOptions['variant'] => {
+    const id = chosen[role];
+    return id === undefined ? undefined : { option: role === 'baseline' ? 'from' : 'to', id };
+  };
+  const resumeRequest = (role: Role): ResumeRequest => {
+    const variant = option(role);
+    return {
+      project,
+      runId: runIds[role],
+      command: 'swap',
+      set: {
+        ...(variant === undefined ? {} : { variant }),
+        ...(request.repeats === undefined ? {} : { repeats: request.repeats }),
+        ...(request.cases === undefined ? {} : { cases: request.cases }),
+      },
+      concurrency: request.concurrency,
+      maxCostUsd: request.maxCostUsd,
+      tool: request.tool,
+      ...(request.now === undefined ? {} : { now: request.now }),
+      ...(request.random === undefined ? {} : { random: request.random }),
+      ...(request.onLog === undefined ? {} : { onLog: request.onLog }),
+      ...(request.onStderr === undefined ? {} : { onStderr: request.onStderr }),
+      ...(request.onAdapterFault === undefined ? {} : { onAdapterFault: request.onAdapterFault }),
+    };
+  };
+  const prepared = await bothOrNeither(
+    (role) => prepareResume(resumeRequest(role)),
+    (run) => run.abandon(),
+  );
+  if (!prepared.ok) {
+    const { role, failure } = prepared;
+    return { ok: false, failure: { kind: 'run', runId: runIds[role], failure } };
+  }
+  const { runs } = prepared;
+  const swap: PreparedSwapResume = {
+    swapId,
+    runs,
+    expectedUsd: resumeTotalUsd([runs.baseline, runs.candidate]),
+    maxCostUsd: request.maxCostUsd,
+    warnings: [...runs.baseline.warnings, ...runs.candidate.warnings],
+    start: () => startSwapResume(request, record, runs),
+    abandon: async () => {
+      await Promise.all(ROLES.map((role) => runs[role].abandon()));
+    },
+  };
+  return { ok: true, swap };
+}
+
+/**
+ * Locks and repairs both runs, starts a segment of each and of the swap record under one cap
+ * that includes earlier spend, re-estimates before sending and interleaves the remaining trials.
+ */
+async function startSwapResume(
+  request: SwapResumeRequest,
+  record: SwapRecord,
+  runs: PerRole<PreparedResume>,
+): Promise<SwapResumeResult> {
+  const claimed = await bothOrNeither(
+    (role) => runs[role].claim(),
+    (run) => run.abandon(),
+  );
+  if (!claimed.ok) {
+    const { role, failure } = claimed;
+    return { ok: false, failure: { kind: 'run', runId: runs[role].runId, failure } };
+  }
+  const now = request.now ?? (() => new Date());
+  const end = await runClaimedSwap(request, claimed.runs, {
+    segment: {
+      swapId: record.swapId,
+      runIds: byRole((role) => runs[role].runId),
+      maxCostUsd: request.maxCostUsd,
+      earlier: record.segments,
+      startedAt: now(),
+    },
+    cases: byRole((role) => runs[role].cases),
+    spentUsd: addUsd(ROLES.map((role) => claimed.runs[role].spentUsd)),
+    beforeSending: (begun, shared) => reestimateAtResume(begun, shared),
+  });
+  return { ok: true, end };
 }

@@ -1,0 +1,18 @@
+# The first two trials of each variant (greet-ko-1 and greet-en-1, one slot each of two) answer
+# normally after 2.5 s, so a test can interrupt while both are in flight and nothing else can go
+# out before they answer. Every other trial answers at once.
+targets:
+  - name: chat
+    languages: [ko, en]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, cancel: true, maxConcurrency: 4 }
+prompts:
+  ko: 짧게 답한다.
+  en: Answer briefly.
+inputTokens: 300
+maxOutputTokens: 200
+variants:
+  '*':
+    usage: { input: 30, cachedInput: 270, cacheWrite: 0, output: 20, reasoning: 0 }
+    outcomes:
+      - { row: late, probability: 1, caseIds: [greet-ko-1, greet-en-1], delayMs: 2500 }

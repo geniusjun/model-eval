@@ -1,0 +1,14 @@
+# The process exits on crash-1; a restarted process declares no service version at all.
+adapter: { name: mock-chat, version: 0.1.0 }
+service: { version: "1111111111111111111111111111111111111111", dirty: false }
+restarted:
+  service: {}
+targets:
+  - name: chat
+    inputSchema: { type: object }
+capabilities: { maxConcurrency: 2 }
+variants:
+  '*':
+    answer: { '*': 'answer to {caseId}' }
+    outcomes:
+      - { row: crash, probability: 1, caseIds: [crash-1] }
