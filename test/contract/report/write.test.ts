@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { renderReport } from '../../../src/report/markdown.js';
 import { comparisonSchema } from '../../../src/report/schema.js';
-import { writeComparison } from '../../../src/report/write.js';
+import { rewriteReport, writeComparison } from '../../../src/report/write.js';
 import { loadComparison, temporaryDirectory } from './fixtures.js';
 
 const directories: string[] = [];
@@ -67,6 +67,24 @@ describe('comparison writer', () => {
     expect(readFileSync(written.report, 'utf8')).toBe(renderReport(saved, 'en'));
     expect(readFileSync(path.join(folder, 'report.html'), 'utf8')).toBe('kept');
     expect(temporaryNames(output)).toEqual([]);
+  });
+
+  it('001 FR-029 points report.md to samples.review in comparison.json, or to the result page the folder holds', async () => {
+    const output = outputDirectory();
+    const comparison = loadComparison('block');
+    const written = await writeComparison({ outputDir: output, comparison, lang: 'en' });
+    expect(written.page).toBeUndefined();
+    const report = readFileSync(written.report, 'utf8');
+    expect(report).toContain('side by side in `samples.review` of `comparison.json`');
+    expect(report).not.toContain('result page');
+
+    writeFileSync(path.join(written.dir, 'report.html'), 'page');
+    const rewritten = await rewriteReport({ outputDir: output, comparison, lang: 'en' });
+    expect(rewritten.page).toBe(path.join(written.dir, 'report.html'));
+    const withPage = readFileSync(rewritten.report, 'utf8');
+    expect(withPage).toBe(renderReport(comparison, 'en', 'result-page'));
+    expect(withPage).toContain('side by side on the result page');
+    expect(withPage).not.toContain('samples.review');
   });
 
   it('001 FR-029 two writers of the same comparison never mix their writes (D6)', async () => {

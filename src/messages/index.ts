@@ -18,6 +18,20 @@ export function isLang(value: string): value is Lang {
   return value === 'en' || value === 'ko';
 }
 
+/** Texts that count something, written as `<key>.one` and `<key>.other`. */
+export type CountedKey = {
+  [K in MessageKey]: K extends `${infer Base}.one`
+    ? `${Base}.other` extends MessageKey
+      ? Base
+      : never
+    : never;
+}[MessageKey];
+
+/** `<key>.one` for a count of 1, else `<key>.other`; Korean writes both forms alike. */
+export function countedKey(key: CountedKey, count: number): MessageKey {
+  return count === 1 ? `${key}.one` : `${key}.other`;
+}
+
 export function message(lang: Lang, key: MessageKey, params: MessageParams = {}): string {
   return CATALOGS[lang][key].replace(PLACEHOLDER, (_match, name: string) => {
     const value = params[name];

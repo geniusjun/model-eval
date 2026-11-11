@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import type { ShownComparison } from '../../../src/cli/human/compare.js';
 import { swapLines } from '../../../src/cli/human/swap.js';
 import type { GradeSet } from '../../../src/grade/grade-set.js';
 import { comparisonSchema, type Cell, type Comparison } from '../../../src/report/schema.js';
@@ -85,9 +86,17 @@ function cellOf(cells: readonly Cell[], ruleId: string, lang: string): Cell {
   return cell;
 }
 
-function output(comparison: Comparison, lang: 'en' | 'ko' = 'en'): string {
+function output(
+  comparison: Comparison,
+  lang: 'en' | 'ko' = 'en',
+  written?: ShownComparison,
+): string {
   const view = { end: swapEnd(comparison), expectedUsd: 0.26, conservativeUsd: 0.85 };
-  return swapLines(lang, { ...view, warnings: comparison.warnings })
+  return swapLines(lang, {
+    ...view,
+    warnings: comparison.warnings,
+    ...(written === undefined ? {} : { written }),
+  })
     .map((line) => line.text)
     .join('\n');
 }
@@ -151,6 +160,24 @@ describe('swap human output', () => {
     expect(lineWith(text, 'no-emoji')).toContain('Too few samples (30 trials per variant < 35)');
     // completed × en has K = 2, so verdict row 2 decides it, not n_min.
     expect(lineWith(text, '? completed  en')).not.toContain('trials per variant <');
+  });
+
+  it('001 FR-028 points to samples.review in comparison.json, or to the result page when one is written', () => {
+    const folder = '.model-eval/comparisons/cmp-3f9a1c0e2b7d';
+    const written = { report: `${folder}/report.md`, comparison: `${folder}/comparison.json` };
+    expect(block().scope.reviewRules).toHaveLength(1);
+    const withoutPage = output(block(), 'en', written);
+    expect(withoutPage).toContain(
+      `Side by side: 1 review rule, see samples.review in ${folder}/comparison.json`,
+    );
+    expect(lineWith(withoutPage, 'Scope')).toContain(
+      `(side by side in samples.review of ${folder}/comparison.json)`,
+    );
+    expect(withoutPage).not.toContain('result page');
+    const withPage = output(block(), 'en', { ...written, page: `${folder}/report.html` });
+    expect(withPage).toContain('Side by side: 1 review rule, see the result page');
+    expect(lineWith(withPage, 'Scope')).toContain('(side by side on the result page)');
+    expect(withPage).not.toContain('samples.review');
   });
 
   it('001 FR-034 writes the same output from the Korean messages', () => {

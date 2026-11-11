@@ -26,5 +26,16 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
-      - run: pnpm test
-      - run: pnpm exec publint
+      - run: pnpm build
+      - run: pnpm exec vitest run --project unit --project contract
+      - name: End-to-end tests against the mock adapter (SC-001)
+        timeout-minutes: 3
+        run: pnpm exec vitest run --project e2e
+      - run: pnpm check:coverage
+      - name: SC-003 simulation
+        run: pnpm bench
+      - name: Pack
+        run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
+      - run: pnpm exec publint run "$RUNNER_TEMP"/pack/*.tgz
+      # The package is ESM only, so CommonJS resolution is not checked.
+      - run: pnpm exec attw "$RUNNER_TEMP"/pack/*.tgz --profile esm-only

@@ -1,6 +1,13 @@
 import type { LintFinding } from '../../config/diagnostics.js';
+import { isComparableVersion } from '../../lint/helper-version.js';
 import type { Lang } from '../../config/schema.js';
-import { message, type MessageKey, type MessageParams } from '../../messages/index.js';
+import {
+  countedKey,
+  message,
+  type CountedKey,
+  type MessageKey,
+  type MessageParams,
+} from '../../messages/index.js';
 import type { Quote } from '../../report/code-text.js';
 import { marginPoints } from '../../report/format.js';
 
@@ -16,6 +23,16 @@ export function textOf(lang: Lang): Text {
   return Object.assign((key: MessageKey, params?: MessageParams) => message(lang, key, params), {
     lang,
   });
+}
+
+/** A message that counts something, in its form for `count`; `{count}` holds the number. */
+export function counted(
+  t: Text,
+  key: CountedKey,
+  count: number,
+  params: MessageParams = {},
+): string {
+  return t(countedKey(key, count), { count, ...params });
 }
 
 /** Adapter, model and service text is shown as a JSON string, so control characters stay inert. */
@@ -57,6 +74,15 @@ export function lintText(t: Text, finding: LintFinding, localDetail?: string): s
   }
   if (finding.code === 'schema' && finding.params.path === '') {
     return t('lint.schema-file', params);
+  }
+  if (finding.code === 'few-cases' && finding.params.cases === 1) {
+    return t('lint.few-cases.one', params);
+  }
+  if (finding.code === 'margin-unreachable' && finding.params.plannedTrials === 1) {
+    return t('lint.margin-unreachable.one', params);
+  }
+  if (finding.code === 'helper-outdated' && !isComparableVersion(finding.params.version)) {
+    return t('lint.helper-outdated.unknown', params);
   }
   return t(`lint.${finding.code}`, params);
 }

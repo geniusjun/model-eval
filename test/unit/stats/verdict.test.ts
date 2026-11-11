@@ -11,11 +11,9 @@ import {
   type VerdictEvidence,
 } from '../../../src/stats/verdict.js';
 
-import { counts, pairedRepeats, times, Z_L, Z_U4 } from './cases.js';
+import { counts, pairedRepeats, times, Z_GATED4, Z_L } from './cases.js';
 
 // Expected bounds come from an independent Python implementation of data-model §Statistics.
-
-const ungated = { zLower: Z_L, zUpper: Z_U4 };
 
 function cell(pairs: PairedCase[], overrides: Partial<CellInput> = {}): CellInput {
   const judged = (side: 'baseline' | 'candidate') =>
@@ -26,7 +24,7 @@ function cell(pairs: PairedCase[], overrides: Partial<CellInput> = {}): CellInpu
     gated: false,
     margin: 0.1,
     minCases: 3,
-    z: ungated,
+    z: Z_GATED4,
     ...overrides,
   };
 }
@@ -65,7 +63,8 @@ describe('verdict order', () => {
   it('001 FR-022 row 3 before row 4: a collapse is regressed below minCases', () => {
     const result = judgeCell(cell(pairedRepeats(5, [5, 5, 5], [1, 0, 1]), { minCases: 5 }));
     expect(result.verdict).toBe('regressed');
-    expect(result.diff?.high).toBeCloseTo(-0.54755536999465, 12);
+    // 3 cases: U takes t_{2, 0.975}; without it U would be −0.548.
+    expect(result.diff?.high).toBeCloseTo(-0.2759140018082664, 12);
     expect(result.note).toBeUndefined();
   });
 
@@ -167,6 +166,15 @@ describe('100% compliance on both sides', () => {
       expect(result.note).toBeUndefined();
     },
   );
+});
+
+describe('verdicts with few cases', () => {
+  it('001 SC-003 FR-022 does not block a 3-case drop that U with z_U alone would call regressed', () => {
+    // U with z_U is −0.305; with t_{2, 1−α/4} it is 0.324, so row 3 does not apply.
+    const result = judgeCell(cell(pairedRepeats(5, [5, 5, 5], [0, 2, 1]), { gated: true }));
+    expect(result.diff?.high).toBeCloseTo(0.3238841589851098, 12);
+    expect(result.verdict).toBe('insufficient');
+  });
 });
 
 describe('cell notes', () => {

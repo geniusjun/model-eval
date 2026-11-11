@@ -3,6 +3,8 @@ import { promisify } from 'node:util';
 
 import { describe, expect, it } from 'vitest';
 
+import { BUNDLED_HELPER_VERSION } from '../../src/lint/helper-version.js';
+import { message } from '../../src/messages/index.js';
 import { E2E, lintJson, useProjects } from './support/commands.js';
 import { greetCases, type CaseInput, type RuleInput } from './support/project.js';
 import { ANSWERED, NO_EMOJI, SCRIPT_JA, SCRIPT_JA_QUOTE } from './support/rules.js';
@@ -600,6 +602,46 @@ describe('001 lint', () => {
       const ran = await ledger.run(['run', '--variant', 'current', '--dry-run']);
       expect(ran.code).toBe(4);
       expect(ran.stderr).toContain('no response to render within 1000 ms');
+    },
+    E2E.timeout,
+  );
+
+  it(
+    '001 FR-035 reports helper-outdated for an older helper in initialize, once per version, and skips it with --no-adapter',
+    async () => {
+      const ledger = await project({
+        scenario: 'lint-helper-old',
+        rules: [NO_EMOJI],
+        cases: KO_JA,
+      });
+      const outdated = (variants: readonly string[]) => ({
+        code: 'helper-outdated',
+        params: { version: '0.0.9', bundled: BUNDLED_HELPER_VERSION },
+        variants,
+        file: 'model-eval.config.yaml',
+      });
+      const helperWarnings = (warnings: readonly { readonly code: string }[]) =>
+        warnings.filter((warning) => warning.code === 'helper-outdated');
+
+      const first = await lintJson(ledger);
+      expect(first.cli.code).toBe(0);
+      expect(helperWarnings(first.envelope.warnings)).toMatchObject([outdated(['current'])]);
+
+      const rendered = await lintJson(ledger, ['--render']);
+      expect(helperWarnings(rendered.envelope.warnings)).toMatchObject([
+        outdated(['current', 'next']),
+      ]);
+
+      const offline = await lintJson(ledger, ['--no-adapter']);
+      expect(helperWarnings(offline.envelope.warnings)).toEqual([]);
+
+      const human = await ledger.run(['lint']);
+      expect(human.stdout).toContain(
+        message('en', 'lint.helper-outdated', {
+          version: '0.0.9',
+          bundled: BUNDLED_HELPER_VERSION,
+        }),
+      );
     },
     E2E.timeout,
   );

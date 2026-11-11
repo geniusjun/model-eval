@@ -4,6 +4,7 @@ import { EXIT_CODES, exitStatus, resolveExit } from '../../../src/cli/exit-codes
 import { COMMAND_HANDLERS, main, type CliContext } from '../../../src/cli/main.js';
 import { colorEnabled, createOutput, type TextStream } from '../../../src/cli/output.js';
 import { envelopeSchema } from '../../../src/cli/results.js';
+import { counted, lintText, textOf } from '../../../src/cli/human/text.js';
 import { CATALOGS, message, selectLang } from '../../../src/messages/index.js';
 import { createRedactor } from '../../../src/report/redact.js';
 import { cellNoteSchema } from '../../../src/report/schema.js';
@@ -105,6 +106,40 @@ describe('messages', () => {
     for (const key of Object.keys(CATALOGS.en) as (keyof typeof CATALOGS.en)[]) {
       expect(placeholders(CATALOGS.ko[key])).toEqual(placeholders(CATALOGS.en[key]));
     }
+  });
+
+  it('001 FR-034 translates every text except those made only of placeholders and names', () => {
+    const formatOnly = [
+      'human.adapter.logGroup',
+      'human.grade.header',
+      'human.report.header',
+      'human.swap.id',
+      'lint.schema',
+      'lint.schema-file',
+    ];
+    const same = (Object.keys(CATALOGS.en) as (keyof typeof CATALOGS.en)[]).filter(
+      (key) => CATALOGS.ko[key] === CATALOGS.en[key],
+    );
+    expect(same.sort()).toEqual(formatOnly);
+  });
+
+  it('001 FR-034 writes English counts of one in the singular', () => {
+    const t = textOf('en');
+    expect(counted(t, 'count.repeats', 1)).toBe('1 repeat');
+    expect(counted(t, 'count.repeats', 2)).toBe('2 repeats');
+    expect(counted(t, 'human.sideBySide.result-page', 1)).toBe(
+      'Side by side: 1 review rule, see the result page',
+    );
+    expect(counted(textOf('ko'), 'count.repeats', 1)).toBe('반복 1회');
+    const fewCases = (cases: number) =>
+      lintText(t, {
+        code: 'few-cases',
+        ruleId: 'answered',
+        lang: 'ko',
+        params: { surface: 'trial', cases },
+      });
+    expect(fewCases(1)).toContain('has only 1 case;');
+    expect(fewCases(2)).toContain('has only 2 cases;');
   });
 
   it('001 FR-034 has the text of every cell note code in both languages', () => {

@@ -3,12 +3,14 @@ import {
   caseDifferences,
   caseWeightedRate,
   effectiveTrials,
+  MIN_CASES_FLOOR,
   sampleVariance,
+  upperQuantile,
   type CaseCounts,
   type PairedCase,
   type ZValues,
 } from './interval.js';
-import { MIN_CASES_FLOOR, nMin } from './verdict.js';
+import { nMin } from './verdict.js';
 
 // data-model §Statistics, Trials needed (FR-024), for undecided gated cells.
 
@@ -57,7 +59,7 @@ function components(pairs: readonly PairedCase[], margin: number, z: ZValues): C
   const baseline = pairs.map((pair) => pair.baseline);
   const candidate = pairs.map((pair) => pair.candidate);
   const estimate = caseWeightedRate(candidate) - caseWeightedRate(baseline);
-  const zValue = estimate > -margin ? z.zLower : z.zUpper;
+  const zValue = estimate > -margin ? z.zLower : upperQuantile(pairs.length, z);
   const pb = smoothedRate(baseline, zValue);
   const pc = smoothedRate(candidate, zValue);
   const w = pb * (1 - pb) + pc * (1 - pc);

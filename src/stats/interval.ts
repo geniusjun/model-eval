@@ -1,5 +1,5 @@
 import type { Rate } from '../report/schema.js';
-import { normalQuantile } from './quantile.js';
+import { normalQuantile, studentTQuantile } from './quantile.js';
 import { wilson } from './wilson.js';
 
 // data-model §Statistics: estimators, the interval and the levels of one cell.
@@ -18,10 +18,21 @@ export interface CaseCounts {
 /** One of the K common cases, judged in both variants. */
 export type PairedCase = PerRole<CaseCounts>;
 
-/** z_L for lower bounds and z_U for upper bounds. */
+/** Below 3 cases V_cl is missing or too unstable to trust (research R3). */
+export const MIN_CASES_FLOOR = 3;
+
+/**
+ * Below 10 cases the upper bound takes a t quantile (s_U), and lint warns with `few-cases`
+ * (data-model §Statistics, §Validation Rules).
+ */
+export const FEW_CASES = 10;
+
+/** z_L for lower bounds and z_U for upper bounds, with their tail probabilities α and α_U. */
 export interface ZValues {
   readonly zLower: number;
   readonly zUpper: number;
+  readonly alphaLower: number;
+  readonly alphaUpper: number;
 }
 
 export interface Difference {
@@ -42,15 +53,31 @@ export interface DifferenceInterval {
 export function zValues(confidence: number, gatedCells: number): ZValues {
   const alpha = (1 - confidence) / 2;
   const zLower = -normalQuantile(alpha);
-  return {
-    zLower,
-    zUpper: gatedCells > 0 ? -normalQuantile(alpha / gatedCells) : zLower,
-  };
+  return gatedCells > 0
+    ? {
+        zLower,
+        zUpper: -normalQuantile(alpha / gatedCells),
+        alphaLower: alpha,
+        alphaUpper: alpha / gatedCells,
+      }
+    : { zLower, zUpper: zLower, alphaLower: alpha, alphaUpper: alpha };
 }
 
 /** Only gated cells use the corrected z_U. */
 export function cellZValues(z: ZValues, gated: boolean): ZValues {
-  return gated ? z : { zLower: z.zLower, zUpper: z.zLower };
+  return gated
+    ? z
+    : { zLower: z.zLower, zUpper: z.zLower, alphaLower: z.alphaLower, alphaUpper: z.alphaLower };
+}
+
+/**
+ * The quantile of the upper bound for K cases: t_{K−1, 1−α_U} for 3 ≤ K < 10, else z_U. It is
+ * taken as −t_{K−1, α_U}, for the same reason as z_U.
+ */
+export function upperQuantile(cases: number, z: ZValues): number {
+  return cases >= MIN_CASES_FLOOR && cases < FEW_CASES
+    ? -studentTQuantile(cases - 1, z.alphaUpper)
+    : z.zUpper;
 }
 
 function assertCases(cases: readonly CaseCounts[]): void {
@@ -188,37 +215,60 @@ export function caseDifferences(pairs: readonly PairedCase[]): number[] {
   );
 }
 
-/**
- * deff = max(1, V_cl / V_bin), 1 when V_bin = 0. With one case V_cl has no degree of freedom
- * and deff is 1; such a cell is `insufficient` anyway (verdict row 2).
- */
-export function designEffect(pairs: readonly PairedCase[]): number {
+/** V_cl / V_bin; null when V_bin = 0 or V_cl has no degree of freedom (one case). */
+function varianceRatio(pairs: readonly PairedCase[]): number | null {
   const { baseline, candidate, differences } = estimates(pairs);
   const k = pairs.length;
   const binomial =
     (candidate.rate * (1 - candidate.rate)) / candidate.nEff +
     (baseline.rate * (1 - baseline.rate)) / baseline.nEff;
   if (k < 2 || binomial === 0) {
-    return 1;
+    return null;
   }
   // V_cl = Σ(d_i − Δ̂)² / (K(K−1)), and Δ̂ is the mean of the d_i.
-  return Math.max(1, sampleVariance(differences) / k / binomial);
+  return sampleVariance(differences) / k / binomial;
 }
 
 /**
- * Newcombe hybrid score interval on n*_v = ñ_v/deff: L from the Wilson bounds at z_L, U from
- * those at z_U.
+ * deff = max(1, V_cl / V_bin), 1 when V_bin = 0. With one case V_cl has no degree of freedom
+ * and deff is 1; such a cell is `insufficient` anyway (verdict row 2).
+ */
+export function designEffect(pairs: readonly PairedCase[]): number {
+  const ratio = varianceRatio(pairs);
+  return ratio === null ? 1 : Math.max(1, ratio);
+}
+
+/** deff_U = max(1, s_U · V_cl / V_bin) with s_U = (t_{K−1, 1−α_U} / z_U)² below 10 cases. */
+export function upperDesignEffect(pairs: readonly PairedCase[], z: ZValues): number {
+  const ratio = varianceRatio(pairs);
+  if (ratio === null) {
+    return 1;
+  }
+  const scale = (upperQuantile(pairs.length, z) / z.zUpper) ** 2;
+  return Math.max(1, scale * ratio);
+}
+
+/**
+ * Newcombe hybrid score interval: L from the Wilson bounds at z_L on n*_v = ñ_v/deff, U from
+ * those at z_U on n*_v = ñ_v/deffUpper.
  */
 export function newcombeInterval(
   pairs: readonly PairedCase[],
   z: ZValues,
   deff: number,
+  deffUpper = deff,
 ): Difference {
   const { baseline, candidate } = estimates(pairs);
-  const bounds = (side: { rate: number; nEff: number }, zValue: number) =>
-    wilson((side.rate * side.nEff) / deff, side.nEff / deff, zValue);
-  const lower = { baseline: bounds(baseline, z.zLower), candidate: bounds(candidate, z.zLower) };
-  const upper = { baseline: bounds(baseline, z.zUpper), candidate: bounds(candidate, z.zUpper) };
+  const bounds = (side: { rate: number; nEff: number }, zValue: number, effect: number) =>
+    wilson((side.rate * side.nEff) / effect, side.nEff / effect, zValue);
+  const lower = {
+    baseline: bounds(baseline, z.zLower, deff),
+    candidate: bounds(candidate, z.zLower, deff),
+  };
+  const upper = {
+    baseline: bounds(baseline, z.zUpper, deffUpper),
+    candidate: bounds(candidate, z.zUpper, deffUpper),
+  };
   const estimate = candidate.rate - baseline.rate;
   return {
     estimate,
@@ -240,5 +290,5 @@ export function differenceInterval(
     return null;
   }
   const deff = designEffect(pairs);
-  return { diff: newcombeInterval(pairs, z, deff), deff };
+  return { diff: newcombeInterval(pairs, z, deff, upperDesignEffect(pairs, z)), deff };
 }

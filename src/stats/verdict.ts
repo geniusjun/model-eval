@@ -2,6 +2,7 @@ import type { CellNote, Rate, Verdict } from '../report/schema.js';
 import {
   cellZValues,
   differenceInterval,
+  MIN_CASES_FLOOR,
   newcombeInterval,
   variantRate,
   type Difference,
@@ -11,9 +12,6 @@ import {
 } from './interval.js';
 
 // data-model §Statistics, Verdict order, and the cell notes of §Cell.
-
-/** Below 3 cases V_cl is missing or too unstable to trust (research R3). */
-export const MIN_CASES_FLOOR = 3;
 
 /**
  * n_min(m) = ⌈z_L²(1−m)/m⌉: when both variants pass every trial, L = −z²/(ñ+z²), so L > −m

@@ -1,10 +1,8 @@
-import path from 'node:path';
-
 import { buildComparison } from '../../compare/comparison.js';
 import { gateExit } from '../../compare/gate.js';
 import { writeComparison } from '../../report/write.js';
 import type { ExitName } from '../exit-codes.js';
-import { compareLines } from '../human/compare.js';
+import { compareLines, shownComparison } from '../human/compare.js';
 import type { CommandHandler, CommandInvocation } from '../main.js';
 import {
   currentCasesOf,
@@ -71,7 +69,7 @@ async function compare(invocation: CommandInvocation): Promise<ExitName> {
   const lines = compareLines(lang, {
     comparison,
     warnings,
-    reportPath: path.relative(invocation.context.cwd, written.report),
+    written: shownComparison(written, invocation.context.cwd),
   });
   for (const line of lines) {
     if (line.redacted) {

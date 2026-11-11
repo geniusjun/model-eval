@@ -165,7 +165,7 @@ describe('adapter stderr and logs in runs', () => {
   it('001 FR-008 attaches the last stderr lines, redacted, to the report of a run the adapter stopped', () => {
     expect(crashed.code).toBe(3);
     expect(crashed.stderr).toContain(
-      message('en', 'human.adapter.stderrTail', { variant: 'next', count: 9 }),
+      message('en', 'human.adapter.stderrTail.other', { variant: 'next', count: 9 }),
     );
     expect(crashed.stderr).toContain('  mock: handling greet-ko-1 for <phone>');
     expect(crashed.stdout + crashed.stderr).not.toContain(PHONE);

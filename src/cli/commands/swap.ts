@@ -7,6 +7,7 @@ import type { Warning } from '../../run/warning.js';
 import { gateExit } from '../../compare/gate.js';
 import { message } from '../../messages/index.js';
 import { resolveExit, stopExit, type ExitName } from '../exit-codes.js';
+import { shownComparison } from '../human/compare.js';
 import { swapResumeFailureLines } from '../human/resume.js';
 import { overBudgetLine, planLines, startFailureLines, swapLines } from '../human/swap.js';
 import type { CommandHandler, CommandInvocation } from '../main.js';
@@ -91,7 +92,7 @@ function showEnd(
     warnings,
     ...(end.written === undefined
       ? {}
-      : { reportPath: path.relative(invocation.context.cwd, end.written.report) }),
+      : { written: shownComparison(end.written, invocation.context.cwd) }),
   });
   for (const line of lines) {
     if (line.redacted) {

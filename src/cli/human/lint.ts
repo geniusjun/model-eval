@@ -2,6 +2,7 @@ import type { Diagnostic, Level } from '../../config/diagnostics.js';
 import type { Lang } from '../../config/schema.js';
 import type { MessageKey } from '../../messages/index.js';
 import {
+  counted,
   lintText,
   placeLabel,
   positionLabel,
@@ -68,7 +69,7 @@ export function lintLines(
     ),
     t('human.lint.summary', { errors: count('error'), warnings, info: count('info') }),
     ...(maxWarnings !== null && warnings > maxWarnings
-      ? [t('human.lint.overLimit', { warnings, max: maxWarnings })]
+      ? [counted(t, 'human.lint.overLimit', warnings, { warnings, max: maxWarnings })]
       : []),
   ];
 }

@@ -1,3 +1,4 @@
+import { watch } from 'node:fs';
 import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -8,7 +9,7 @@ import type { z } from 'zod';
 
 import { generateParamsSchema, initializeParamsSchema } from '../../../src/adapter/protocol.js';
 import type { caseSchema, configSchema, ruleSchema } from '../../../src/config/schema.js';
-import { MOCK_ADAPTER, runCli, type CliResult } from './cli.js';
+import { CLI_TIMEOUT_MS, MOCK_ADAPTER, runCli, type CliResult } from './cli.js';
 import { scenarioFile } from './mock.js';
 
 export type ConfigInput = z.input<typeof configSchema>;
@@ -85,28 +86,75 @@ const PRICING: ConfigInput['pricing'] = {
 
 /**
  * Forwards stdin to the real adapter and appends every request line, with the time it arrived,
- * to `<log dir>/<pid>.jsonl`, so a test can see which requests reached the adapter without
- * relying on what the tool writes.
+ * to `<log dir>/<pid>.jsonl`, so a test can see which requests the tool wrote to the adapter
+ * without relying on what the tool records.
+ *
+ * The tool counts a request as in flight once written and learns of an adapter exit only when
+ * this process ends, so requests it writes in between land in a pipe nobody reads. When the
+ * adapter exits with stdin still open, a detached drain process (`--drain`) takes stdin over,
+ * outside the adapter's process group the tool signals, and records the rest until the tool
+ * closes it.
  */
 const RECORDER = `import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import path from 'node:path';
-import { createInterface } from 'node:readline';
+import { fileURLToPath } from 'node:url';
 
-const [logDir, command, ...args] = process.argv.slice(2);
-const log = path.join(logDir, String(process.pid) + '.jsonl');
-const child = spawn(command, args, { stdio: ['pipe', 'inherit', 'inherit'] });
-child.stdin.on('error', () => {});
-createInterface({ input: process.stdin })
-  .on('line', (line) => {
-    appendFileSync(log, JSON.stringify({ at: Date.now(), line }) + '\\n');
-    child.stdin.write(line + '\\n');
-  })
-  .on('close', () => child.stdin.end());
-for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, () => child.kill(signal));
+function record(log, entry) {
+  appendFileSync(log, JSON.stringify({ at: Date.now(), ...entry }) + '\\n');
 }
-child.on('exit', (code, signal) => process.exit(code ?? (signal === null ? 1 : 128)));
+
+function readLines(rest, onLine, onEnd) {
+  let buffer = rest;
+  process.stdin.on('data', (chunk) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    let newline = buffer.indexOf(10);
+    while (newline !== -1) {
+      onLine(buffer.subarray(0, newline).toString('utf8'));
+      buffer = buffer.subarray(newline + 1);
+      newline = buffer.indexOf(10);
+    }
+  });
+  process.stdin.on('end', onEnd);
+  return () => buffer;
+}
+
+if (process.argv[2] === '--drain') {
+  const [log, rest] = process.argv.slice(3);
+  readLines(
+    Buffer.from(rest, 'base64'),
+    (line) => record(log, { line }),
+    () => record(log, { mark: 'drained' }),
+  );
+} else {
+  const [logDir, command, ...args] = process.argv.slice(2);
+  const log = path.join(logDir, String(process.pid) + '.jsonl');
+  const child = spawn(command, args, { stdio: ['pipe', 'inherit', 'inherit'] });
+  child.stdin.on('error', () => {});
+  let open = true;
+  const unread = readLines(
+    Buffer.alloc(0),
+    (line) => {
+      record(log, { line });
+      child.stdin.write(line + '\\n');
+    },
+    () => {
+      open = false;
+      child.stdin.end();
+    },
+  );
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => child.kill(signal));
+  }
+  child.on('exit', (code, signal) => {
+    if (open) {
+      record(log, { mark: 'handoff' });
+      const drainArgs = [fileURLToPath(import.meta.url), '--drain', log, unread().toString('base64')];
+      spawn(process.execPath, drainArgs, { stdio: [0, 'ignore', 'ignore'], detached: true }).unref();
+    }
+    process.exit(code ?? (signal === null ? 1 : 128));
+  });
+}
 `;
 
 const RECORDER_FILE = 'record-adapter.mjs';
@@ -203,11 +251,8 @@ async function readSessions(dir: string): Promise<AdapterSession[]> {
   const files = (await readdir(dir)).filter((name) => name.endsWith('.jsonl')).sort();
   return Promise.all(
     files.map(async (name) => {
-      const text = await readFile(path.join(dir, name), 'utf8');
-      const requests = text
-        .split('\n')
-        .filter((line) => line !== '')
-        .map(parseRecordedLine);
+      const entries = await settledLog(path.join(dir, name));
+      const requests = entries.flatMap((entry) => ('line' in entry ? [requestOf(entry)] : []));
       const initialize = requests.find((request) => request.method === 'initialize');
       const variant =
         initialize === undefined
@@ -218,11 +263,69 @@ async function readSessions(dir: string): Promise<AdapterSession[]> {
   );
 }
 
-function parseRecordedLine(text: string): RecordedRequest {
+type RecorderEntry =
+  | { readonly at: number; readonly line: string }
+  | { readonly at: number; readonly mark: 'handoff' | 'drained' };
+
+/** A log is complete once the drain process the recorder handed stdin to has read it all. */
+function settledLog(file: string): Promise<RecorderEntry[]> {
+  return new Promise((resolve, reject) => {
+    const watcher = watch(file);
+    let settled = false;
+    const settle = (outcome: { entries: RecorderEntry[] } | { error: unknown }): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      watcher.close();
+      clearTimeout(timer);
+      if ('entries' in outcome) {
+        resolve(outcome.entries);
+      } else {
+        reject(outcome.error instanceof Error ? outcome.error : new Error(String(outcome.error)));
+      }
+    };
+    const timer = setTimeout(() => {
+      settle({ error: new Error(`the recorder's drain process never finished ${file}`) });
+    }, CLI_TIMEOUT_MS);
+    const check = (): void => {
+      readFile(file, 'utf8')
+        .then((text) => {
+          const entries = text
+            .split('\n')
+            .filter((line) => line !== '')
+            .map(parseRecorderEntry);
+          const marks = entries.flatMap((entry) => ('mark' in entry ? [entry.mark] : []));
+          if (!marks.includes('handoff') || marks.includes('drained')) {
+            settle({ entries });
+          }
+        })
+        .catch((error: unknown) => {
+          settle({ error });
+        });
+    };
+    watcher.on('change', check);
+    watcher.on('error', (error) => {
+      settle({ error });
+    });
+    check();
+  });
+}
+
+function parseRecorderEntry(text: string): RecorderEntry {
   const entry: unknown = JSON.parse(text);
-  if (!isRecord(entry) || typeof entry.at !== 'number' || typeof entry.line !== 'string') {
-    throw new Error(`unexpected recorder line: ${text}`);
+  if (isRecord(entry) && typeof entry.at === 'number') {
+    if (typeof entry.line === 'string') {
+      return { at: entry.at, line: entry.line };
+    }
+    if (entry.mark === 'handoff' || entry.mark === 'drained') {
+      return { at: entry.at, mark: entry.mark };
+    }
   }
+  throw new Error(`unexpected recorder line: ${text}`);
+}
+
+function requestOf(entry: { readonly at: number; readonly line: string }): RecordedRequest {
   const message: unknown = JSON.parse(entry.line);
   if (!isRecord(message) || typeof message.method !== 'string') {
     throw new Error(`the tool sent a line without a method: ${entry.line}`);

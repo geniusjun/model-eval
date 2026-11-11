@@ -1,8 +1,9 @@
 import { isLowBaseline } from '../compare/gate.js';
 import type { Lang } from '../config/schema.js';
-import { message, type MessageKey, type MessageParams } from '../messages/index.js';
+import { countedKey, message, type MessageKey, type MessageParams } from '../messages/index.js';
 import type { Warning } from '../run/warning.js';
 import { neededText, noteText, reasonText, verdictText, warningText } from './code-text.js';
+import { COMPARISON_FILE } from './layout.js';
 import {
   dollars,
   factor,
@@ -52,10 +53,24 @@ interface CellKey {
   readonly surface: string;
 }
 
+/**
+ * Where readers find the side-by-side `review` samples: the result page when one is written
+ * beside `report.md`, else `samples.review` in `comparison.json` (data-model §Comparison).
+ */
+export type ReviewSamplesAt = 'result-page' | 'comparison-json';
+
 interface Context {
   readonly comparison: Comparison;
   readonly lang: Lang;
   readonly text: (key: MessageKey, params?: MessageParams) => string;
+  readonly reviewSamplesAt: ReviewSamplesAt;
+}
+
+function reviewSamplesText(ctx: Context): string {
+  return ctx.text(`report.reviewSamples.${ctx.reviewSamplesAt}`, {
+    field: codeSpan('samples.review'),
+    file: codeSpan(COMPARISON_FILE),
+  });
 }
 
 // Markdown primitives
@@ -158,7 +173,7 @@ function heading(ctx: Context, key: MessageKey): string {
 
 function gateLines(ctx: Context): string {
   const { gate, stats, priorComparisons } = ctx.comparison;
-  const outcome = ctx.text('report.gate', {
+  const outcome = ctx.text(countedKey('report.gate', stats.gatedCells), {
     outcome: ctx.text(`report.outcome.${gate.outcome}`),
     cells: stats.gatedCells,
   });
@@ -225,6 +240,7 @@ function summarySection(ctx: Context): string {
     judged: summary.scope.judgedRules.length,
     total: rules.length,
     review: summary.scope.reviewRules.length,
+    sideBySide: reviewSamplesText(ctx),
   });
   return blocks([
     heading(ctx, 'report.section.summary'),
@@ -259,7 +275,7 @@ function cellNotes(ctx: Context, cell: Cell): string {
   const notes = cell.note === undefined ? [] : [noteText(ctx.lang, cell.note)];
   if (cell.systematic !== undefined) {
     notes.push(
-      ctx.text('report.systematic', {
+      ctx.text(countedKey('report.systematic', cell.systematic.candidate.trials), {
         baseline: cell.systematic.baseline.trials,
         candidate: cell.systematic.candidate.trials,
       }),
@@ -613,7 +629,7 @@ function scopeSection(ctx: Context): string {
       `${ctx.text('report.scope.targets')}: ${idList(ctx, scope.targets)}`,
       `${ctx.text('report.scope.judged', { judged: scope.judgedRules.length, total: rules.length })}: ${idList(ctx, scope.judgedRules)}`,
       `${ctx.text('report.scope.notJudged')}: ${idList(ctx, scope.notJudgedRules)}`,
-      `${ctx.text('report.scope.review')}: ${idList(ctx, scope.reviewRules)}`,
+      `${ctx.text('report.scope.review', { sideBySide: reviewSamplesText(ctx) })}: ${idList(ctx, scope.reviewRules)}`,
       `${ctx.text('report.scope.excluded')}: ${idList(ctx, excluded)}`,
       `${ctx.text('report.scope.commonCases')}: ${String(coverage.commonCases)}`,
       `${ctx.text('report.scope.baselineOnly', { variant: variantId(ctx, 'baseline') })}: ${idList(ctx, coverage.baselineOnly)}`,
@@ -685,12 +701,20 @@ function reproductionSection(ctx: Context): string {
   ]);
 }
 
-/** The Markdown report of a Comparison, in the language the command runs in. */
-export function renderReport(comparison: Comparison, lang: Lang): string {
+/**
+ * The Markdown report of a Comparison, in the language the command runs in, pointing to where
+ * the writer put the `review` samples.
+ */
+export function renderReport(
+  comparison: Comparison,
+  lang: Lang,
+  reviewSamplesAt: ReviewSamplesAt = 'comparison-json',
+): string {
   const ctx: Context = {
     comparison,
     lang,
     text: (key, params) => message(lang, key, params),
+    reviewSamplesAt,
   };
   const title = ctx.text('report.title', {
     baseline: `${comparison.baseline.variant.id} (${codeSpan(comparison.baseline.variant.model)})`,

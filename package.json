@@ -27,7 +27,10 @@
     "format": "prettier --write .",
     "test": "pnpm build && vitest run",
     "schemas": "tsx scripts/generate-schemas.ts",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:coverage": "tsx scripts/check-spec-coverage.ts",
+    "bench": "tsx bench/sc003.ts",
+    "bench:overhead": "pnpm build && tsx bench/overhead.ts"
   },
   "dependencies": {
     "ajv": "^8.20.0",

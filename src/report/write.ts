@@ -1,9 +1,14 @@
 import path from 'node:path';
 
 import type { Lang } from '../config/schema.js';
-import { writeFileAtomic, writeFolderAtomic } from '../run/writer.js';
-import { COMPARISON_FILE, comparisonDir, REPORT_MARKDOWN_FILE } from './layout.js';
-import { renderReport } from './markdown.js';
+import { listResultEntries, writeFileAtomic, writeFolderAtomic } from '../run/writer.js';
+import {
+  COMPARISON_FILE,
+  comparisonDir,
+  REPORT_MARKDOWN_FILE,
+  REPORT_PAGE_FILE,
+} from './layout.js';
+import { renderReport, type ReviewSamplesAt } from './markdown.js';
 import type { Comparison } from './schema.js';
 
 export interface ComparisonWriteOptions {
@@ -18,6 +23,22 @@ export interface WrittenComparison {
   readonly dir: string;
   readonly comparison: string;
   readonly report: string;
+  /** The result page, when the folder holds one; `report.md` then points readers to it. */
+  readonly page?: string;
+}
+
+/** The result page when the folder's files include it, else `samples.review` of the comparison. */
+function reviewSamplesAt(files: readonly string[]): ReviewSamplesAt {
+  return files.includes(REPORT_PAGE_FILE) ? 'result-page' : 'comparison-json';
+}
+
+function writtenFiles(dir: string, at: ReviewSamplesAt): WrittenComparison {
+  return {
+    dir,
+    comparison: path.join(dir, COMPARISON_FILE),
+    report: path.join(dir, REPORT_MARKDOWN_FILE),
+    ...(at === 'result-page' ? { page: path.join(dir, REPORT_PAGE_FILE) } : {}),
+  };
 }
 
 /**
@@ -31,20 +52,19 @@ export async function writeComparison({
   lang,
 }: ComparisonWriteOptions): Promise<WrittenComparison> {
   const dir = comparisonDir(outputDir, comparison.comparisonId);
+  const files = { [COMPARISON_FILE]: `${JSON.stringify(comparison, null, 2)}\n` };
+  const at = reviewSamplesAt(Object.keys(files));
   await writeFolderAtomic(dir, {
-    [COMPARISON_FILE]: `${JSON.stringify(comparison, null, 2)}\n`,
-    [REPORT_MARKDOWN_FILE]: renderReport(comparison, lang),
+    ...files,
+    [REPORT_MARKDOWN_FILE]: renderReport(comparison, lang, at),
   });
-  return {
-    dir,
-    comparison: path.join(dir, COMPARISON_FILE),
-    report: path.join(dir, REPORT_MARKDOWN_FILE),
-  };
+  return writtenFiles(dir, at);
 }
 
 /**
  * Rewrites `report.md` of a saved comparison from its `comparison.json`, for example in another
- * language or with a newer tool version; the saved comparison itself is left as it is.
+ * language or with a newer tool version; the saved comparison itself is left as it is, and the
+ * report points to the result page when the folder holds one.
  */
 export async function rewriteReport({
   outputDir,
@@ -52,7 +72,7 @@ export async function rewriteReport({
   lang,
 }: ComparisonWriteOptions): Promise<WrittenComparison> {
   const dir = comparisonDir(outputDir, comparison.comparisonId);
-  const report = path.join(dir, REPORT_MARKDOWN_FILE);
-  await writeFileAtomic(report, renderReport(comparison, lang));
-  return { dir, comparison: path.join(dir, COMPARISON_FILE), report };
+  const at = reviewSamplesAt(await listResultEntries(dir));
+  await writeFileAtomic(path.join(dir, REPORT_MARKDOWN_FILE), renderReport(comparison, lang, at));
+  return writtenFiles(dir, at);
 }

@@ -6,13 +6,27 @@ import {
   designEffect,
   differenceInterval,
   effectiveTrials,
+  FEW_CASES,
   newcombeInterval,
+  upperQuantile,
   variantRate,
   zValues,
   type PairedCase,
 } from '../../../src/stats/interval.js';
 
-import { counts, near, paired, repeated, times, Z_L, Z_U4 } from './cases.js';
+import {
+  ALPHA,
+  counts,
+  near,
+  paired,
+  pairedRepeats,
+  repeated,
+  times,
+  Z_GATED4,
+  Z_L,
+  Z_U4,
+  Z_UNGATED,
+} from './cases.js';
 
 // Expected values that are not closed forms come from an independent Python implementation
 // of data-model §Statistics (exact fractions for the estimators, scipy for the quantiles).
@@ -32,20 +46,26 @@ describe('confidence levels', () => {
     expect(zValues(0.95, 4)).toEqual({
       zLower: near(Z_L, 13),
       zUpper: near(Z_U4, 13),
+      alphaLower: near(ALPHA, 15),
+      alphaUpper: near(ALPHA / 4, 15),
     });
     expect(zValues(0.9, 5)).toEqual({
       zLower: near(1.644853626951472, 13),
       zUpper: near(2.3263478740408408, 13),
+      alphaLower: near(0.05, 15),
+      alphaUpper: near(0.01, 15),
     });
     expect(zValues(0.99, 1)).toEqual({
       zLower: near(2.5758293035489004, 13),
       zUpper: near(2.5758293035489004, 13),
+      alphaLower: near(0.005, 15),
+      alphaUpper: near(0.005, 15),
     });
   });
 
   it('001 FR-021 keeps z finite for a confidence just below 1, where 1 − α rounds to 1', () => {
     // α = 5.551115123125783e-17; scipy gives z_{1−α} and z_{1−α/3}.
-    expect(zValues(0.9999999999999999, 3)).toEqual({
+    expect(zValues(0.9999999999999999, 3)).toMatchObject({
       zLower: near(8.292361075813595, 10),
       zUpper: near(8.422011622583538, 10),
     });
@@ -54,9 +74,15 @@ describe('confidence levels', () => {
   it('001 FR-021 leaves z_U uncorrected without gated cells and for ungated cells', () => {
     const none = zValues(0.95, 0);
     expect(none.zUpper).toBe(none.zLower);
+    expect(none.alphaUpper).toBe(none.alphaLower);
     const gated = zValues(0.95, 4);
     expect(cellZValues(gated, true)).toEqual(gated);
-    expect(cellZValues(gated, false)).toEqual({ zLower: gated.zLower, zUpper: gated.zLower });
+    expect(cellZValues(gated, false)).toEqual({
+      zLower: gated.zLower,
+      zUpper: gated.zLower,
+      alphaLower: gated.alphaLower,
+      alphaUpper: gated.alphaLower,
+    });
   });
 });
 
@@ -175,25 +201,26 @@ describe('design effect and difference interval', () => {
   });
 
   it('001 FR-021 builds L with z_L and U with z_U from the Wilson bounds of ñ/deff', () => {
+    // 5 cases: U takes s_U with t_{4, 1−α_U}.
     const pairs = paired(uneven.baseline, uneven.candidate);
-    expect(differenceInterval(pairs, { zLower: Z_L, zUpper: Z_L })).toEqual({
+    expect(differenceInterval(pairs, Z_UNGATED)).toEqual({
       diff: {
         estimate: near(-0.1, 14),
         low: near(-0.3449881071315345, 12),
-        high: near(0.14485461189817314, 12),
+        high: near(0.20352177757439846, 12),
       },
       deff: 1,
     });
-    expect(differenceInterval(pairs, { zLower: Z_L, zUpper: Z_U4 })?.diff).toEqual({
+    expect(differenceInterval(pairs, Z_GATED4)?.diff).toEqual({
       estimate: near(-0.1, 14),
       low: near(-0.3449881071315345, 12),
-      high: near(0.21054684175077132, 12),
+      high: near(0.35239951590041163, 12),
     });
   });
 
   it('001 FR-021 widens the interval by the design effect', () => {
     const pairs = paired(clustered.baseline, clustered.candidate);
-    expect(differenceInterval(pairs, { zLower: Z_L, zUpper: Z_L })).toEqual({
+    expect(differenceInterval(pairs, Z_UNGATED)).toEqual({
       diff: {
         estimate: near(-0.2, 14),
         low: near(-0.5262114957549946, 12),
@@ -201,10 +228,7 @@ describe('design effect and difference interval', () => {
       },
       deff: near(50 / 9, 12),
     });
-    expect(differenceInterval(pairs, { zLower: Z_L, zUpper: Z_U4 })?.diff.high).toBeCloseTo(
-      0.2399344439445768,
-      12,
-    );
+    expect(differenceInterval(pairs, Z_GATED4)?.diff.high).toBeCloseTo(0.2399344439445768, 12);
   });
 
   it('001 FR-021 uses the harmonic ñ when trial counts differ per case', () => {
@@ -222,11 +246,11 @@ describe('design effect and difference interval', () => {
         Z_L,
       ).nEff,
     ).toBeCloseTo(21.386138613861387, 12);
-    expect(differenceInterval(pairs, { zLower: Z_L, zUpper: Z_U4 })).toEqual({
+    expect(differenceInterval(pairs, Z_GATED4)).toEqual({
       diff: {
         estimate: near(-1 / 30, 14),
         low: near(-0.2189752948727874, 12),
-        high: near(0.17000892712571014, 12),
+        high: near(0.3030438027745863, 12),
       },
       deff: 1,
     });
@@ -234,7 +258,7 @@ describe('design effect and difference interval', () => {
 
   it('001 FR-021 gives L = −z²/(ñ+z²) when both variants pass every trial', () => {
     const allPass = repeated(5, times(7, 5));
-    const result = differenceInterval(paired(allPass, allPass), { zLower: Z_L, zUpper: Z_U4 });
+    const result = differenceInterval(paired(allPass, allPass), Z_GATED4);
     expect(result?.diff.estimate).toBe(0);
     expect(result?.diff.low).toBeCloseTo(-(Z_L ** 2) / (35 + Z_L ** 2), 13);
     expect(result?.diff.high).toBeCloseTo(Z_U4 ** 2 / (35 + Z_U4 ** 2), 13);
@@ -246,7 +270,7 @@ describe('design effect and difference interval', () => {
       { baseline: counts(5, 5), candidate: counts(5, 3) },
     ];
     expect(designEffect(pairs)).toBeCloseTo(4.285714285714286, 12);
-    expect(newcombeInterval(pairs, { zLower: Z_L, zUpper: Z_L }, 1)).toEqual({
+    expect(newcombeInterval(pairs, Z_UNGATED, 1)).toEqual({
       estimate: near(-0.7, 14),
       low: near(-0.8922087325936989, 12),
       high: near(-0.28894289100317283, 12),
@@ -254,6 +278,50 @@ describe('design effect and difference interval', () => {
   });
 
   it('001 FR-021 has no difference without a common case', () => {
-    expect(differenceInterval([], { zLower: Z_L, zUpper: Z_L })).toBeNull();
+    expect(differenceInterval([], Z_UNGATED)).toBeNull();
+  });
+});
+
+// Expected values from the same independent Python implementation, with scipy.stats.t.ppf.
+describe('upper bound with few cases', () => {
+  const three = pairedRepeats(5, [5, 5, 4], [1, 5, 2]);
+  const nine = pairedRepeats(5, [5, 5, 5, 5, 4, 5, 5, 5, 5], [5, 1, 5, 4, 5, 2, 5, 5, 3]);
+  const ten = pairedRepeats(5, [5, 5, 5, 5, 4, 5, 5, 5, 5, 5], [5, 1, 5, 4, 5, 2, 5, 5, 3, 5]);
+
+  it('001 SC-003 FR-021 takes t_{K−1, 1−α_U} for 3 ≤ K < 10 and z_U otherwise', () => {
+    expect(FEW_CASES).toBe(10);
+    expect(upperQuantile(3, Z_GATED4)).toBeCloseTo(8.8602000346543, 10);
+    expect(upperQuantile(3, Z_UNGATED)).toBeCloseTo(4.302652729749462, 10);
+    expect(upperQuantile(9, Z_GATED4)).toBeCloseTo(3.205955453322929, 10);
+    expect(upperQuantile(10, Z_GATED4)).toBe(Z_U4);
+    expect(upperQuantile(2, Z_GATED4)).toBe(Z_U4);
+  });
+
+  it('001 SC-003 FR-021 widens U by s_U with gated α/G and ungated α at K = 3 and 9', () => {
+    expect(differenceInterval(three, Z_GATED4)?.diff.high).toBeCloseTo(0.5828042659511466, 12);
+    expect(differenceInterval(three, Z_UNGATED)?.diff.high).toBeCloseTo(0.4325316494457757, 12);
+    expect(differenceInterval(nine, Z_GATED4)?.diff.high).toBeCloseTo(0.232633785684689, 12);
+    expect(differenceInterval(nine, Z_UNGATED)?.diff.high).toBeCloseTo(0.10022279113657667, 12);
+  });
+
+  it('001 SC-003 FR-021 leaves U as it was at K = 10', () => {
+    expect(differenceInterval(ten, Z_GATED4)?.diff.high).toBeCloseTo(0.12415816325251822, 12);
+    expect(differenceInterval(ten, Z_UNGATED)?.diff.high).toBeCloseTo(0.04682101465995883, 12);
+  });
+
+  it('001 SC-003 FR-021 keeps L and the stored deff equal with and without s_U', () => {
+    for (const pairs of [three, nine]) {
+      for (const z of [Z_GATED4, Z_UNGATED]) {
+        const deff = designEffect(pairs);
+        const plain = newcombeInterval(pairs, z, deff);
+        const result = differenceInterval(pairs, z);
+        expect(result?.deff).toBe(deff);
+        expect(result?.diff.low).toBe(plain.low);
+        expect(result?.diff.estimate).toBe(plain.estimate);
+        expect(result?.diff.high).toBeGreaterThan(plain.high);
+      }
+    }
+    expect(designEffect(three)).toBeCloseTo(2.5714285714285716, 12);
+    expect(differenceInterval(three, Z_GATED4)?.diff.low).toBeCloseTo(-0.7334994276681677, 12);
   });
 });

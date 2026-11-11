@@ -14,6 +14,7 @@ import {
 } from './anchors.js';
 import { derivedTracked } from './derived-tracked.js';
 import { exampleMismatches } from './examples.js';
+import { helperOutdated, type HelperReport } from './helper-version.js';
 import { completedNotGated, excludedFromGate, samplePlanFindings } from './gate-config.js';
 import { inputSchemaFindings } from './input-schema.js';
 import {
@@ -52,6 +53,8 @@ interface AdapterResults {
   /** The targets of the first adapter that started. */
   readonly targets?: readonly Target[] | undefined;
   readonly renders: readonly VariantRender[];
+  /** The helper of every adapter that answered `initialize`, also before an `adapter-failed`. */
+  readonly helpers: readonly HelperReport[];
   /** `adapter-failed`, after which no other adapter starts. */
   readonly failures: readonly LintFinding[];
 }
@@ -125,9 +128,11 @@ async function useAdapters(project: Project, options: LintOptions): Promise<Adap
       : config.variants.slice(0, 1);
   let targets: readonly Target[] | undefined;
   const renders: VariantRender[] = [];
+  const helpers: HelperReport[] = [];
   const failed = (variant: Variant, detail: string): AdapterResults => ({
     targets,
     renders,
+    helpers,
     failures: [adapterFailed(lintSubject(project, options.cwd), variant.id, detail)],
   });
   for (const variant of variants) {
@@ -137,6 +142,7 @@ async function useAdapters(project: Project, options: LintOptions): Promise<Adap
     }
     const { client } = started;
     targets ??= client.info.targets;
+    helpers.push({ variant: variant.id, helper: client.info.adapter.helper });
     let rendered: RenderOutcome | undefined;
     let shutdown: ShutdownOutcome;
     try {
@@ -160,14 +166,14 @@ async function useAdapters(project: Project, options: LintOptions): Promise<Adap
       renders.push(rendered.render);
     }
   }
-  return { targets, renders, failures: [] };
+  return { targets, renders, helpers, failures: [] };
 }
 
 /** Every lint finding of the project with its level, in the order of the checks above. */
 export async function lintProject(project: Project, options: LintOptions): Promise<Diagnostic[]> {
   const adapter: AdapterResults =
     options.adapter === 'none'
-      ? { renders: [], failures: [] }
+      ? { renders: [], helpers: [], failures: [] }
       : await useAdapters(project, options);
   const subject = lintSubject(project, options.cwd, adapter.targets);
   const findings: LintFinding[] = [
@@ -188,6 +194,7 @@ export async function lintProject(project: Project, options: LintOptions): Promi
     ...completedNotGated(subject),
     ...excludedFromGate(subject),
     ...samplePlanFindings(subject),
+    ...helperOutdated(adapter.helpers, subject.configAt(['adapter', 'command'])),
     ...unanchored(subject),
   ];
   return findings.map((finding) => diagnostic(finding));

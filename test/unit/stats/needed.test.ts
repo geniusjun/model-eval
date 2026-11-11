@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { PairedCase } from '../../../src/stats/interval.js';
 import { trialsNeeded, type NeededInput } from '../../../src/stats/needed.js';
 
-import { counts, pairedRepeats, times, Z_L, Z_U4 } from './cases.js';
+import { counts, pairedRepeats, times, Z_GATED4 } from './cases.js';
 
 // Expected values come from an independent Python implementation of data-model §Statistics,
 // Trials needed. The cells are gated, so z_U is the corrected z_{1−α/G} with G = 4.
@@ -13,7 +13,7 @@ function input(pairs: PairedCase[], overrides: Partial<NeededInput> = {}): Neede
     pairs,
     margin: 0.1,
     minCases: 3,
-    z: { zLower: Z_L, zUpper: Z_U4 },
+    z: Z_GATED4,
     runCases: 40,
     ...overrides,
   };
@@ -83,6 +83,26 @@ describe('trials needed', () => {
     // Δ̂ = 0.9 − 1 is −0.09999999999999998 in floating point.
     const pairs = pairedRepeats(5, times(30, 5), [...times(15, 5), ...times(15, 4)]);
     expect(trialsNeeded(input(pairs))).toEqual({ kind: 'on-margin' });
+  });
+
+  it('001 SC-003 FR-024 uses t_{K−1, 1−α_U} on the regression side below 10 cases', () => {
+    // z = t_{8, 1−α/4} = 3.206 with 9 cases; 10 cases keep z_U.
+    const nine = pairedRepeats(5, times(9, 5), [4, 3, 4, 3, 4, 4, 3, 4, 4]);
+    expect(trialsNeeded(input(nine))).toEqual({
+      kind: 'repeats',
+      repeats: 20,
+      cellTrials: 180,
+      trialsPerVariant: 800,
+      nearMargin: false,
+    });
+    const ten = pairedRepeats(5, times(10, 5), [4, 3, 4, 3, 4, 4, 3, 4, 4, 4]);
+    expect(trialsNeeded(input(ten))).toEqual({
+      kind: 'repeats',
+      repeats: 12,
+      cellTrials: 120,
+      trialsPerVariant: 480,
+      nearMargin: false,
+    });
   });
 
   it('001 FR-024 asks for max(3, minCases) cases first when K is below it', () => {

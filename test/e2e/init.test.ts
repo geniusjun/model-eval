@@ -213,7 +213,7 @@ describe('001 init', () => {
         result: null,
         warnings: [],
       });
-      expect(cli.stderr).toContain(message('en', 'human.configInvalid', { count: 1 }));
+      expect(cli.stderr).toContain(message('en', 'human.configInvalid.one'));
       expect(cli.stderr).toContain(`${CONFIG}:1:`);
       expect(await readdir(folder)).toEqual([CONFIG]);
       expect(await readFile(path.join(folder, CONFIG), 'utf8')).toBe(broken);

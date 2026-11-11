@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import type { Lang, Variant } from '../../config/schema.js';
 import { isLowBaseline } from '../../compare/gate.js';
 import {
@@ -31,6 +33,9 @@ import {
 } from '../../report/schema.js';
 import type { Warning, WarningCode } from '../../run/warning.js';
 import { nMin } from '../../stats/verdict.js';
+import { COMPARISON_FILE } from '../../report/layout.js';
+import type { ReviewSamplesAt } from '../../report/markdown.js';
+import type { WrittenComparison } from '../../report/write.js';
 import type { GradeSet } from '../../grade/grade-set.js';
 import type { GradeOutcome } from '../../grade/record.js';
 import type { Manifest } from '../../run/manifest.js';
@@ -44,10 +49,41 @@ import {
   type HumanLine,
   type Layout,
 } from './layout.js';
-import { placeLabel, quote, textOf, withPlace, type Text } from './text.js';
+import { counted, placeLabel, quote, textOf, withPlace, type Text } from './text.js';
 
 // Human output of a Comparison (contracts/cli.md §Human Output), shared by `compare` and `swap`,
 // and the lines of `grade` and `report`. Comparison text is redacted already.
+
+/** The files a command wrote for a comparison, with paths as the user should see them. */
+export interface ShownComparison {
+  readonly report: string;
+  readonly comparison: string;
+  /** The result page, when one was written. */
+  readonly page?: string | undefined;
+}
+
+/** The written files' paths relative to the working folder. */
+export function shownComparison(written: WrittenComparison, cwd: string): ShownComparison {
+  const shown = (file: string): string => path.relative(cwd, file) || file;
+  return {
+    report: shown(written.report),
+    comparison: shown(written.comparison),
+    ...(written.page === undefined ? {} : { page: shown(written.page) }),
+  };
+}
+
+/** Where readers find the side-by-side `review` samples (data-model §Comparison). */
+interface ReviewSamples {
+  readonly at: ReviewSamplesAt;
+  readonly params: { readonly field: string; readonly file: string };
+}
+
+function reviewSamplesOf(written: ShownComparison | undefined): ReviewSamples {
+  return {
+    at: written?.page === undefined ? 'comparison-json' : 'result-page',
+    params: { field: 'samples.review', file: written?.comparison ?? COMPARISON_FILE },
+  };
+}
 
 type SummaryCell = Summary['worse'][number];
 type Rates = Comparison['ops']['baseline']['rates'];
@@ -193,7 +229,7 @@ function opsSummary(t: Text, changes: readonly OpsChange[]): string[] {
   });
 }
 
-function summaryLines(t: Text, comparison: Comparison): string[] {
+function summaryLines(t: Text, comparison: Comparison, samples: ReviewSamples): string[] {
   const { summary, rules } = comparison;
   const none = [t('report.none')];
   const orNone = (values: readonly string[]): readonly string[] =>
@@ -204,6 +240,7 @@ function summaryLines(t: Text, comparison: Comparison): string[] {
     judged: summary.scope.judgedRules.length,
     total: rules.length,
     review: summary.scope.reviewRules.length,
+    sideBySide: t(`report.reviewSamples.${samples.at}`, samples.params),
   });
   return [
     t('human.summary'),
@@ -249,7 +286,7 @@ function gatedDetail(t: Text, cell: Cell): string {
   const systematic = cell.systematic;
   if (systematic !== undefined && systematic.baseline.trials + systematic.candidate.trials > 0) {
     parts.push(
-      t('report.systematic', {
+      counted(t, 'report.systematic', systematic.candidate.trials, {
         baseline: systematic.baseline.trials,
         candidate: systematic.candidate.trials,
       }),
@@ -299,7 +336,7 @@ function verdictLabel(t: Text, comparison: Comparison, cell: Cell): string {
   const trials = Math.floor(Math.min(baseline.nEff, candidate.nEff));
   const needed = nMin(cell.margin, comparison.stats.zLower);
   return trials < needed
-    ? `${verdict} ${t('human.tooFewTrials', { trials, nMin: needed })}`
+    ? `${verdict} ${counted(t, 'human.tooFewTrials', trials, { trials, nMin: needed })}`
     : verdict;
 }
 
@@ -345,7 +382,7 @@ function gateLines(t: Text, comparison: Comparison): string[] {
     (reason: GateReason) => reason.code !== 'regressed' && reason.code !== 'cell-undecided',
   );
   return [
-    t('human.gate', {
+    counted(t, 'human.gate', gated.length, {
       cells: gated.length,
       blocked: blocked.length,
       undecided: undecided.length,
@@ -357,12 +394,12 @@ function gateLines(t: Text, comparison: Comparison): string[] {
     ),
     ...(rows.length === 0 ? [] : ['', ...aligned(rows, GATED_ROW_LAYOUT)]),
     ...(held.length > shownHeld.length
-      ? [`${INDENT}${t('human.moreHeld', { count: held.length - shownHeld.length })}`]
+      ? [`${INDENT}${counted(t, 'human.moreHeld', held.length - shownHeld.length)}`]
       : []),
   ];
 }
 
-function referenceLines(t: Text, comparison: Comparison): string[] {
+function referenceLines(t: Text, comparison: Comparison, samples: ReviewSamples): string[] {
   const severity = new Map(comparison.rules.map((rule) => [rule.id, rule.severity]));
   const level = comparison.config.report.lowBaseline;
   const reference = comparison.cells.filter(
@@ -406,7 +443,7 @@ function referenceLines(t: Text, comparison: Comparison): string[] {
   }
   const review = comparison.scope.reviewRules.length;
   if (review > 0) {
-    lines.push(t('human.sideBySide', { count: review }));
+    lines.push(counted(t, `human.sideBySide.${samples.at}`, review, samples.params));
   }
   return lines;
 }
@@ -485,12 +522,12 @@ function postprocessLines(t: Text, comparison: Comparison): string[] {
   return notices.length === 0 ? [] : ['', ...notices];
 }
 
-function comparisonLines(t: Text, comparison: Comparison): string[] {
+function comparisonLines(t: Text, comparison: Comparison, samples: ReviewSamples): string[] {
   return [
-    ...summaryLines(t, comparison),
+    ...summaryLines(t, comparison, samples),
     '',
     ...gateLines(t, comparison),
-    ...referenceLines(t, comparison),
+    ...referenceLines(t, comparison, samples),
     ...opsLines(t, comparison),
     ...postprocessLines(t, comparison),
   ];
@@ -500,18 +537,21 @@ export interface ComparedView {
   readonly comparison: Comparison;
   /** The comparison's warnings, redacted with it. */
   readonly warnings: readonly Warning[];
-  /** Where `report.md` was written, as the user should see it. */
-  readonly reportPath?: string | undefined;
+  /** What the command wrote; absent when it wrote nothing. */
+  readonly written?: ShownComparison | undefined;
 }
 
 /** The comparison, the warnings the operations table does not show, and where the report is. */
 export function comparedLines(t: Text, view: ComparedView): HumanLine[] {
   const warnings = view.warnings.filter((warning) => !OPS_WARNINGS.has(warning.code));
   return [
-    ...redactedLines([...comparisonLines(t, view.comparison), ...warningLines(t, warnings)]),
-    ...(view.reportPath === undefined
+    ...redactedLines([
+      ...comparisonLines(t, view.comparison, reviewSamplesOf(view.written)),
+      ...warningLines(t, warnings),
+    ]),
+    ...(view.written === undefined
       ? []
-      : plainLines(['', t('human.report', { path: view.reportPath })])),
+      : plainLines(['', t('human.report', { path: view.written.report })])),
   ];
 }
 
@@ -524,7 +564,7 @@ export function compareLines(lang: Lang, view: ComparedView): HumanLine[] {
     coverage.baselineOnly.length + coverage.candidateOnly.length + coverage.changedHash.length;
   return [
     ...plainLines([
-      t('human.compare.header', {
+      counted(t, 'human.compare.header', coverage.commonCases, {
         baseline: variantLabel(baseline.variant),
         candidate: variantLabel(candidate.variant),
         cases: coverage.commonCases,
@@ -538,7 +578,7 @@ export function compareLines(lang: Lang, view: ComparedView): HumanLine[] {
         ? []
         : [
             t('human.compare.leftOut', {
-              baselineOnly: coverage.baselineOnly.length,
+              baselineOnly: counted(t, 'count.cases', coverage.baselineOnly.length),
               candidateOnly: coverage.candidateOnly.length,
               changed: coverage.changedHash.length,
             }),
@@ -570,7 +610,7 @@ export function gradeLines(lang: Lang, view: GradeView): string[] {
     view.reused
       ? t('human.grade.reused', { gradeSetId })
       : t('human.grade.written', { gradeSetId }),
-    t('human.grade.outcomes', {
+    counted(t, 'human.grade.outcomes', gradeSet.grades.length, {
       grades: gradeSet.grades.length,
       pass: count('pass'),
       fail: count('fail'),

@@ -13,9 +13,16 @@ import type { OverBudget, RunStartFailure } from '../../run/runner.js';
 import type { SwapEnd } from '../../run/swap.js';
 import type { Warning } from '../../run/warning.js';
 import type { dryRunPlanSchema } from '../results.js';
-import { comparedLines, ordinal, variantLabel, warningLines } from './compare.js';
+import {
+  comparedLines,
+  ordinal,
+  variantLabel,
+  warningLines,
+  type ShownComparison,
+} from './compare.js';
 import { aligned, INDENT, plainLines, type HumanLine } from './layout.js';
 import {
+  counted,
   lintText,
   placeLabel,
   positionLabel,
@@ -52,7 +59,7 @@ function languagesText(cases: Manifest['cases']): string {
 export function diagnosticLines(lang: Lang, diagnostics: readonly Diagnostic[]): string[] {
   const t = textOf(lang);
   return [
-    t('human.configInvalid', { count: diagnostics.length }),
+    counted(t, 'human.configInvalid', diagnostics.length),
     ...diagnostics.map(
       (finding) =>
         `${INDENT}${withPlace(positionLabel(finding), lintText(t, finding, finding.localDetail))}`,
@@ -137,7 +144,7 @@ function stderrTailLines(t: Text, variantId: string, tail: readonly string[]): s
   return tail.length === 0
     ? []
     : [
-        t('human.adapter.stderrTail', { variant: variantId, count: tail.length }),
+        counted(t, 'human.adapter.stderrTail', tail.length, { variant: variantId }),
         ...tail.map((line) => `${INDENT}${line}`),
       ];
 }
@@ -223,7 +230,10 @@ export function planLines(
               cell.ruleId,
               cell.lang,
               cell.surface,
-              t('human.plan.cell', { plannedTrials: cell.plannedTrials, nMin: cell.nMin }),
+              counted(t, 'human.plan.cell', cell.plannedTrials, {
+                plannedTrials: cell.plannedTrials,
+                nMin: cell.nMin,
+              }),
             ]),
           ),
         ];
@@ -233,10 +243,10 @@ export function planLines(
       plan.variants.map((entry) => [
         entry.variant,
         t('human.plan.variant', {
-          trials: entry.trials,
-          calls: entry.calls,
-          inputTokens: entry.inputTokens,
-          outputTokens: entry.outputTokens,
+          trials: counted(t, 'count.trials', entry.trials),
+          calls: counted(t, 'count.calls', entry.calls),
+          inputTokens: counted(t, 'count.inputTokens', entry.inputTokens),
+          outputTokens: counted(t, 'count.outputTokens', entry.outputTokens),
           reservation: dollars(entry.reservationUsd),
           basis: basisText(entry.basis),
         }),
@@ -336,18 +346,24 @@ interface Costs {
   readonly conservativeUsd: number | null;
 }
 
-function scaleParams(manifests: readonly Manifest[], spentUsd: number | null, costs: Costs) {
+function scaleParams(
+  t: Text,
+  manifests: readonly Manifest[],
+  spentUsd: number | null,
+  costs: Costs,
+) {
   const [first] = manifests;
   const cases = first?.cases ?? [];
   const repeats = first?.sampling.repeats ?? 0;
+  const trials = manifests.reduce(
+    (sum, manifest) => sum + manifest.cases.length * manifest.sampling.repeats,
+    0,
+  );
   return {
-    cases: cases.length,
+    cases: counted(t, 'count.cases', cases.length),
     languages: languagesText(cases),
-    repeats,
-    trials: manifests.reduce(
-      (sum, manifest) => sum + manifest.cases.length * manifest.sampling.repeats,
-      0,
-    ),
+    repeats: counted(t, 'count.repeats', repeats),
+    trials: counted(t, 'count.trials', trials),
     spent: dollars(spentUsd),
     expected: dollars(costs.expectedUsd),
     conservative: dollars(costs.conservativeUsd),
@@ -361,8 +377,8 @@ export interface SwapView extends Costs {
    * compare.
    */
   readonly warnings: readonly Warning[];
-  /** Where `report.md` was written, as the user should see it. */
-  readonly reportPath?: string;
+  /** What the swap wrote for its comparison. */
+  readonly written?: ShownComparison;
 }
 
 export function swapLines(lang: Lang, view: SwapView): HumanLine[] {
@@ -382,7 +398,7 @@ export function swapLines(lang: Lang, view: SwapView): HumanLine[] {
     t('human.swap.header', {
       baseline: variantLabel(end.runs.baseline.manifest.variant),
       candidate: variantLabel(end.runs.candidate.manifest.variant),
-      ...scaleParams(manifests, end.record.spentUsd, view),
+      ...scaleParams(t, manifests, end.record.spentUsd, view),
     }),
     idLine,
     ...(stopReason === undefined
@@ -403,7 +419,7 @@ export function swapLines(lang: Lang, view: SwapView): HumanLine[] {
   }
   return [
     ...head,
-    ...comparedLines(t, { comparison, warnings: view.warnings, reportPath: view.reportPath }),
+    ...comparedLines(t, { comparison, warnings: view.warnings, written: view.written }),
   ];
 }
 
@@ -418,7 +434,7 @@ export function runLines(lang: Lang, view: RunView): string[] {
   return [
     t('human.run.header', {
       variant: variantLabel(manifest.variant),
-      ...scaleParams([manifest], manifest.totals.costUsd, view),
+      ...scaleParams(t, [manifest], manifest.totals.costUsd, view),
     }),
     t('human.run.id', {
       runId: manifest.runId,

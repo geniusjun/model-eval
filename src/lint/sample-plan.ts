@@ -6,13 +6,10 @@ import type { LintFinding } from '../config/diagnostics.js';
 import type { Case, GateConfig, Rule, StatsConfig, Surface } from '../config/schema.js';
 import { applicableToTargets, gateRules, gatesSurface } from '../compare/gate.js';
 import { applicableRules } from '../grade/grade.js';
-import { zValues } from '../stats/interval.js';
+import { FEW_CASES, zValues } from '../stats/interval.js';
 import { nMin } from '../stats/verdict.js';
 
 // FR-006: the gated cells a run plans, before any trial is sent (data-model §Validation Rules).
-
-/** Below 10 cases a gated cell only catches large drops (research R3). */
-const FEW_CASES = 10;
 
 const SURFACES: readonly Surface[] = ['raw', 'final', 'trial'];
 
