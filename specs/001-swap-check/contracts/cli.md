@@ -6,7 +6,7 @@
 
 | Command | Calls models | Does |
 |---|---|---|
-| `model-eval init [--adapter python\|node]` | no | Creates a config template, example rules and cases, and adds the output directory to `.gitignore`. With `--adapter`, also an adapter skeleton that uses the helper (feature 003) |
+| `model-eval init [--adapter python\|node]` | no | Creates a config template, example rules and cases, and adds the output directory to the `.gitignore` of the config file's folder. Files that already exist are kept; only missing ones are created. With `--adapter`, also an adapter skeleton that uses the helper (feature 003) |
 | `model-eval lint` | no | Checks file schemas, ID references, provenance, examples, case input schemas, the sample plan of gated cells and the helper version. `--render` also renders cases per variant and checks anchors. Starts the adapter unless `--no-adapter` (see [adapter-protocol §Security](adapter-protocol.md#security)) |
 | `model-eval run --variant <id>` | yes | Runs every case with one variant, records the run and grades it |
 | `model-eval grade <runId>` | no | Re-grades stored trials with the current rules into a grade set |
@@ -82,7 +82,7 @@ Exit code 4 covers:
 9. The command line is invalid: an unknown command or option, or an invalid option value, such as `swap --from` and `--to` naming the same variant, or `lint --render` with `--no-adapter` or `lint --variant` without `--render`.
 
 - A stopped run exits with the code of its `stopReason` (`config-error` if present, else the first reason). Other overlaps resolve in the order 6, 4, 5, 3, 1, 2, 0. A `swap` stopped by the cap exits 5 whatever its comparison says; the comparison is still in `result.gate`.
-- File errors exit 1 from `lint`, where they are findings, and 4 from commands that call models, where they prevent the start.
+- File errors exit 1 from `lint`, where they are findings, and 4 from `init` and from commands that call models, where they prevent the start.
 - A stop with exit code 5 shows the outcome distribution per variant so far. A candidate that times out or is rejected every time has a candidate problem, not a cap problem.
 - An empty gate never blocks: `no-gate` with code 0 when the preconditions hold, otherwise `undecided` with code 2. `no-gate` is shown apart from `pass`, because nothing was judged (constitution II, IV).
 - Code 2 is not a pass; every undecided gated cell says what a new run needs.
