@@ -6,7 +6,7 @@ An adapter is a separate process that assembles the prompt with the service's co
 
 ## Transport
 
-1. The tool runs `adapter.command` (an array, no shell) in `adapter.cwd` (relative to the config file) with `adapter.env` added.
+1. The tool runs `adapter.command` (an array, no shell) in `adapter.cwd` (relative to the config file) with `adapter.env` added, in its own process group, so an interrupt from the terminal reaches only the tool and the tool decides what the adapter receives (`cancel`, `shutdown`, a termination signal).
 2. Each message is one [JSON-RPC 2.0](https://www.jsonrpc.org/specification) object on one line, UTF-8, ending in `\n`. Messages contain no raw newline; `\n` escapes inside JSON strings are fine.
 3. stdout is reserved for the protocol; debug output goes to stderr. The tool shows stderr with `--verbose` and attaches its last 50 lines to the report of an adapter start failure and of a run stopped by adapter errors, redacted in both cases, because adapter stderr easily contains case input and model output. A stray `print` on stdout is the most common adapter bug; the helpers redirect service output to stderr.
 4. The tool starts one adapter process per variant. The variant is given once in `initialize` and applies to every request of that process.
