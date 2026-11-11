@@ -30,8 +30,11 @@ export type RunCasesResult =
   | { readonly ok: true; readonly cases: readonly RunCaseSpec[] }
   | { readonly ok: false; readonly problems: readonly CaseProblem[] };
 
-/** The case's language, else the target's only language; two or more need `lang`. */
-function requestLang(testCase: Case, target: Target): string | undefined | null {
+/**
+ * The language a run sends for the case: its `lang`, else the target's only language; `null`
+ * when the target has two or more and the case has no `lang`.
+ */
+export function requestLang(testCase: Case, target: Target): string | undefined | null {
   if (testCase.lang !== undefined) {
     return testCase.lang;
   }

@@ -71,9 +71,11 @@ const swapEnvelopeSchema = envelopeSchema('swap').extend({
   result: resultSchemas.swap.nullable(),
 });
 const runEnvelopeSchema = envelopeSchema('run').extend({ result: resultSchemas.run.nullable() });
+const lintEnvelopeSchema = envelopeSchema('lint').extend({ result: resultSchemas.lint.nullable() });
 
 export type SwapEnvelope = z.infer<typeof swapEnvelopeSchema>;
 export type RunEnvelope = z.infer<typeof runEnvelopeSchema>;
+export type LintEnvelope = z.infer<typeof lintEnvelopeSchema>;
 
 /** The `swap --json` document on stdout, checked against `schemas/swap.schema.json`. */
 export function parseSwapEnvelope(stdout: string): SwapEnvelope {
@@ -83,6 +85,11 @@ export function parseSwapEnvelope(stdout: string): SwapEnvelope {
 /** The `run --json` document on stdout, checked against `schemas/run.schema.json`. */
 export function parseRunEnvelope(stdout: string): RunEnvelope {
   return checked('run.schema.json', runEnvelopeSchema, JSON.parse(stdout), 'run --json');
+}
+
+/** The `lint --json` document on stdout, checked against `schemas/lint.schema.json`. */
+export function parseLintEnvelope(stdout: string): LintEnvelope {
+  return checked('lint.schema.json', lintEnvelopeSchema, JSON.parse(stdout), 'lint --json');
 }
 
 type SwapResult = NonNullable<SwapEnvelope['result']>;

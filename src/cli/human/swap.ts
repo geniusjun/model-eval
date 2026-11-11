@@ -2,14 +2,13 @@ import type { z } from 'zod';
 
 import type { Diagnostic, LintFinding } from '../../config/diagnostics.js';
 import type { Lang, Variant } from '../../config/schema.js';
-import { message, type MessageKey, type MessageParams } from '../../messages/index.js';
+import { message } from '../../messages/index.js';
 import {
   neededText,
   noteText,
   reasonText,
   verdictText,
   warningText,
-  type Quote,
 } from '../../report/code-text.js';
 import {
   dollars,
@@ -42,6 +41,15 @@ import type { SwapEnd } from '../../run/swap.js';
 import type { Warning, WarningCode } from '../../run/warning.js';
 import { nMin } from '../../stats/verdict.js';
 import type { dryRunPlanSchema } from '../results.js';
+import {
+  lintText,
+  placeLabel,
+  positionLabel,
+  quote,
+  textOf,
+  withPlace,
+  type Text,
+} from './text.js';
 
 // Human output of `run` and `swap` (contracts/cli.md §Human Output): plain lines for stdout and
 // stderr, built from the records and the Comparison alone; the Output layer redacts them.
@@ -51,9 +59,6 @@ type SummaryCell = Summary['worse'][number];
 type Rates = Comparison['ops']['baseline']['rates'];
 type RateName = keyof Rates;
 type Align = 'left' | 'right';
-
-/** Adapter, model and service text is shown as a JSON string, so control characters stay inert. */
-const quote: Quote = (text) => JSON.stringify(text);
 
 const INDENT = '  ';
 const GAP = 2;
@@ -106,17 +111,6 @@ const UNDECIDED_VERDICTS: ReadonlySet<Cell['verdict']> = new Set([
   'insufficient',
   'not-applicable',
 ]);
-
-interface Text {
-  readonly lang: Lang;
-  (key: MessageKey, params?: MessageParams): string;
-}
-
-function textOf(lang: Lang): Text {
-  return Object.assign((key: MessageKey, params?: MessageParams) => message(lang, key, params), {
-    lang,
-  });
-}
 
 /** Hangul, kana, Han and full-width forms take two terminal columns. */
 const WIDE =
@@ -201,61 +195,17 @@ function ordinal(t: Text, n: number): string {
   }
 }
 
-function placeLabel(place: {
-  readonly ruleId?: string | undefined;
-  readonly lang?: string | undefined;
-  readonly surface?: string | undefined;
-}): string | undefined {
-  const where = [place.lang, place.surface].filter((part) => part !== undefined).join(', ');
-  if (place.ruleId === undefined) {
-    return where === '' ? undefined : where;
-  }
-  return where === '' ? place.ruleId : `${place.ruleId} (${where})`;
-}
-
-function withPlace(label: string | undefined, text: string): string {
-  return label === undefined ? text : `${label}: ${text}`;
-}
-
 // Findings before the start
-
-function lintParam(name: string, value: unknown): string {
-  if (typeof value === 'number') {
-    return name === 'margin' ? marginPoints(value) : String(value);
-  }
-  return typeof value === 'string' ? value : JSON.stringify(value);
-}
-
-function lintText(t: Text, finding: LintFinding, localDetail?: string): string {
-  const params: Record<string, string> =
-    'params' in finding
-      ? Object.fromEntries(
-          Object.entries(finding.params).map(([name, value]) => [name, lintParam(name, value)]),
-        )
-      : {};
-  if (localDetail !== undefined) {
-    params.detail = localDetail;
-  }
-  if (finding.code === 'schema' && finding.params.path === '') {
-    return t('lint.schema-file', params);
-  }
-  return t(`lint.${finding.code}`, params);
-}
 
 /** Why the config, rule or case files cannot be used, one line per finding. */
 export function diagnosticLines(lang: Lang, diagnostics: readonly Diagnostic[]): string[] {
   const t = textOf(lang);
   return [
     t('human.configInvalid', { count: diagnostics.length }),
-    ...diagnostics.map((finding) => {
-      const at =
-        finding.file === undefined
-          ? undefined
-          : [finding.file, finding.line, finding.column]
-              .filter((part) => part !== undefined)
-              .join(':');
-      return `${INDENT}${withPlace(at, lintText(t, finding, finding.localDetail))}`;
-    }),
+    ...diagnostics.map(
+      (finding) =>
+        `${INDENT}${withPlace(positionLabel(finding), lintText(t, finding, finding.localDetail))}`,
+    ),
   ];
 }
 

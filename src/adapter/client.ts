@@ -72,11 +72,22 @@ export type CallOutcome<T> =
   /** No response will come: the process died or its stdout broke the protocol. */
   | { readonly kind: 'lost'; readonly message: string };
 
-export interface ShutdownOutcome {
+/** How the adapter process ended. */
+interface Ending {
   readonly exitCode: number | null;
   readonly signal: NodeJS.Signals | null;
   /** The adapter had to be sent a termination signal. */
   readonly forced: boolean;
+}
+
+export interface ShutdownOutcome extends Ending {
+  /**
+   * `shutdown` got a result. An exit or a JSON-RPC error is no answer, since every adapter must
+   * implement `shutdown`.
+   */
+  readonly answered: boolean;
+  /** How the adapter broke the protocol, stdout contamination included, if it did. */
+  readonly violation?: string;
 }
 
 export interface GenerateOptions {
@@ -163,10 +174,13 @@ async function shutdownAdapter(
   timeoutMs: number,
 ): Promise<ShutdownOutcome> {
   const response = await connection.request('shutdown', undefined, timeoutMs);
-  if (response.kind === 'lost' && response.cause === 'timeout') {
-    return { ...(await connection.terminate()), forced: true };
-  }
-  return connection.close();
+  const ending =
+    response.kind === 'lost' && response.cause === 'timeout'
+      ? { ...(await connection.terminate()), forced: true }
+      : await connection.close();
+  const outcome = { ...ending, answered: response.kind === 'result' };
+  const { violation } = connection;
+  return violation === undefined ? outcome : { ...outcome, violation };
 }
 
 async function endAfterFailedStart(
@@ -223,18 +237,27 @@ function createClient(
     method: string,
     params: RequestParams,
     schema: z.ZodType<T>,
-    onRequest?: (id: number) => void,
+    options: { readonly timeoutMs?: number; readonly onRequest?: (id: number) => void } = {},
   ): Promise<CallOutcome<T>> =>
     toOutcome(
-      await connection.limited(() => connection.request(method, params, undefined, onRequest)),
+      await connection.limited(() =>
+        connection.request(method, params, options.timeoutMs, options.onRequest),
+      ),
       schema,
     );
   return {
     info,
     concurrency,
-    render: (params) => call('render', params, renderResultSchema),
+    // A render calls no model, so an adapter that does not answer within the limit is broken
+    // (adapter-protocol §Time Limits and Recovery); generate time-outs are handled per trial.
+    render: (params) => call('render', params, renderResultSchema, { timeoutMs }),
     generate: (params, options) =>
-      call('generate', params, generateResultSchema, options?.onRequest),
+      call(
+        'generate',
+        params,
+        generateResultSchema,
+        options?.onRequest === undefined ? {} : { onRequest: options.onRequest },
+      ),
     shutdown: () => shutdownAdapter(connection, timeoutMs),
   };
 }
@@ -326,6 +349,11 @@ class Connection {
     return this.options.shutdownGraceMs ?? SHUTDOWN_GRACE_MS;
   }
 
+  /** The protocol violation that ended the connection, if one did. */
+  get violation(): string | undefined {
+    return this.lost?.cause === 'violation' ? this.lost.message : undefined;
+  }
+
   setLimit(limit: number): void {
     this.limit = limit;
   }
@@ -382,7 +410,7 @@ class Connection {
   }
 
   /** Closes stdin and gives the adapter the grace period to exit before signalling it. */
-  async close(): Promise<ShutdownOutcome> {
+  async close(): Promise<Ending> {
     this.child.stdin.end();
     const graceful = await Promise.race([this.exited, delay(this.graceMs)]);
     if (graceful !== undefined) {

@@ -1,0 +1,10 @@
+# Renders answer after 3 seconds, longer than the adapter time limit the tests set.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true }
+renderDelayMs: 3000
+inputTokens: 400
+variants:
+  "*": {}

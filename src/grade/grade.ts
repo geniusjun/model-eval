@@ -124,7 +124,7 @@ function gradeTrial(line: AttemptLine, runCase: RunCase, rules: readonly Rule[])
 }
 
 /** An active rule whose targets and languages cover the case. */
-function matches(rule: Rule, target: string, lang: string): boolean {
+export function matches(rule: Rule, target: string, lang: string): boolean {
   return (
     rule.status === 'active' &&
     (rule.targets.length === 0 || rule.targets.includes(target)) &&

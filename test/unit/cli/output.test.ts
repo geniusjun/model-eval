@@ -327,8 +327,9 @@ describe('command line frame', () => {
 
   it('001 FR-030 finds the command after common options', async () => {
     const ctx = context(['--verbose', '--config', 'x.yaml', 'lint']);
-    expect(await main(ctx)).toBe(4);
-    expect(ctx.stderr.chunks.join('')).toContain('The command "lint" is not available');
+    // lint reports the unreadable config as a finding, so the run reached the command.
+    expect(await main(ctx)).toBe(1);
+    expect(ctx.stdout.chunks.join('')).toContain('error: x.yaml:1:1: cannot read the file');
   });
 
   it('001 FR-030 writes a config-error envelope for a usage error under --json', async () => {

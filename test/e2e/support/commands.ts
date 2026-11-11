@@ -2,8 +2,10 @@ import { afterAll } from 'vitest';
 
 import type { CliResult } from './cli.js';
 import {
+  parseLintEnvelope,
   parseRunEnvelope,
   parseSwapEnvelope,
+  type LintEnvelope,
   type RunEnvelope,
   type SwapEnvelope,
 } from './outputs.js';
@@ -51,6 +53,13 @@ export function runJson(
   extra: readonly string[] = [],
 ): Promise<JsonOutcome<RunEnvelope>> {
   return withJson(project, ['run', '--variant', variant, ...extra], parseRunEnvelope);
+}
+
+export function lintJson(
+  project: Project,
+  extra: readonly string[] = [],
+): Promise<JsonOutcome<LintEnvelope>> {
+  return withJson(project, ['lint', ...extra], parseLintEnvelope);
 }
 
 /** Projects made through the returned function are deleted after the file's tests. */

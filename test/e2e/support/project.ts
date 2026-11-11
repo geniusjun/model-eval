@@ -24,6 +24,8 @@ export interface ProjectSpec {
   readonly rules: readonly RuleInput[];
   readonly cases: readonly CaseInput[];
   readonly config?: ConfigOverrides;
+  /** `adapter.timeoutMs`, for tests of an adapter that does not answer. */
+  readonly adapterTimeoutMs?: number;
 }
 
 export interface RecordedRequest {
@@ -128,6 +130,7 @@ export async function createProject(spec: ProjectSpec): Promise<Project> {
         MOCK_ADAPTER,
         scenarioFile(spec.scenario),
       ],
+      ...(spec.adapterTimeoutMs === undefined ? {} : { timeoutMs: spec.adapterTimeoutMs }),
     },
     variants: VARIANTS,
     pricing: PRICING,

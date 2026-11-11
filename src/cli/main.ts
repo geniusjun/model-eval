@@ -3,6 +3,7 @@ import { parseArgs, type ParseArgsConfig } from 'node:util';
 import type { Lang } from '../config/schema.js';
 import { isLang, message, type MessageKey, type MessageParams } from '../messages/index.js';
 import { createRedactor } from '../report/redact.js';
+import { lintCommand } from './commands/lint.js';
 import { runCommand } from './commands/run.js';
 import { swapCommand } from './commands/swap.js';
 import { EXIT_CODES, type ExitCode, type ExitName } from './exit-codes.js';
@@ -45,6 +46,7 @@ export interface CommandHandler {
 }
 
 export const COMMAND_HANDLERS: Partial<Record<Command, CommandHandler>> = {
+  lint: lintCommand,
   run: runCommand,
   swap: swapCommand,
 };

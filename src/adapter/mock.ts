@@ -59,11 +59,29 @@ async function handle(id: number, method: string, params: unknown): Promise<void
       return;
     case 'render': {
       const request = renderParamsSchema.parse(params);
-      if (request.caseId !== undefined && scenario.renderErrors.includes(request.caseId)) {
-        send({ id, error: { code: -32603, message: `mock render failed for ${request.caseId}` } });
+      const caseId = request.caseId ?? '';
+      await wait(scenario.renderDelayMs);
+      if (scenario.renderExits.includes(caseId)) {
+        process.exit(3);
+      }
+      if (scenario.renderInvalid.includes(caseId)) {
+        send({ id, result: { messages: [] } });
         return;
       }
-      send({ id, result: renderCase(scenario, request) });
+      if (scenario.renderErrors.includes(caseId)) {
+        send({ id, error: { code: -32603, message: `mock render failed for ${caseId}` } });
+        return;
+      }
+      const behaviour = variant === undefined ? undefined : behaviourFor(scenario, variant);
+      const result = renderCase(scenario, request, behaviour);
+      if (scenario.renderThenExit.includes(caseId)) {
+        // The write callback runs once the answer is flushed, so it reaches the tool first.
+        process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id, result })}\n`, () => {
+          process.exit(0);
+        });
+        return;
+      }
+      send({ id, result });
       return;
     }
     case 'generate': {
@@ -100,6 +118,20 @@ async function handle(id: number, method: string, params: unknown): Promise<void
     }
     case 'shutdown':
       process.stderr.write('mock: shutdown\n');
+      if (scenario.shutdownReply === 'ignore') {
+        return;
+      }
+      if (scenario.shutdownReply === 'exit') {
+        process.exit(0);
+      }
+      if (scenario.shutdownReply === 'error') {
+        send({ id, error: { code: -32603, message: 'mock shutdown failed' } });
+        lines.close();
+        return;
+      }
+      if (scenario.shutdownReply === 'stray') {
+        process.stdout.write('shutting down\n');
+      }
       await Promise.all(background);
       if (scenario.shutdownCalls.length > 0) {
         send({ method: 'calls', params: { calls: scenario.shutdownCalls } });

@@ -12,7 +12,7 @@ import type { CallsParams, LogParams } from '../../../src/adapter/protocol.js';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const MOCK = fileURLToPath(new URL('../../../dist/adapter/mock.js', import.meta.url));
 
-const CLEAN_EXIT = { exitCode: 0, signal: null, forced: false };
+const CLEAN_EXIT = { exitCode: 0, signal: null, forced: false, answered: true };
 
 /** A throwaway adapter: `onLine` runs for each request `m`; `send`, `init` and `rl` are in scope. */
 function scripted(onLine: string, setup = ''): readonly string[] {
@@ -107,7 +107,7 @@ describe('adapter client against the mock adapter', () => {
     });
 
     const exit = await client.shutdown();
-    expect(exit).toEqual({ exitCode: 0, signal: null, forced: false });
+    expect(exit).toEqual(CLEAN_EXIT);
   });
 
   it('001 FR-007 matches responses that arrive in any order by id', async () => {
@@ -340,7 +340,20 @@ describe('adapter client against the mock adapter', () => {
       launch: { command: scripted(ANSWER_INIT), cwd: ROOT, env: {} },
       initialize: { ...base.initialize, timeoutMs: 300 },
     });
-    expect(await client.shutdown()).toEqual({ exitCode: null, signal: 'SIGTERM', forced: true });
+    expect(await client.shutdown()).toEqual({
+      exitCode: null,
+      signal: 'SIGTERM',
+      forced: true,
+      answered: false,
+    });
+  });
+
+  it('001 FR-007 shutdown is answered only by a result; an exit or a JSON-RPC error is not an answer', async () => {
+    expect((await (await started('basic')).shutdown()).answered).toBe(true);
+    for (const name of ['lint-shutdown-exit', 'lint-shutdown-error']) {
+      const outcome = await (await started(name)).shutdown();
+      expect(outcome, name).toMatchObject({ answered: false, forced: false });
+    }
   });
 
   it('001 FR-007 kills an adapter that ignores SIGTERM after the grace period', async () => {
@@ -355,7 +368,12 @@ describe('adapter client against the mock adapter', () => {
       },
       shutdownGraceMs: 100,
     });
-    expect(await client.shutdown()).toEqual({ exitCode: null, signal: 'SIGKILL', forced: true });
+    expect(await client.shutdown()).toEqual({
+      exitCode: null,
+      signal: 'SIGKILL',
+      forced: true,
+      answered: true,
+    });
   });
 
   it('001 FR-007 passes on the last stderr line even without a final newline', async () => {

@@ -1,0 +1,9 @@
+# An adapter that writes a non-protocol line to stdout after its last render answer.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true }
+shutdownReply: stray
+variants:
+  "*": {}

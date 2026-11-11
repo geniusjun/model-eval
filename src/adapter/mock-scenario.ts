@@ -51,6 +51,8 @@ const behaviourSchema = z.strictObject({
   /** Answer template per language (`*` for any); `{caseId}`, `{repeat}` and `{lang}` are filled in. */
   answer: perLang.default({ '*': 'answer to {caseId} #{repeat}' }),
   fallback: z.string().default('Sorry, please try again.'),
+  /** System prompt per language for this variant, before the scenario's `prompts`. */
+  prompts: perLang.default({}),
   violations: z
     .array(
       z.strictObject({
@@ -121,6 +123,19 @@ export const scenarioSchema = z.strictObject({
   reportInflight: z.boolean().default(false),
   /** Cases whose `render` answers with a JSON-RPC error. */
   renderErrors: z.array(z.string().min(1)).default([]),
+  /** Cases whose `render` result has no `messages`, which breaks the protocol. */
+  renderInvalid: z.array(z.string().min(1)).default([]),
+  /** Cases whose `render` makes the adapter exit without answering. */
+  renderExits: z.array(z.string().min(1)).default([]),
+  /** Cases whose `render` is answered, after which the adapter exits before `shutdown`. */
+  renderThenExit: z.array(z.string().min(1)).default([]),
+  /** Wait before each `render` answer. */
+  renderDelayMs: z.int().min(0).default(0),
+  /**
+   * `ignore` never answers `shutdown`, `exit` exits without answering it, `error` answers it with
+   * a JSON-RPC error, and `stray` writes a non-protocol line to stdout before answering.
+   */
+  shutdownReply: z.enum(['answer', 'ignore', 'exit', 'error', 'stray']).default('answer'),
   /** Sent as a `calls` notification without an `id` before the `shutdown` response. */
   shutdownCalls: z.array(callRecordSchema).default([]),
   /** Behaviour per variant ID; `*` applies to variants without their own entry. */
@@ -174,9 +189,15 @@ export function initializeResult(scenario: Scenario): InitializeResult {
   };
 }
 
-export function renderCase(scenario: Scenario, params: RenderParams): RenderResult {
+/** `behaviour` is the initialised variant's, whose own prompts come first. */
+export function renderCase(
+  scenario: Scenario,
+  params: RenderParams,
+  behaviour?: Behaviour,
+): RenderResult {
+  const prompt = pick(behaviour?.prompts ?? {}, params.lang) ?? pick(scenario.prompts, params.lang);
   const messages = [
-    { role: 'system', content: pick(scenario.prompts, params.lang) ?? '' },
+    { role: 'system', content: prompt ?? '' },
     { role: 'user', content: canonicalJson(params.input) },
   ];
   return {
@@ -322,7 +343,7 @@ function requestFingerprint(
     return undefined;
   }
   return behaviour.requestFingerprint === 'render'
-    ? renderCase(scenario, params).fingerprint
+    ? renderCase(scenario, params, behaviour).fingerprint
     : hashValue({ messages: [], tools: null });
 }
 

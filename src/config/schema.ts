@@ -154,7 +154,8 @@ export const checkSchema = z.discriminatedUnion('type', [
 
 export const anchorSchema = z.strictObject({
   lang: z.string().min(1),
-  quote: z.string().min(1),
+  // Whitespace is normalised before matching, so a blank quote would match every prompt.
+  quote: z.string().regex(/\S/u, 'must contain more than whitespace'),
   target: z.string().min(1).optional(),
   cases: z.array(idSchema).optional(),
 });

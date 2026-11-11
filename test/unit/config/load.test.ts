@@ -368,6 +368,16 @@ describe('config loader', () => {
     ]);
   });
 
+  it('001 FR-004 rejects an anchor quote of whitespace alone', async () => {
+    const diagnostics = await problems(
+      valid({
+        'rules/base.yaml':
+          'rules:\n  - id: r\n    title: t\n    severity: minor\n    check: { type: emoji }\n    anchors: [{ lang: ko, quote: " \\n " }, { lang: ko, quote: " a " }]\n',
+      }),
+    );
+    expect(diagnostics.map(pathOf)).toEqual(['rules[0].anchors[0].quote']);
+  });
+
   it('001 FR-001 enforces value ranges of the config', async () => {
     const config = CONFIG.concat(
       'sampling:\n  repeats: 0\n',

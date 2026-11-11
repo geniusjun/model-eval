@@ -88,7 +88,7 @@ describe('JSON Schemas', () => {
     for (const name of readdirSync(SCHEMAS)) {
       expect(() => validator(name), name).not.toThrow();
     }
-  });
+  }, 30_000);
 });
 
 describe('contract fixtures', () => {

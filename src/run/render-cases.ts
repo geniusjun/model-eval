@@ -1,4 +1,6 @@
 import type { AdapterClient } from '../adapter/client.js';
+import type { RenderParams } from '../adapter/protocol.js';
+import type { Case } from '../config/schema.js';
 import { inputTokenEstimate, type CasePlan } from './cost.js';
 import { renderFingerprint } from './hashes.js';
 import { trialSeed } from './ids.js';
@@ -26,6 +28,23 @@ export type RenderResultSet =
   | { readonly ok: true; readonly rendered: RenderedCases }
   | { readonly ok: false; readonly failures: readonly RenderFailure[] };
 
+/** What a render request needs of a case. */
+export type RenderSpec = Pick<RunCaseSpec, 'id' | 'target' | 'requestLang'> & {
+  readonly definition: Pick<Case, 'input'>;
+};
+
+/** The `render` request of a case: repeat 0's `caseId`, `repeat` and `seed`, as `generate` sends. */
+export function renderParams(spec: RenderSpec, seed: number): RenderParams {
+  return {
+    target: spec.target,
+    ...(spec.requestLang === undefined ? {} : { lang: spec.requestLang }),
+    input: spec.definition.input,
+    caseId: spec.id,
+    repeat: 0,
+    seed: trialSeed(seed, spec.id, 0),
+  };
+}
+
 /**
  * Renders every case with repeat 0's `caseId`, `repeat` and `seed` when the adapter declares
  * `render`, and counts input tokens from the render, else from `estimate.inputTokens`.
@@ -42,14 +61,7 @@ export async function renderCases(
       if (!renders) {
         return { spec, render: undefined, message: undefined };
       }
-      const outcome = await client.render({
-        target: spec.target,
-        ...(spec.requestLang === undefined ? {} : { lang: spec.requestLang }),
-        input: spec.definition.input,
-        caseId: spec.id,
-        repeat: 0,
-        seed: trialSeed(seed, spec.id, 0),
-      });
+      const outcome = await client.render(renderParams(spec, seed));
       return outcome.kind === 'result'
         ? { spec, render: outcome.value, message: undefined }
         : { spec, render: undefined, message: outcome.message };
