@@ -130,7 +130,7 @@ Exact semantics:
 
 ### Run
 
-A run is one directory, `runs/<runId>/` under `output.dir`: `manifest.json`, `trials.jsonl`, `grades/`, `adapter.log`, and `run.lock` while running.
+A run is one directory, `runs/<runId>/` under `output.dir`: `manifest.json`, `trials.jsonl`, `grades/`, `adapter.log` (one redacted JSON object `{at, level, message}` per line), and `run.lock` while running.
 
 A swap check also writes `swaps/<swapId>.json`: `{swapId, baselineRunId, candidateRunId, budget, spentUsd, segments[], status, stopReason?, comparisonId?}`. The cap check of a swap uses `spentUsd`, the total of both runs.
 
@@ -462,7 +462,7 @@ Adapter and transient error rates are shares of finished trials, checked only af
 | Condition | `stopReason` | Exit code |
 |---|---|---|
 | A `config` failure (also on side calls, `calls` notifications and late responses), a call to an unpriced model while a cap is set (also when reported that way), or a restarted adapter that declares a different adapter or helper version or service code (same rules as resume) | `config-error` | 4 |
-| Adapter error rate above `run.maxAdapterErrorRate` (default 0.05), or three adapter crashes in a row | `adapter-errors` | 3 |
+| Adapter error rate above `run.maxAdapterErrorRate` (default 0.05), or three adapter restarts in a row (death, stdout contamination or every slot abandoned) without an answer from the process in between | `adapter-errors` | 3 |
 | Transient error rate above `run.maxTransientRate` (default 0.5) | `transient-errors` | 3 |
 | Re-estimated total above the cap after the first batch, after a repeat round, or at resume | `budget-projected` | 5 |
 | Before an attempt (tool retries included), the §Cap Check fails | `budget` | 5 |
@@ -520,7 +520,7 @@ Run and comparison warning codes (lint codes are in §Validation Rules):
 | `same-response-model` | The variants have different `model` values but the same non-empty list of response snapshots: both may have answered with one model (a pinned Azure deployment, a proxy that ignores the model name) | `{models: list of snapshots}` |
 | `render-mismatch` | A trial's request fingerprint differs from its case's render fingerprint (FR-015) | `{trials: per variant}` |
 | `budget-overrun` | Spend above reservations (`overrunUsd` > 0) | `{overrunUsd: per variant}` |
-| `abandoned-trials` | Trials abandoned without an answer, per cause. For trials abandoned at the tool time limit whose late responses contain failed calls with a kind, `lateFailures` holds per kind the number of such trials and their longest `retryAfterMs`. All calls are checked, not only the last, because after `cancel` a request can still finish and a successful SDK retry would hide the earlier failure. Transient failures here suggest the service's SDK waited before retrying | `{trials: per variant {timeout, restart}, timeoutMs: per variant, lateFailures: per variant {kind: {trials, maxRetryAfterMs}}}`, `timeoutMs` being each run's `adapter.timeoutMs` |
+| `abandoned-trials` | Trials abandoned without an answer, per cause. For trials abandoned at the tool time limit whose late responses contain calls with a kind that did not succeed (`failed` or `unanswered`), `lateFailures` holds per kind the number of such trials and their longest `retryAfterMs`. All calls are checked, not only the last, because after `cancel` a request can still finish and a successful SDK retry would hide the earlier failure. Transient failures here suggest the service's SDK waited before retrying | `{trials: per variant {timeout, restart}, timeoutMs: per variant, lateFailures: per variant {kind: {trials, maxRetryAfterMs}}}`, `timeoutMs` being each run's `adapter.timeoutMs` |
 | `resume-unverified` | A generation condition could not be verified on resume | `{conditions: list of service-version, tree-hash, render-fingerprint}` |
 | `resume-config-ignored` | On resume, config values for variant, seed, repeats, retries or adapter time limit differ and the manifest wins, or cases only in the files were left out | `{fields: list of variant, seed, repeats, retries, timeoutMs}`; left-out cases in `caseIds` |
 | `unpriced-model` | Without a cap, an unpriced call was charged at the most expensive price | `{models: list of model names}` |
@@ -530,7 +530,7 @@ Run and comparison warning codes (lint codes are in §Validation Rules):
 | `excluded-from-gate` | A rule of a gated severity is `review` or an uncalibrated judge and was removed from the gate | `{cause: review | uncalibrated-judge}` |
 | `partial-run` | A compared run is not finished (`partial` or `running`) | `{runs: per unfinished variant {status, stopReason}}`, `stopReason` `null` for a `running` run |
 | `versions-differ` | The compared runs differ in service code (`treeHash`, else version and dirty flag), adapter version, `launchHash` or helper version | `{fields: list of service, adapter-version, launch-hash, helper-version}` |
-| `adapter-warnings` | The adapter attached warnings to results. One per distinct sentence, with the variants in `variants`, counts per variant in `params` and cases in `caseIds`. Helper warnings change how a result reads ([003 helper-api §Trial Warnings](../003-adapter-helpers/contracts/helper-api.md#trial-warnings)) | `{sentence, trials: per variant}` |
+| `adapter-warnings` | The adapter attached warnings to results. One per distinct sentence, with the variants in `variants`, counts per variant in `params` (trials with the sentence on any of their attempts) and cases in `caseIds`. Helper warnings change how a result reads ([003 helper-api §Trial Warnings](../003-adapter-helpers/contracts/helper-api.md#trial-warnings)) | `{sentence, trials: per variant}` |
 
 - **Who raises them**: a run raises codes from its own records. Codes that compare variants (`discard-rate-increase`, `regeneration-rate-increase`, `latency-p95-ratio`, `cost-ratio`, `same-response-model`, `versions-differ`), `excluded-from-gate` (from the gate config) and `partial-run` (from run status) come only from comparisons. `conservative-over-budget` is raised before the start; a swap check raises it once against the combined estimate. A comparison re-raises every other code from both runs' records: trial-based codes are recounted on common cases, and manifest warnings (`budget-overrun`, `unpriced-model`, `cached-input-unpriced`, `estimate-low-accuracy`, `resume-unverified`, `resume-config-ignored`) are copied under their run's variant. A swap that reaches the comparison therefore holds every warning of its runs.
 - **Grouping**: one warning per code per run or comparison; per `ruleId` and `lang` when the code has them; per sentence for `adapter-warnings`. Affected variants go in `variants`, cases in `caseIds`, counts and values per variant in `params`, so both variants can be read side by side.
