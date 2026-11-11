@@ -1,0 +1,85 @@
+# Pogo's config. Every value shown is the default for a key that is left out, except version,
+# adapter.command, variants, pricing, gate.severities and redact.
+
+version: 1
+lang: en # Human output and result page language: en or ko.
+
+adapter:
+  command: [node, adapter.mjs] # An array; no shell is involved.
+  cwd: .
+  env: {} # Do not put API keys here; the adapter reads them from its environment.
+  # How long the tool waits for one trial. Make it longer than one service call can take, SDK
+  # retry waits included. Without a service time limit this is effectively the time limit.
+  timeoutMs: 120000
+
+files:
+  rules: rules/**/*.yaml
+  cases: cases/**/*.yaml
+
+# params are stored in the run as is; never put secrets here.
+variants:
+  - id: current
+    model: model-a
+  - id: next
+    model: model-b
+    params: { reasoning: none } # Passed to the adapter; the pogo adapter does not read it.
+
+# USD per 1M tokens. The tool ships no prices. cacheWrite only for models that bill cache writes.
+# Add every other model the service calls; with a cap, an unpriced call stops the run.
+pricing:
+  model-a: { input: 0.10, cachedInput: 0.01, cacheWrite: 0.125, output: 0.50 }
+  model-b: { input: 0.20, cachedInput: 0.02, cacheWrite: 0.25, output: 1.20 }
+
+# With 30 cases per language, an unchanged candidate passes a cell about 94% of the time and a
+# 30-point drop is caught about 97%. Per-trial seeds derive from seed.
+sampling:
+  repeats: 5
+  seed: 1729
+
+stats:
+  # Two-sided 95% per cell. Only the blocking upper bound is corrected for the number of gated cells.
+  confidence: 0.95
+  minCases: 3 # Minimum common cases for a passing verdict. Cannot be below 3.
+
+# Omitted or with empty severities, nothing blocks: no-gate when the preconditions hold,
+# otherwise undecided.
+gate:
+  severities: [blocking] # Severities of gated rules.
+  margin: 0.10 # A rule's own margin wins. Used for cell verdicts even without a gate.
+
+run:
+  concurrency: 4 # Concurrent requests per adapter process.
+  retries: 2 # Retries of transient failures. Time-outs are never retried.
+  # Shares of finished trials that ended as adapter errors, or still transient after retries;
+  # above either after 20 finished trials, the run stops as partial.
+  maxAdapterErrorRate: 0.05
+  maxTransientRate: 0.5
+
+budget:
+  maxCostUsd: 1 # Cap on the spend the tool counts. Omitted: 1. null: no cap.
+
+# Assumptions when no previous run exists.
+estimate:
+  # Output tokens per trial, reasoning included. Use the service's usual answer length. It usually
+  # decides a first run's expected cost; the first batch re-estimates it.
+  outputTokens: 600
+  # inputTokens: 4000 # Required when the adapter cannot render or the service uses stored prompts.
+
+report:
+  lowBaseline: 0.9 # Cells whose baseline compliance is lower are listed separately (not gated).
+  samples: 3 # Failing examples per regressed cell in the result page.
+  # Metric warning thresholds, compared with point estimates; never affect the exit code.
+  warn:
+    transientRate: 0.05
+    discardRateIncrease: 0.01 # Candidate discard rate minus baseline.
+    regenerationRateIncrease: 0.03 # Candidate regeneration rate minus baseline.
+    latencyP95Ratio: 1.5
+    costRatio: 2.0
+
+output:
+  dir: .model-eval # Runs, comparisons and result pages. init adds it to .gitignore.
+
+# Applied to every written surface. Not applied to raw trial records. replace must not be empty,
+# so readers see that text was removed.
+redact:
+  - { pattern: "\\b01[0-9]-?\\d{3,4}-?\\d{4}\\b", replace: '<phone>' }

@@ -1,0 +1,15 @@
+# Fixed token use for the cost tests. The render counts 1000 input tokens and declares no output
+# limit, so estimates use estimate.outputTokens.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true, maxConcurrency: 4 }
+prompts:
+  ko: 짧게 답한다.
+  ja: 短く答える。
+inputTokens: 1000
+variants:
+  '*':
+    answer: { '*': "answer {caseId} {repeat}" }
+    usage: { input: 100, cachedInput: 0, cacheWrite: 0, output: 10, reasoning: 0 }
+    calls: true

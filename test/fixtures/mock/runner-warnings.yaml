@@ -1,0 +1,15 @@
+# Same answer on every repeat, a request fingerprint unlike the render, a snapshot per repeat and some transient failures.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+variants:
+  '*':
+    answer: { '*': "the same answer" }
+    calls: true
+    usage: { input: 10, output: 5 }
+    modelSnapshot: "model-a-r{repeat}"
+    requestFingerprint: other
+    outcomes:
+      - { row: transient, probability: 0.2, message: "429 rate limited", retryAfterMs: 0 }

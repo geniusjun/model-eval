@@ -1,0 +1,20 @@
+# Every outcome row of data-model §Trial Outcomes with a fixed probability.
+targets:
+  - name: chat
+    languages: [en]
+variants:
+  '*':
+    answer: { '*': "answer {caseId} {repeat}" }
+    calls: true
+    usage: { input: 10, output: 5 }
+    outcomes:
+      - { row: config, probability: 0.05, message: "401 invalid api key" }
+      - { row: adapter, probability: 0.05, message: "fake storage rejected an unexpected query" }
+      - { row: transient, probability: 0.1, message: "429 rate limited", retryAfterMs: 2000 }
+      - { row: permanent, probability: 0.05, message: "400 unsupported parameter" }
+      - { row: timeout, probability: 0.05, message: "service time limit" }
+      - { row: empty-raw, probability: 0.05 }
+      - { row: discarded, probability: 0.05 }
+      - { row: fallback, probability: 0.05 }
+      - { row: empty-final, probability: 0.05 }
+      - { row: cut, probability: 0.05 }

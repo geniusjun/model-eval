@@ -1,0 +1,11 @@
+# Every send fails with a configuration problem.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+variants:
+  '*':
+    calls: true
+    outcomes:
+      - { row: config, probability: 1, message: "401 invalid api key" }

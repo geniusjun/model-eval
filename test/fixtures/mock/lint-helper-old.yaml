@@ -1,0 +1,12 @@
+# An adapter whose helper is older than the helper the tool bundles.
+adapter: { name: mock-chat, version: 0.1.0, helper: { language: python, version: 0.0.9 } }
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true }
+prompts:
+  ko: 반말로 짧게 답한다.
+  ja: 日本語だけで話す。
+variants:
+  "*": {}

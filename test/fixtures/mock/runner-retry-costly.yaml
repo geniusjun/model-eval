@@ -1,0 +1,12 @@
+# The first send of every trial fails transiently without calls, so it is charged its
+# reservation; the retry answers with long output and no output limit on the request.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+variants:
+  '*':
+    usage: { input: 400, output: 2000 }
+    outcomes:
+      - { row: transient, probability: 1, message: "429 rate limited", retryAfterMs: 0, firstSends: 1 }

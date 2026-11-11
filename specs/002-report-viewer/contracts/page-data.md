@@ -30,8 +30,7 @@ Both payloads share an envelope:
 
 | Field | Description |
 |---|---|
-| `comparison` | The 001 Comparison ([001 data-model §Comparison](../../001-swap-check/data-model.md#comparison)) |
-| `gate` | The 001 Gate ([001 data-model §Gate](../../001-swap-check/data-model.md#gate)) |
+| `comparison` | The 001 Comparison ([001 data-model §Comparison](../../001-swap-check/data-model.md#comparison)), which carries its Gate as `comparison.gate` |
 
 `kind: list` adds `comparisons[]`, one entry per comparison folder in the output directory, newest first, folders starting with `.tmp-` skipped:
 

@@ -1,0 +1,9 @@
+# Answers after a random delay and reports how many requests are in flight.
+targets:
+  - name: chat
+reportInflight: true
+capabilities: { maxConcurrency: 8 }
+variants:
+  '*':
+    answer: { '*': "{caseId}#{repeat}" }
+    delayMs: { min: 5, max: 60 }

@@ -1,0 +1,19 @@
+# The candidate's process exits on greet-ko-2; a restarted process declares other service code.
+adapter: { name: mock-chat, version: 0.1.0 }
+service: { version: "1111111111111111111111111111111111111111", dirty: false }
+restarted:
+  service: { version: "1111111111111111111111111111111111111111", dirty: true }
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, maxConcurrency: 1 }
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  current:
+    answer: { '*': "answer to {caseId}" }
+  next:
+    answer: { '*': "answer to {caseId}" }
+    outcomes:
+      - { row: crash, probability: 1, caseIds: [greet-ko-2] }

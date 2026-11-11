@@ -1,0 +1,10 @@
+# Two slots; the cases hang-1 and hang-2 never answer, every other case answers at once.
+targets:
+  - name: chat
+    inputSchema: { type: object }
+capabilities: { maxConcurrency: 2 }
+variants:
+  '*':
+    answer: { '*': 'answer to {caseId}' }
+    outcomes:
+      - { row: hang, probability: 1, caseIds: [hang-1, hang-2] }

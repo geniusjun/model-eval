@@ -1,0 +1,15 @@
+# The candidate's process exits on every generate.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, maxConcurrency: 2 }
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  current:
+    answer: { '*': "answer to {caseId}" }
+  next:
+    answer: { '*': "answer to {caseId}" }
+    outcomes:
+      - { row: crash, probability: 1 }

@@ -1,0 +1,22 @@
+# The baseline misses the service time limit on two Japanese cases; both variants answer the rest.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, stages: true, postprocess: true, maxConcurrency: 4 }
+prompts:
+  ko: 이모지를 붙이지 않는다. 반말로 짧게 답한다.
+  ja: 日本語だけで話す。絵文字を使わない。
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  current:
+    answer: { ko: "응, {caseId} 알겠어 {repeat}", ja: "はい、{caseId}。{repeat}" }
+    usage: { input: 40, cachedInput: 360, cacheWrite: 0, output: 18, reasoning: 0 }
+    calls: true
+    outcomes:
+      - { row: timeout, probability: 1, caseIds: [greet-ja-2, greet-ja-3], message: "service time limit of 30 s" }
+  next:
+    answer: { ko: "응, {caseId} 알겠어 {repeat}", ja: "はい、{caseId}。{repeat}" }
+    usage: { input: 40, cachedInput: 360, cacheWrite: 0, output: 18, reasoning: 0 }
+    calls: true

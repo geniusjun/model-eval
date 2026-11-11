@@ -1,0 +1,19 @@
+# Prompts for the lint tests. The Japanese prompt lacks 日本語だけで話す and the English
+# sentence of the Korean one; next's Korean prompt lacks 반말로 짧게 답한다. broken-ko does not
+# render, invalid-ko renders without messages and exits-ko makes the adapter exit.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true }
+prompts:
+  ko: "Never use emoji. 이모지를 붙이지 않는다.\n반말로   짧게 답한다."
+  ja: 絵文字を使わない。
+renderErrors: [broken-ko]
+renderInvalid: [invalid-ko]
+renderExits: [exits-ko]
+variants:
+  current: {}
+  next:
+    prompts:
+      ko: Never use emoji. 이모지를 붙이지 않는다.

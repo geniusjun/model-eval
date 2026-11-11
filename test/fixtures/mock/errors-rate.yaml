@@ -1,0 +1,15 @@
+# Half of the candidate's trials raise an exception the adapter did not declare as a discard.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, maxConcurrency: 4 }
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  current:
+    answer: { '*': "answer to {caseId}" }
+  next:
+    answer: { '*': "answer to {caseId}" }
+    outcomes:
+      - { row: adapter, probability: 0.5, message: "LookupError: no fake profile for this user" }

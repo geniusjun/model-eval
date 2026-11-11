@@ -1,0 +1,24 @@
+# The candidate service calls the variant model outside the answer and reports those calls in
+# `calls` notifications: one sent before each result and one 20 ms after it, in a separate chunk.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true, maxConcurrency: 4 }
+prompts:
+  ko: 짧게 답한다.
+  ja: 短く答える。
+inputTokens: 400
+variants:
+  current:
+    answer: { '*': "answer {caseId} {repeat}" }
+    usage: { input: 40, cachedInput: 360, output: 18 }
+    calls: true
+  next:
+    answer: { '*': "answer {caseId} {repeat}" }
+    usage: { input: 40, cachedInput: 360, output: 18 }
+    calls: true
+    beforeCalls:
+      - { model: model-b, outcome: ok, branch: side, usage: { input: 700, output: 20 } }
+    afterCalls:
+      - { model: model-b, outcome: ok, branch: side, usage: { input: 900, output: 40 } }
+    afterCallsDelayMs: 20

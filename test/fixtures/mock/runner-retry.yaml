@@ -1,0 +1,12 @@
+# The first send of every trial fails transiently and the retry answers.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+variants:
+  '*':
+    calls: true
+    usage: { input: 10, output: 5 }
+    outcomes:
+      - { row: transient, probability: 1, message: "429 rate limited", retryAfterMs: 0, firstSends: 1 }

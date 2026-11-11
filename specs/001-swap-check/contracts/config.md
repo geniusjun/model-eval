@@ -8,6 +8,8 @@ All files are YAML. The tool ships JSON Schemas (`schemas/config.schema.json` an
 
 `model-eval.config.yaml`:
 
+Every value the example shows is the default for a key that is left out, with these exceptions: `version`, `adapter.command`, `variants` and `pricing` are required; `gate.severities` and `redact` default to empty lists, so a left-out gate blocks nothing; `gate.margin` defaults to 0.10; `estimate.inputTokens` has no default.
+
 ```yaml
 version: 1
 lang: en                                   # Human output and result page language: en or ko.
@@ -81,7 +83,7 @@ output:
   dir: .model-eval                         # Runs, comparisons and result pages. init adds it to .gitignore.
 
 redact:                                    # Applied to every written surface of FR-031. Not applied to raw trial records.
-  - { pattern: "\\b01[0-9]-?\\d{3,4}-?\\d{4}\\b", replace: "<phone>" }
+  - { pattern: "\\b01[0-9]-?\\d{3,4}-?\\d{4}\\b", replace: "<phone>" }   # replace must not be empty, so readers see that text was removed.
 ```
 
 - Relative paths (`adapter.cwd`, `files` globs, `output.dir`) resolve from the config file's folder, so every working directory points to the same files and resume starts the same adapter (`launchHash`).

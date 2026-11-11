@@ -559,4 +559,5 @@ A service that receives the answer through one of these gets data-model Outcome 
 
 - **Python**: one file, `model_eval_adapter.py`, standard library only. `init --adapter python` copies it next to the adapter ([001 FR-033](../../001-swap-check/spec.md#functional-requirements)), and nothing is installed into the service's virtual environment. The file header carries the helper version and the protocol version; when the tool ships a newer helper, `lint` reports `helper-outdated` ([001 data-model §Validation Rules](../../001-swap-check/data-model.md#validation-rules)).
 - **TypeScript**: the `model-eval/adapter` subpath of the tool package, exporting `defineAdapter`, `fallback`, `result` and `ModelCallError`.
+- Both helpers report as `adapter.helper.version` the bundled helper version of the tool release they come from; the Python file header carries the same value.
 - `init --adapter python|node` creates an adapter skeleton that uses the helper (001 FR-033).
