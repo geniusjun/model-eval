@@ -2,6 +2,11 @@
   "name": "model-eval",
   "version": "0.1.0",
   "description": "Checks whether an LLM service's prompt rules and post-processing still hold when it moves to another model.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/geniusjun/model-eval.git"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.17"
