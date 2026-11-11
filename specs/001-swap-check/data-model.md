@@ -72,7 +72,7 @@ A service function under test, declared by the adapter in `initialize`.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `lang` | string | yes | Language whose prompt must contain the sentence |
-| `quote` | string | yes | Fragment that must appear verbatim in the rendered prompt; whitespace is normalised |
+| `quote` | string | yes | Fragment that must appear verbatim in the rendered prompt; whitespace is normalised, and a quote of whitespace alone is a `schema` error |
 | `target` | string | no | Needed when there are several targets |
 | `cases` | string[] | no | Cases that must contain it; default all cases of that language and target |
 
@@ -641,8 +641,9 @@ Lint codes. Info does not count as a warning, is not limited by `--max-warnings`
 | `few-cases` | warning | A gated cell has fewer than 10 cases; it only catches large drops (research R3) | `{surface, cases}` |
 | `margin-unreachable` | warning | A gated cell's planned trials (cases × repeats) are below n_min for its margin; equal compliance cannot pass (§Statistics) | `{surface, plannedTrials, nMin, margin}` |
 | `excluded-from-gate` | warning | Same as the run warning of that name (§Warnings), raised by lint | `{cause: review | uncalibrated-judge}` |
-| `vcs-unknown` | warning | Not a git work tree, so `derived-tracked` cannot be decided | — |
+| `vcs-unknown` | warning | Not a git work tree, so `derived-tracked` cannot be decided; reported once | — |
 | `helper-outdated` | warning | The adapter's helper is older than the one bundled with this tool; copy it again with `init` | `{version, bundled}` |
 | `unanchored` | info | A rule without an anchor for a language of the cases it applies to; a notice, not something to fix (for example a rule kept by post-processing alone) | — |
 
-- Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema`, `unknown-target` and anchor checks. Under `--render`, an adapter that does not declare `capabilities.render` is `adapter-failed`, since the anchors asked for cannot be checked.
+- Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema`, `unknown-target` and anchor checks. Under `--render`, an adapter that does not declare `capabilities.render` is `adapter-failed`, since the anchors asked for cannot be checked, and so is one that does not answer `shutdown`.
+- Without the adapter's targets (`--no-adapter`), the language of a case without `lang` is unknown, so checks that depend on it (`rule-filter-mismatch`, `language-gap`, `unanchored`, `unresolved-ref` of rules limited by language, and the sample plan codes) leave that case out instead of guessing.

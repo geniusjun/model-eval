@@ -230,7 +230,7 @@ The tool never resends trials whose adapter response never came (tool time-out, 
 | The adapter process dies | Record in-flight attempts as `adapter` errors with `abandoned: "restart"`, charge their reservations and restart. Three deaths in a row stop the run as `partial` with exit code 3 |
 | A non-JSON line on stdout | Show its first 200 characters and "stdout is reserved for the protocol", record in-flight attempts as `abandoned: "restart"`, charge their reservations and restart |
 | Adapter error rate above `run.maxAdapterErrorRate` (default 0.05) after 20 finished trials | Stop as `partial` with exit code 3 |
-| Start failure, `initialize` failure or no response within `adapter.timeoutMs`, major version mismatch | Configuration error, exit code 4 |
+| Start failure, `initialize` failure or no response to `initialize` or `render` within `adapter.timeoutMs`, major version mismatch | Configuration error, exit code 4 |
 | A restarted adapter declares a different adapter or helper version or service code (compared as in `initialize`) | Stop as a configuration error (exit code 4), since one run would mix trials of two code versions. For changed service code, the message suggests `git status --short` in the service folder; files the service creates while running belong in the ignore list, after which the run can be resumed |
 
 ## Compatibility
