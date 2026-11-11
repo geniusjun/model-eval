@@ -244,6 +244,7 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 - Trials of a case whose current hash differs from the manifest, including deleted cases, are not graded and leave the comparison too (FR-027). They get `skip` for every rule that applies to the case as defined now; a deleted case gets it for every `global` rule matching its target and language.
 - A grade set looks at one run. Systematic failures need both runs and are applied by the comparison (§Trial Outcomes).
 - Like `trials.jsonl`, a grade set holds `evidence` as checked. Redaction applies when evidence reaches a comparison or any output (FR-031), so a change to `redact` needs no re-grade and a reused grade set never carries old redaction.
+- `grade` and `compare` start no adapter, so a case without `lang` keeps the language key its run recorded.
 - `compare` only uses grade sets made with the current rules (FR-019).
 
 ### Cell
@@ -530,7 +531,7 @@ Run and comparison warning codes (lint codes are in §Validation Rules):
 | `conservative-over-budget` | The conservative estimate exceeds the cap (before the start); the run may stop at the cap if the cache misses or outputs are long | `{conservativeUsd, maxCostUsd}` |
 | `excluded-from-gate` | A rule of a gated severity is `review` or an uncalibrated judge and was removed from the gate | `{cause: review | uncalibrated-judge}` |
 | `partial-run` | A compared run is not finished (`partial` or `running`) | `{runs: per unfinished variant {status, stopReason}}`, `stopReason` `null` for a `running` run |
-| `versions-differ` | The compared runs differ in service code (`treeHash`, else version and dirty flag), adapter version, `launchHash` or helper version | `{fields: list of service, adapter-version, launch-hash, helper-version}` |
+| `versions-differ` | The compared runs differ in service code (`treeHash`, else version and dirty flag), adapter version, `launchHash` or helper version | `{fields: list of service, adapter-version, launch-hash, helper-version}`; `variants` names the variants of both runs |
 | `adapter-warnings` | The adapter attached warnings to results. One per distinct sentence, with the variants in `variants`, counts per variant in `params` (trials with the sentence on any of their attempts) and cases in `caseIds`. Helper warnings change how a result reads ([003 helper-api §Trial Warnings](../003-adapter-helpers/contracts/helper-api.md#trial-warnings)) | `{sentence, trials: per variant}` |
 
 - **Who raises them**: a run raises codes from its own records. Codes that compare variants (`discard-rate-increase`, `regeneration-rate-increase`, `latency-p95-ratio`, `cost-ratio`, `same-response-model`, `versions-differ`), `excluded-from-gate` (from the gate config) and `partial-run` (from run status) come only from comparisons. `conservative-over-budget` is raised before the start; a swap check raises it once against the combined estimate. A comparison re-raises every other code from both runs' records: trial-based codes are recounted on common cases, and manifest warnings (`budget-overrun`, `unpriced-model`, `cached-input-unpriced`, `estimate-low-accuracy`, `resume-unverified`, `resume-config-ignored`) are copied under their run's variant. A swap that reaches the comparison therefore holds every warning of its runs.

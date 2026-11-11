@@ -12,7 +12,7 @@
 | `model-eval grade <runId>` | no | Re-grades stored trials with the current rules into a grade set |
 | `model-eval compare <baseRunId> <candRunId>` | no | Grades both runs with the current rules, compares cells, applies the gate and writes `report.md` and `report.html` |
 | `model-eval swap --from <id> --to <id>` | yes | Runs both variants, grades, compares, gates and writes the reports in one go. The everyday command |
-| `model-eval report <comparisonId>` | no | Rewrites `report.md`, `report.html` and the output `index.html` from a saved comparison, for example with a newer tool version |
+| `model-eval report <comparisonId>` | no | Rewrites `report.md`, `report.html` and the output `index.html` from a saved comparison, for example with a newer tool version. The comparison is shown with the redaction it was saved under; a changed `redact` takes effect through `compare` |
 
 ### Common Options
 
