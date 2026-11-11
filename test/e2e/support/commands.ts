@@ -2,10 +2,16 @@ import { afterAll } from 'vitest';
 
 import type { CliResult } from './cli.js';
 import {
+  parseCompareEnvelope,
+  parseGradeEnvelope,
   parseLintEnvelope,
+  parseReportEnvelope,
   parseRunEnvelope,
   parseSwapEnvelope,
+  type CompareEnvelope,
+  type GradeEnvelope,
   type LintEnvelope,
+  type ReportEnvelope,
   type RunEnvelope,
   type SwapEnvelope,
 } from './outputs.js';
@@ -60,6 +66,30 @@ export function lintJson(
   extra: readonly string[] = [],
 ): Promise<JsonOutcome<LintEnvelope>> {
   return withJson(project, ['lint', ...extra], parseLintEnvelope);
+}
+
+export function gradeJson(
+  project: Project,
+  runId: string,
+  extra: readonly string[] = [],
+): Promise<JsonOutcome<GradeEnvelope>> {
+  return withJson(project, ['grade', runId, ...extra], parseGradeEnvelope);
+}
+
+export function compareJson(
+  project: Project,
+  runIds: readonly [string, string],
+  extra: readonly string[] = [],
+): Promise<JsonOutcome<CompareEnvelope>> {
+  return withJson(project, ['compare', ...runIds, ...extra], parseCompareEnvelope);
+}
+
+export function reportJson(
+  project: Project,
+  comparisonId: string,
+  extra: readonly string[] = [],
+): Promise<JsonOutcome<ReportEnvelope>> {
+  return withJson(project, ['report', comparisonId, ...extra], parseReportEnvelope);
 }
 
 /** Projects made through the returned function are deleted after the file's tests. */

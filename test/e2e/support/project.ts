@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -28,7 +28,14 @@ export interface ProjectSpec {
   readonly adapterTimeoutMs?: number;
   /** Lets the mock tell a restarted process from the first one (`MOCK_STATE_DIR`). */
   readonly mockState?: boolean;
+  /** More `adapter.env` entries; they change the adapter's `launchHash`. */
+  readonly adapterEnv?: Readonly<Record<string, string>>;
+  /** Copies the scenario into the project, so a test can change what the adapter declares. */
+  readonly ownScenario?: boolean;
 }
+
+/** The project files a test can rewrite between commands. */
+export type ProjectChange = Partial<Pick<ProjectSpec, 'rules' | 'cases' | 'config' | 'adapterEnv'>>;
 
 export interface RecordedRequest {
   readonly at: number;
@@ -53,7 +60,11 @@ export interface GenerateRequest {
 export interface Project {
   readonly root: string;
   readonly outputDir: string;
+  /** The scenario file the mock adapter reads. */
+  readonly scenario: string;
   run(args: readonly string[]): Promise<CliResult>;
+  /** Rewrites the config, rule and case files, as a user editing them would. */
+  write(change: ProjectChange): Promise<void>;
   sessions(): Promise<AdapterSession[]>;
   generateRequests(): Promise<GenerateRequest[]>;
   dispose(): Promise<void>;
@@ -99,6 +110,7 @@ child.on('exit', (code, signal) => process.exit(code ?? (signal === null ? 1 : 1
 `;
 
 const RECORDER_FILE = 'record-adapter.mjs';
+const SCENARIO_FILE = 'scenario.yaml';
 const REQUESTS_DIR = 'requests';
 
 /** Cases `greet-<lang>-<n>`, numbered from 1, for a target whose input is `{user}`. */
@@ -139,34 +151,48 @@ export async function recordAdapter(
 
 export async function createProject(spec: ProjectSpec): Promise<Project> {
   const root = await mkdtemp(path.join(tmpdir(), 'model-eval-e2e-'));
-  const recorder = await recordAdapter(root, [
-    process.execPath,
-    MOCK_ADAPTER,
-    scenarioFile(spec.scenario),
-  ]);
+  const scenario =
+    spec.ownScenario === true ? path.join(root, SCENARIO_FILE) : scenarioFile(spec.scenario);
+  if (spec.ownScenario === true) {
+    await copyFile(scenarioFile(spec.scenario), scenario);
+  }
+  const recorder = await recordAdapter(root, [process.execPath, MOCK_ADAPTER, scenario]);
   await mkdir(path.join(root, 'rules'));
   await mkdir(path.join(root, 'cases'));
 
-  const config: ConfigInput = {
-    version: 1,
-    adapter: {
-      command: recorder.command,
-      ...(spec.adapterTimeoutMs === undefined ? {} : { timeoutMs: spec.adapterTimeoutMs }),
-      ...(spec.mockState === true ? { env: { MOCK_STATE_DIR: root } } : {}),
-    },
-    variants: VARIANTS,
-    pricing: PRICING,
-    sampling: { repeats: 2 },
-    ...spec.config,
+  let current = spec;
+  const writeFiles = async (): Promise<void> => {
+    const env = {
+      ...(current.mockState === true ? { MOCK_STATE_DIR: root } : {}),
+      ...current.adapterEnv,
+    };
+    const config: ConfigInput = {
+      version: 1,
+      adapter: {
+        command: recorder.command,
+        ...(current.adapterTimeoutMs === undefined ? {} : { timeoutMs: current.adapterTimeoutMs }),
+        ...(Object.keys(env).length === 0 ? {} : { env }),
+      },
+      variants: VARIANTS,
+      pricing: PRICING,
+      sampling: { repeats: 2 },
+      ...current.config,
+    };
+    await writeFile(path.join(root, 'model-eval.config.yaml'), stringify(config));
+    await writeFile(path.join(root, 'rules', 'rules.yaml'), stringify({ rules: current.rules }));
+    await writeFile(path.join(root, 'cases', 'cases.yaml'), stringify({ cases: current.cases }));
   };
-  await writeFile(path.join(root, 'model-eval.config.yaml'), stringify(config));
-  await writeFile(path.join(root, 'rules', 'rules.yaml'), stringify({ rules: spec.rules }));
-  await writeFile(path.join(root, 'cases', 'cases.yaml'), stringify({ cases: spec.cases }));
+  await writeFiles();
 
   return {
     root,
     outputDir: path.join(root, '.model-eval'),
+    scenario,
     run: (args) => runCli(args, root),
+    write: async (change) => {
+      current = { ...current, ...change };
+      await writeFiles();
+    },
     sessions: recorder.sessions,
     generateRequests: recorder.generateRequests,
     dispose: () => rm(root, { recursive: true, force: true }),

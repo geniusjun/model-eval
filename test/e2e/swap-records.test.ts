@@ -258,24 +258,18 @@ describe('001 records of a finished swap', () => {
     expect(codes).not.toContain('render-mismatch');
   });
 
-  it('001 FR-031 a secret in model output appears in no written surface except trials.jsonl', async () => {
+  it('001 FR-031 a secret in model output appears in no written surface except the run records', async () => {
     expect(human.code).toBe(0);
     const written = await filesUnder(records.outputDir);
     const trialFiles = written.filter((file) => path.basename(file) === 'trials.jsonl');
+    const gradeFiles = written.filter((file) => path.basename(path.dirname(file)) === 'grades');
     expect(trialFiles).toHaveLength(4);
+    expect(gradeFiles).toHaveLength(trialFiles.length);
     for (const file of trialFiles) {
       expect(await readFile(file, 'utf8')).toContain(PHONE);
     }
-    const leaking: string[] = [];
-    for (const file of written.filter((item) => !trialFiles.includes(item))) {
-      if ((await readFile(file, 'utf8')).includes(PHONE)) {
-        leaking.push(path.relative(records.outputDir, file));
-      }
-    }
-    expect(leaking).toEqual([]);
-    // The no-phone rule caught the number in every grade set, so the check above covers them.
-    const gradeFiles = written.filter((file) => path.basename(path.dirname(file)) === 'grades');
-    expect(gradeFiles).toHaveLength(trialFiles.length);
+    // Grade sets hold evidence as checked, like trials.jsonl; the no-phone rule caught the
+    // number in every one.
     for (const file of gradeFiles) {
       const caught = (await readFile(file, 'utf8'))
         .split('\n')
@@ -285,9 +279,17 @@ describe('001 records of a finished swap', () => {
       expect(caught.length).toBeGreaterThan(0);
       for (const grade of caught) {
         expect(jsonAt(grade, ['outcome'])).toBe('fail');
-        expect(jsonAt(grade, ['evidence'])).toEqual(['<phone>']);
+        expect(jsonAt(grade, ['evidence'])).toEqual([PHONE]);
       }
     }
+    const runRecords = [...trialFiles, ...gradeFiles];
+    const leaking: string[] = [];
+    for (const file of written.filter((item) => !runRecords.includes(item))) {
+      if ((await readFile(file, 'utf8')).includes(PHONE)) {
+        leaking.push(path.relative(records.outputDir, file));
+      }
+    }
+    expect(leaking).toEqual([]);
     for (const stream of [outcome.cli.stdout, outcome.cli.stderr, human.stdout, human.stderr]) {
       expect(stream).not.toContain(PHONE);
     }

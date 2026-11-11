@@ -163,7 +163,7 @@ export interface GateRun {
 export interface FailingTrial {
   readonly caseId: string;
   readonly repeat: number;
-  /** Evidence of the failing grade. */
+  /** The redacted evidence of the failing grade. */
   readonly evidence?: readonly string[] | undefined;
   /** The redacted error message when the trial ended in an error. */
   readonly message?: string | undefined;

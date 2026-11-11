@@ -16,7 +16,6 @@ import { caseSchema, configSchema, ruleSchema, type Rule } from '../../../src/co
 import { gradeRun } from '../../../src/grade/grade.js';
 import { effectiveAttempts } from '../../../src/grade/outcome.js';
 import { renderReport } from '../../../src/report/markdown.js';
-import { createRedactor } from '../../../src/report/redact.js';
 import { comparisonPage, serializePageData } from '../../../src/report/page-data.js';
 import { comparisonSchema, type Comparison } from '../../../src/report/schema.js';
 import { manifestSchema, type Manifest } from '../../../src/run/manifest.js';
@@ -529,28 +528,11 @@ describe('the comparison of two runs', () => {
     expect(needed.trialsPerVariant).toBe(32 * needed.repeats);
   });
 
-  it('001 FR-031 failing-sample evidence keeps the redaction its grade set wrote', async () => {
-    const redact = [{ pattern: '😀', replace: '😀😀' }];
-    const redactor = createRedactor(redact);
-    const scenario = input({ candidate: { answer: EMOJI }, config: { redact } });
-    // A grade set holds redacted evidence (FR-031), as gradeSetFor writes it.
-    const redactedGrades = (run: ComparedRunRecords): ComparedRunRecords => ({
-      ...run,
-      gradeSet: {
-        ...run.gradeSet,
-        grades: run.gradeSet.grades.map((grade) =>
-          grade.evidence === undefined
-            ? grade
-            : { ...grade, evidence: grade.evidence.map((text) => redactor.text(text)) },
-        ),
-      },
-    });
-    const comparison = await buildComparison({
-      ...scenario,
-      runs: {
-        baseline: redactedGrades(scenario.runs.baseline),
-        candidate: redactedGrades(scenario.runs.candidate),
-      },
+  it('001 FR-031 redacts failing-sample evidence from the grade sets exactly once', async () => {
+    // The replacement matches its own pattern, so a second pass would show 😀😀😀😀.
+    const comparison = await compare({
+      candidate: { answer: EMOJI },
+      config: { redact: [{ pattern: '😀', replace: '😀😀' }] },
     });
     expect(comparison.samples.failing[0]?.keys[0]?.evidence).toEqual(['😀😀']);
     expect(
@@ -558,6 +540,18 @@ describe('the comparison of two runs', () => {
         (text) => text.variant === 'candidate' && text.caseId === 'ko-00' && text.repeat === 0,
       ),
     ).toMatchObject({ raw: '안녕! 😀😀 (0)', final: '안녕! 😀😀 (0)' });
+  });
+
+  it('001 FR-031 a changed redact rule shows in the evidence of the same grade sets', async () => {
+    const before = await compare({ candidate: { answer: EMOJI } });
+    const after = await compare({
+      candidate: { answer: EMOJI },
+      config: { redact: [{ pattern: '😀', replace: '[emoji]' }] },
+    });
+    expect(after.baseline.gradeSetId).toBe(before.baseline.gradeSetId);
+    expect(after.candidate.gradeSetId).toBe(before.candidate.gradeSetId);
+    expect(before.samples.failing[0]?.keys[0]?.evidence).toEqual(['😀']);
+    expect(after.samples.failing[0]?.keys[0]?.evidence).toEqual(['[emoji]']);
   });
 
   it('001 FR-031 redacts every free-text field once and writes identifiers as they are', async () => {

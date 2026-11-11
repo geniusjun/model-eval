@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -16,7 +16,6 @@ import {
   trialsFingerprintOf,
   type GradeSetIdentity,
 } from '../../../src/grade/grade-set.js';
-import { createRedactor } from '../../../src/report/redact.js';
 import { asJsonValue } from '../../../src/run/hashes.js';
 import type { TrialLine } from '../../../src/run/records.js';
 import { okLine } from './lines.js';
@@ -66,14 +65,12 @@ const INPUT = {
   runId: IDENTITY.runId,
   rulesHash: IDENTITY.rulesHash,
   checkerVersion: IDENTITY.checkerVersion,
-  redactor: createRedactor([]),
 };
 
 /** The identity ensureGradeSet stores for {@link CASES} and these lines. */
 function storedIdentity(lines: readonly TrialLine[]): GradeSetIdentity {
-  const { redactor: _redactor, ...identity } = INPUT;
   return {
-    ...identity,
+    ...INPUT,
     trialsFingerprint: trialsFingerprintOf(lines.map(asJsonValue)),
     casesHash: casesHashOf(CASES),
   };
@@ -218,12 +215,26 @@ describe('grade set files', () => {
     );
   });
 
+  it('001 D6 a grade set file that cannot be read is graded and written again', async () => {
+    const input = { runDir, ...INPUT, rules: [emojiRule], cases: CASES, lines: [okLine()] };
+    const first = await ensureGradeSet(input);
+    const file = gradeSetPath(runDir, first.gradeSet.header.gradeSetId);
+    const text = await readFile(file, 'utf8');
+    const cutAtLineEnd = text.slice(0, -1);
+    for (const broken of [text.slice(0, -5), cutAtLineEnd, `${text}{broken\n`, '']) {
+      await writeFile(file, broken);
+      const again = await ensureGradeSet(input);
+      expect(again.reused).toBe(false);
+      expect(again.gradeSet).toEqual(first.gradeSet);
+      expect(await readFile(file, 'utf8')).toBe(text);
+    }
+  });
+
   it('001 D6 reads nothing for a grade set that was never written', async () => {
     expect(await readGradeSet(runDir, gradeSetIdOf(storedIdentity([])))).toBeUndefined();
   });
 
-  it('001 FR-031 writes evidence through the redaction rules and returns what it wrote', async () => {
-    const redactor = createRedactor([{ pattern: '\\d{3}-\\d{4}-\\d{4}', replace: '<phone>' }]);
+  it('001 FR-031 stores evidence as checked, like trials.jsonl, so redaction can change later', async () => {
     const phone = ruleSchema.parse({
       id: 'no-phone',
       title: 'No phone number',
@@ -234,14 +245,16 @@ describe('grade set files', () => {
     const { gradeSet } = await ensureGradeSet({
       runDir,
       ...INPUT,
-      redactor,
       rules: [phone],
       cases: CASES,
       lines: [okLine({ raw: '전화 010-1234-5678', final: '전화 010-1234-5678' })],
     });
-    expect(gradeSet.grades.map((grade) => grade.evidence)).toEqual([['<phone>'], ['<phone>']]);
+    expect(gradeSet.grades.map((grade) => grade.evidence)).toEqual([
+      ['010-1234-5678'],
+      ['010-1234-5678'],
+    ]);
     const file = await readFile(gradeSetPath(runDir, gradeSet.header.gradeSetId), 'utf8');
-    expect(file).not.toContain('010-1234-5678');
+    expect(file).toContain('010-1234-5678');
     expect(await readGradeSet(runDir, gradeSet.header.gradeSetId)).toEqual(gradeSet);
   });
 });

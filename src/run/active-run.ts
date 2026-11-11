@@ -12,7 +12,6 @@ import type { RunCase } from '../grade/grade.js';
 import { ensureGradeSet, type GradeSet } from '../grade/grade-set.js';
 import { classifyTrial, hasConfigCall } from '../grade/outcome.js';
 import { finishedTrials } from '../compare/finished.js';
-import { createRedactor } from '../report/redact.js';
 import { trialWarnings } from '../compare/warnings.js';
 import { budgetOverrunWarning, overrunUsd, type CapLedger, type VariantProjection } from './cap.js';
 import type { CallsRouter, RequestTrial } from './calls-router.js';
@@ -477,7 +476,6 @@ export class ActiveRun {
         rules: setup.rules,
         cases: this.runCases(),
         lines: this.lines,
-        redactor: createRedactor(setup.config.redact),
       });
       return {
         runId: setup.runId,

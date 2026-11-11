@@ -7,7 +7,6 @@ import { compareCodeUnits, hashValue, shortHex } from '../adapter/canonical-json
 import type { JsonValue } from '../adapter/json-value.js';
 import type { Sha256 } from '../config/identifiers.js';
 import type { Rule } from '../config/schema.js';
-import type { Redactor } from '../report/redact.js';
 import { asJsonValue } from '../run/hashes.js';
 import type { TrialLine } from '../run/records.js';
 import { writeFileAtomic } from '../run/writer.js';
@@ -39,8 +38,6 @@ export interface GradeSetInput extends Omit<GradeSetIdentity, 'casesHash' | 'tri
   readonly cases: readonly RunCase[];
   /** The complete lines of `trials.jsonl` in file order; give `trialsFingerprint`. */
   readonly lines: readonly TrialLine[];
-  /** The config `redact` rules, applied to the evidence a new grade set writes (FR-031). */
-  readonly redactor: Redactor;
 }
 
 export class GradeSetReadError extends Error {
@@ -79,9 +76,10 @@ export function gradeSetPath(runDir: string, gradeSetId: string): string {
 }
 
 /**
- * Returns the grade set of these inputs, reusing `grades/<gradeSetId>.jsonl` when it exists and
- * otherwise grading the effective attempt lines and writing the file atomically (plan D6). The
- * returned grades are the ones written, evidence redacted, so a reused set reads the same.
+ * Returns the grade set of these inputs, reusing `grades/<gradeSetId>.jsonl` when it can be read
+ * and otherwise grading the effective attempt lines and writing the file atomically (plan D6). Like
+ * `trials.jsonl`, the file holds evidence as checked: redaction applies where evidence leaves the
+ * run (FR-031), so a reused grade set never carries old redaction.
  */
 export async function ensureGradeSet(
   input: GradeSetInput,
@@ -94,7 +92,7 @@ export async function ensureGradeSet(
     casesHash: casesHashOf(input.cases),
   };
   const gradeSetId = gradeSetIdOf(identity);
-  const existing = await readGradeSet(input.runDir, gradeSetId);
+  const existing = await readUsableGradeSet(input.runDir, gradeSetId);
   if (existing !== undefined) {
     return { gradeSet: existing, reused: true };
   }
@@ -104,7 +102,7 @@ export async function ensureGradeSet(
       rules: input.rules,
       cases: input.cases,
       trials: effectiveAttempts(input.lines),
-    }).map((grade) => redactGrade(grade, input.redactor)),
+    }),
   };
   const file = gradeSetPath(input.runDir, gradeSetId);
   await mkdir(path.dirname(file), { recursive: true });
@@ -115,10 +113,22 @@ export async function ensureGradeSet(
   return { gradeSet, reused: false };
 }
 
-function redactGrade(grade: Grade, redactor: Redactor): Grade {
-  return grade.evidence === undefined
-    ? grade
-    : { ...grade, evidence: grade.evidence.map((text) => redactor.text(text)) };
+/**
+ * The stored grade set, or `undefined` when it was never written or cannot be read: it derives
+ * from the run's records, so a cut or broken file is graded and written again.
+ */
+async function readUsableGradeSet(
+  runDir: string,
+  gradeSetId: string,
+): Promise<GradeSet | undefined> {
+  try {
+    return await readGradeSet(runDir, gradeSetId);
+  } catch (error) {
+    if (error instanceof GradeSetReadError) {
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 /** The stored grade set, or `undefined` when it was never written. */
@@ -136,7 +146,12 @@ export async function readGradeSet(
     }
     throw error;
   }
-  const [first = '', ...rest] = text.split('\n');
+  const lines = text.split('\n');
+  if (lines.at(-1) !== '') {
+    // Every line ends with a newline, so text after the last one was cut.
+    throw new GradeSetReadError(file, lines.length, 'cut last line');
+  }
+  const [first = '', ...rest] = lines;
   const header = parseLine(file, 1, first, gradeSetHeaderSchema);
   const grades = rest
     .map((line, index) => ({ line, number: index + 2 }))

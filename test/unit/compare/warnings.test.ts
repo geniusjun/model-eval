@@ -289,6 +289,97 @@ describe('same-response-model', () => {
   });
 });
 
+describe('versions-differ', () => {
+  const base = manifest('next', 'model-b');
+  const candidate = (fields: Partial<Manifest>) => manifest('next', 'model-b', fields);
+  const versionsDiffer = (fields: Partial<Manifest>) =>
+    comparisonWarnings(runs([], [], { candidate: candidate(fields) }), REPORT).filter(
+      (warning) => warning.code === 'versions-differ',
+    );
+
+  it('001 FR-027 names each field that differs between the two runs, in the order of the warning table', () => {
+    expect(
+      versionsDiffer({
+        service: { ...base.service, treeHash: OTHER },
+        adapter: {
+          ...base.adapter,
+          version: '0.4.0',
+          launchHash: OTHER,
+          helper: { language: 'python', version: '0.2.0' },
+        },
+      }),
+    ).toEqual([
+      {
+        code: 'versions-differ',
+        params: { fields: ['service', 'adapter-version', 'launch-hash', 'helper-version'] },
+        variants: ['current', 'next'],
+      },
+    ]);
+  });
+
+  it('001 FR-027 each field alone raises it', () => {
+    const fieldsOf = (fields: Partial<Manifest>) =>
+      versionsDiffer(fields).flatMap((warning) => warning.params.fields);
+    expect(fieldsOf({ service: { ...base.service, treeHash: OTHER } })).toEqual(['service']);
+    expect(fieldsOf({ adapter: { ...base.adapter, version: '0.4.0' } })).toEqual([
+      'adapter-version',
+    ]);
+    expect(fieldsOf({ adapter: { ...base.adapter, launchHash: OTHER } })).toEqual(['launch-hash']);
+    expect(fieldsOf({ adapter: { ...base.adapter, helper: undefined } })).toEqual([
+      'helper-version',
+    ]);
+  });
+
+  it('001 FR-027 service code is the tree hash when both runs have one, else the version and dirty flag', () => {
+    const service = { version: base.service.version, dirty: false };
+    const withoutTreeHash = {
+      baseline: manifest('current', 'model-a', { service }),
+      candidate: candidate({ service: { ...service, version: 'f'.repeat(40) } }),
+    };
+    expect(codes(comparisonWarnings(runs([], [], withoutTreeHash), REPORT))).toEqual([
+      'versions-differ',
+    ]);
+    const dirty = {
+      ...withoutTreeHash,
+      candidate: candidate({ service: { ...service, dirty: true } }),
+    };
+    expect(codes(comparisonWarnings(runs([], [], dirty), REPORT))).toEqual(['versions-differ']);
+    // A new commit with the same content keeps the tree hash: the same service code.
+    expect(versionsDiffer({ service: { ...base.service, version: 'f'.repeat(40) } })).toEqual([]);
+  });
+
+  it('001 FR-027 a service version on one side only, or a dirty tree without tree hash, is not a difference', () => {
+    const service = { version: base.service.version, dirty: false };
+    const baseline = manifest('current', 'model-a', { service });
+    const versionsWith = (candidateService: Manifest['service']) =>
+      codes(
+        comparisonWarnings(
+          runs([], [], { baseline, candidate: candidate({ service: candidateService }) }),
+          REPORT,
+        ),
+      );
+    expect(versionsWith({ dirty: false })).toEqual([]);
+    expect(versionsWith({})).toEqual([]);
+    const dirty = { version: base.service.version, dirty: true };
+    expect(
+      codes(
+        comparisonWarnings(
+          runs([], [], {
+            baseline: manifest('current', 'model-a', { service: dirty }),
+            candidate: candidate({ service: dirty }),
+          }),
+          REPORT,
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it('001 FR-027 not for runs of the same code, adapter and launch settings', () => {
+    expect(versionsDiffer({})).toEqual([]);
+    expect(versionsDiffer({ tool: { ...base.tool, version: '0.2.0' } })).toEqual([]);
+  });
+});
+
 describe('grouping', () => {
   it('001 FR-023 one warning per code, rule and language, and per sentence for adapter-warnings', () => {
     const grouped = groupWarnings([

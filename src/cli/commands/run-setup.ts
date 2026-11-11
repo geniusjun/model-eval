@@ -23,7 +23,7 @@ import {
   startWarningLines,
 } from '../human/swap.js';
 import type { CommandHandler, CommandInvocation } from '../main.js';
-import type { dryRunPlanSchema } from '../results.js';
+import type { Command, dryRunPlanSchema } from '../results.js';
 
 // What `run` and `swap` share: their options, the project they load and the plan they show.
 
@@ -112,10 +112,10 @@ function maxCostOption(
     : { ok: false, error: { key: 'cli.invalidMaxCost', params: { value } } };
 }
 
-/** Ends the command before a run starts: lines on stderr and an envelope without result. */
+/** Ends the command before it has a result: lines on stderr and an envelope without one. */
 export function refuse(
   invocation: CommandInvocation,
-  command: 'run' | 'swap',
+  command: Command,
   lines: readonly string[],
 ): ExitName {
   for (const line of lines) {

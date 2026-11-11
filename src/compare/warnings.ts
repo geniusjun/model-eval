@@ -1,4 +1,5 @@
 import { canonicalJson, compareCodeUnits } from '../adapter/canonical-json.js';
+import { sameHelper, sameServiceCode } from '../adapter/identity.js';
 import { modelErrorKindSchema, type ModelErrorKind } from '../adapter/protocol.js';
 import type { ReportConfig } from '../config/schema.js';
 import { isRecord } from '../report/code-text.js';
@@ -235,6 +236,36 @@ function sameResponseModel(runs: PerRole<WarningRun>): Warning[] {
     : [];
 }
 
+type VersionField = Extract<Warning, { code: 'versions-differ' }>['params']['fields'][number];
+
+/** What makes two runs' generation code differ, in the order of the warning table. */
+const VERSION_FIELDS: readonly (readonly [VersionField, (a: Manifest, b: Manifest) => boolean])[] =
+  [
+    ['service', (a, b) => sameServiceCode(a.service, b.service)],
+    ['adapter-version', (a, b) => a.adapter.version === b.adapter.version],
+    ['launch-hash', (a, b) => a.adapter.launchHash === b.adapter.launchHash],
+    ['helper-version', (a, b) => sameHelper(a.adapter.helper, b.adapter.helper)],
+  ];
+
+/** The service code may have changed together with the model (FR-027). */
+function versionsDiffer(runs: PerRole<WarningRun>): Warning[] {
+  const baseline = runs.baseline.manifest;
+  const candidate = runs.candidate.manifest;
+  const fields = VERSION_FIELDS.flatMap(([field, same]) =>
+    same(baseline, candidate) ? [] : [field],
+  );
+  return fields.length === 0
+    ? []
+    : [
+        {
+          code: 'versions-differ',
+          params: { fields },
+          // Two runs of one variant made at different times are compared too.
+          variants: [...new Set([baseline.variant.id, candidate.variant.id])],
+        },
+      ];
+}
+
 /**
  * `partial-run` with the params of the gate reason of that name, which row 1 of §Gate raises
  * whenever a compared run is not `complete`, whatever the gate config.
@@ -249,7 +280,8 @@ export function partialRunWarnings(gate: Gate): Warning[] {
 
 /**
  * Every run warning of both runs a comparison holds: trial-based codes recounted on common cases,
- * manifest warnings copied under their variant, and `same-response-model`, grouped.
+ * manifest warnings copied under their variant, `same-response-model` and `versions-differ`,
+ * grouped.
  */
 export function comparisonWarnings(runs: PerRole<WarningRun>, report: ReportConfig): Warning[] {
   return groupWarnings([
@@ -258,6 +290,7 @@ export function comparisonWarnings(runs: PerRole<WarningRun>, report: ReportConf
     ...copiedWarnings(runs.baseline.manifest),
     ...copiedWarnings(runs.candidate.manifest),
     ...sameResponseModel(runs),
+    ...versionsDiffer(runs),
   ]);
 }
 

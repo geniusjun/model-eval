@@ -72,10 +72,22 @@ const swapEnvelopeSchema = envelopeSchema('swap').extend({
 });
 const runEnvelopeSchema = envelopeSchema('run').extend({ result: resultSchemas.run.nullable() });
 const lintEnvelopeSchema = envelopeSchema('lint').extend({ result: resultSchemas.lint.nullable() });
+const gradeEnvelopeSchema = envelopeSchema('grade').extend({
+  result: resultSchemas.grade.nullable(),
+});
+const compareEnvelopeSchema = envelopeSchema('compare').extend({
+  result: resultSchemas.compare.nullable(),
+});
+const reportEnvelopeSchema = envelopeSchema('report').extend({
+  result: resultSchemas.report.nullable(),
+});
 
 export type SwapEnvelope = z.infer<typeof swapEnvelopeSchema>;
 export type RunEnvelope = z.infer<typeof runEnvelopeSchema>;
 export type LintEnvelope = z.infer<typeof lintEnvelopeSchema>;
+export type GradeEnvelope = z.infer<typeof gradeEnvelopeSchema>;
+export type CompareEnvelope = z.infer<typeof compareEnvelopeSchema>;
+export type ReportEnvelope = z.infer<typeof reportEnvelopeSchema>;
 
 /** The `swap --json` document on stdout, checked against `schemas/swap.schema.json`. */
 export function parseSwapEnvelope(stdout: string): SwapEnvelope {
@@ -90,6 +102,46 @@ export function parseRunEnvelope(stdout: string): RunEnvelope {
 /** The `lint --json` document on stdout, checked against `schemas/lint.schema.json`. */
 export function parseLintEnvelope(stdout: string): LintEnvelope {
   return checked('lint.schema.json', lintEnvelopeSchema, JSON.parse(stdout), 'lint --json');
+}
+
+/** The `grade --json` document on stdout, checked against `schemas/grade.schema.json`. */
+export function parseGradeEnvelope(stdout: string): GradeEnvelope {
+  return checked('grade.schema.json', gradeEnvelopeSchema, JSON.parse(stdout), 'grade --json');
+}
+
+/** The `compare --json` document on stdout, checked against `schemas/compare.schema.json`. */
+export function parseCompareEnvelope(stdout: string): CompareEnvelope {
+  return checked(
+    'compare.schema.json',
+    compareEnvelopeSchema,
+    JSON.parse(stdout),
+    'compare --json',
+  );
+}
+
+/** The `report --json` document on stdout, checked against `schemas/report.schema.json`. */
+export function parseReportEnvelope(stdout: string): ReportEnvelope {
+  return checked('report.schema.json', reportEnvelopeSchema, JSON.parse(stdout), 'report --json');
+}
+
+/** The result of an envelope that has one; fails the test when it is `null`. */
+export function resultOf<R>(envelope: { readonly result: R | null }): R {
+  if (envelope.result === null) {
+    throw new Error('expected the command to reach a result');
+  }
+  return envelope.result;
+}
+
+type RunResult = NonNullable<RunEnvelope['result']>;
+export type StartedRun = Exclude<RunResult, { plan: unknown }>;
+
+/** The result of a run that started; fails the test for a plan or no result. */
+export function startedRunOf(envelope: RunEnvelope): StartedRun {
+  const result = resultOf(envelope);
+  if ('plan' in result) {
+    throw new Error(`expected a run that started, got ${JSON.stringify(result)}`);
+  }
+  return result;
 }
 
 type SwapResult = NonNullable<SwapEnvelope['result']>;

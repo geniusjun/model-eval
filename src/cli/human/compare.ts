@@ -1,4 +1,4 @@
-import type { Variant } from '../../config/schema.js';
+import type { Lang, Variant } from '../../config/schema.js';
 import { isLowBaseline } from '../../compare/gate.js';
 import {
   neededText,
@@ -31,6 +31,9 @@ import {
 } from '../../report/schema.js';
 import type { Warning, WarningCode } from '../../run/warning.js';
 import { nMin } from '../../stats/verdict.js';
+import type { GradeSet } from '../../grade/grade-set.js';
+import type { GradeOutcome } from '../../grade/record.js';
+import type { Manifest } from '../../run/manifest.js';
 import {
   aligned,
   INDENT,
@@ -41,10 +44,10 @@ import {
   type HumanLine,
   type Layout,
 } from './layout.js';
-import { placeLabel, quote, withPlace, type Text } from './text.js';
+import { placeLabel, quote, textOf, withPlace, type Text } from './text.js';
 
-// Human output of a Comparison (contracts/cli.md §Human Output), shared by `compare` and `swap`.
-// Comparison text is redacted already.
+// Human output of a Comparison (contracts/cli.md §Human Output), shared by `compare` and `swap`,
+// and the lines of `grade` and `report`. Comparison text is redacted already.
 
 type SummaryCell = Summary['worse'][number];
 type Rates = Comparison['ops']['baseline']['rates'];
@@ -509,5 +512,89 @@ export function comparedLines(t: Text, view: ComparedView): HumanLine[] {
     ...(view.reportPath === undefined
       ? []
       : plainLines(['', t('human.report', { path: view.reportPath })])),
+  ];
+}
+
+// grade, compare and report
+
+export function compareLines(lang: Lang, view: ComparedView): HumanLine[] {
+  const t = textOf(lang);
+  const { baseline, candidate, coverage, priorComparisons } = view.comparison;
+  const leftOut =
+    coverage.baselineOnly.length + coverage.candidateOnly.length + coverage.changedHash.length;
+  return [
+    ...plainLines([
+      t('human.compare.header', {
+        baseline: variantLabel(baseline.variant),
+        candidate: variantLabel(candidate.variant),
+        cases: coverage.commonCases,
+      }),
+      t('human.compare.id', {
+        baselineRunId: baseline.runId,
+        candidateRunId: candidate.runId,
+        ordinal: ordinal(t, priorComparisons + 1),
+      }),
+      ...(leftOut === 0
+        ? []
+        : [
+            t('human.compare.leftOut', {
+              baselineOnly: coverage.baselineOnly.length,
+              candidateOnly: coverage.candidateOnly.length,
+              changed: coverage.changedHash.length,
+            }),
+          ]),
+      '',
+    ]),
+    ...comparedLines(t, view),
+  ];
+}
+
+export interface GradeView {
+  readonly manifest: Manifest;
+  readonly gradeSet: GradeSet;
+  readonly reused: boolean;
+}
+
+export function gradeLines(lang: Lang, view: GradeView): string[] {
+  const t = textOf(lang);
+  const { manifest, gradeSet } = view;
+  const count = (outcome: GradeOutcome) =>
+    gradeSet.grades.filter((grade) => grade.outcome === outcome).length;
+  const { gradeSetId } = gradeSet.header;
+  return [
+    t('human.grade.header', {
+      variant: variantLabel(manifest.variant),
+      runId: manifest.runId,
+      status: manifest.status,
+    }),
+    view.reused
+      ? t('human.grade.reused', { gradeSetId })
+      : t('human.grade.written', { gradeSetId }),
+    t('human.grade.outcomes', {
+      grades: gradeSet.grades.length,
+      pass: count('pass'),
+      fail: count('fail'),
+      skip: count('skip'),
+      error: count('error'),
+    }),
+  ];
+}
+
+export interface ReportView {
+  readonly comparison: Comparison;
+  /** Where `report.md` was written, as the user should see it. */
+  readonly reportPath: string;
+}
+
+export function reportLines(lang: Lang, view: ReportView): string[] {
+  const t = textOf(lang);
+  const { comparisonId, baseline, candidate } = view.comparison;
+  return [
+    t('human.report.header', {
+      comparisonId,
+      baseline: variantLabel(baseline.variant),
+      candidate: variantLabel(candidate.variant),
+    }),
+    t('human.report', { path: view.reportPath }),
   ];
 }

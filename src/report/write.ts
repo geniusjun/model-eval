@@ -1,8 +1,8 @@
 import path from 'node:path';
 
 import type { Lang } from '../config/schema.js';
-import { writeFolderAtomic } from '../run/writer.js';
-import { COMPARISON_FILE, COMPARISONS_DIR, REPORT_MARKDOWN_FILE } from './layout.js';
+import { writeFileAtomic, writeFolderAtomic } from '../run/writer.js';
+import { COMPARISON_FILE, comparisonDir, REPORT_MARKDOWN_FILE } from './layout.js';
 import { renderReport } from './markdown.js';
 import type { Comparison } from './schema.js';
 
@@ -30,7 +30,7 @@ export async function writeComparison({
   comparison,
   lang,
 }: ComparisonWriteOptions): Promise<WrittenComparison> {
-  const dir = path.join(outputDir, COMPARISONS_DIR, comparison.comparisonId);
+  const dir = comparisonDir(outputDir, comparison.comparisonId);
   await writeFolderAtomic(dir, {
     [COMPARISON_FILE]: `${JSON.stringify(comparison, null, 2)}\n`,
     [REPORT_MARKDOWN_FILE]: renderReport(comparison, lang),
@@ -40,4 +40,19 @@ export async function writeComparison({
     comparison: path.join(dir, COMPARISON_FILE),
     report: path.join(dir, REPORT_MARKDOWN_FILE),
   };
+}
+
+/**
+ * Rewrites `report.md` of a saved comparison from its `comparison.json`, for example in another
+ * language or with a newer tool version; the saved comparison itself is left as it is.
+ */
+export async function rewriteReport({
+  outputDir,
+  comparison,
+  lang,
+}: ComparisonWriteOptions): Promise<WrittenComparison> {
+  const dir = comparisonDir(outputDir, comparison.comparisonId);
+  const report = path.join(dir, REPORT_MARKDOWN_FILE);
+  await writeFileAtomic(report, renderReport(comparison, lang));
+  return { dir, comparison: path.join(dir, COMPARISON_FILE), report };
 }

@@ -3,8 +3,11 @@ import { parseArgs, type ParseArgsConfig } from 'node:util';
 import type { Lang } from '../config/schema.js';
 import { isLang, message, type MessageKey, type MessageParams } from '../messages/index.js';
 import { createRedactor } from '../report/redact.js';
+import { compareCommand } from './commands/compare.js';
+import { gradeCommand } from './commands/grade.js';
 import { initCommand } from './commands/init.js';
 import { lintCommand } from './commands/lint.js';
+import { reportCommand } from './commands/report.js';
 import { runCommand } from './commands/run.js';
 import { swapCommand } from './commands/swap.js';
 import { EXIT_CODES, type ExitCode, type ExitName } from './exit-codes.js';
@@ -50,7 +53,10 @@ export const COMMAND_HANDLERS: Partial<Record<Command, CommandHandler>> = {
   init: initCommand,
   lint: lintCommand,
   run: runCommand,
+  grade: gradeCommand,
+  compare: compareCommand,
   swap: swapCommand,
+  report: reportCommand,
 };
 
 const COMMON_OPTIONS = {

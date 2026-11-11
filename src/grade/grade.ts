@@ -11,6 +11,13 @@ import type { Grade } from './record.js';
 /** The language key of cases without a language (data-model §Target). */
 export const NO_LANGUAGE = '*';
 
+/** A case of the current case files with its case hash and resolved language key. */
+export interface CurrentCase {
+  readonly definition: Case;
+  readonly hash: Sha256;
+  readonly lang: string;
+}
+
 /** A case of the run as its manifest records it, with its current definition. */
 export interface RunCase {
   readonly id: string;
@@ -24,8 +31,7 @@ export interface RunCase {
    * The case in the current case files with its hash and language key, resolved as a run would
    * resolve it now; absent when the case was deleted.
    */
-  readonly current?:
-    { readonly definition: Case; readonly hash: Sha256; readonly lang: string } | undefined;
+  readonly current?: CurrentCase | undefined;
 }
 
 export interface ApplicableRule {

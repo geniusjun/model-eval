@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 import { canonicalJson, compareCodeUnits, hashValue, shortHex } from '../adapter/canonical-json.js';
-import { SHA256_PATTERN, type Sha256 } from '../config/identifiers.js';
-import type { Case, Config, Rule } from '../config/schema.js';
-import type { RunCase } from '../grade/grade.js';
+import type { Config, Rule } from '../config/schema.js';
+import type { CurrentCase, RunCase } from '../grade/grade.js';
 import type { GradeSet } from '../grade/grade-set.js';
 import type { Grade } from '../grade/record.js';
+import { runCasesOf } from '../grade/regrade.js';
 import { savedComparisons } from '../report/layout.js';
 import { createRedactor, type Redactor } from '../report/redact.js';
 import {
@@ -57,16 +57,11 @@ export interface ComparedRunRecords {
   readonly manifest: Manifest;
   /** Every complete line of the run's `trials.jsonl`, in file order. */
   readonly lines: readonly TrialLine[];
-  /** The run's grade set, made with the current rules (FR-019), its evidence redacted (FR-031). */
+  /** The run's grade set, made with the current rules (FR-019), its evidence as checked. */
   readonly gradeSet: GradeSet;
 }
 
-/** A case of the current case files with its case hash and resolved language key. */
-export interface CurrentCase {
-  readonly definition: Case;
-  readonly hash: Sha256;
-  readonly lang: string;
-}
+export type { CurrentCase } from '../grade/grade.js';
 
 export type ComparisonConfig = Pick<Config, 'gate' | 'stats' | 'report' | 'redact'>;
 
@@ -74,7 +69,10 @@ export interface ComparisonInput {
   readonly runs: PerRole<ComparedRunRecords>;
   /** Every rule of the current rule files. */
   readonly rules: readonly Rule[];
-  /** Every case of the current case files. */
+  /**
+   * The current version of the cases the runs recorded, one per case ID and the same for both
+   * runs; other cases are ignored.
+   */
   readonly cases: readonly CurrentCase[];
   readonly config: ComparisonConfig;
   /** `output.dir`, whose earlier comparisons give `priorComparisons`. */
@@ -101,18 +99,6 @@ export function comparisonIdOf(
     redact: config.redact,
   });
   return `cmp-${shortHex(hash)}`;
-}
-
-const isSha256 = (value: string): value is Sha256 => SHA256_PATTERN.test(value);
-
-/** Manifest case hashes are validated as Sha256 on read, so a mismatch is a broken invariant. */
-function runCasesOf(manifest: Manifest, current: ReadonlyMap<string, CurrentCase>): RunCase[] {
-  return manifest.cases.map(({ hash, ...runCase }) => {
-    if (!isSha256(hash)) {
-      throw new RangeError(`manifest case ${runCase.id} has no case hash`);
-    }
-    return { ...runCase, hash, current: current.get(runCase.id) };
-  });
 }
 
 function coverageOf(cases: PerRole<readonly RunCase[]>, common: readonly CommonCase[]): Coverage {
@@ -192,7 +178,7 @@ function cellFailures(
     cell.failing.push({
       caseId: grade.caseId,
       repeat: grade.repeat,
-      evidence: grade.evidence,
+      evidence: grade.evidence?.map((text) => redactor.text(text)),
       message: line?.status === 'error' ? redactor.text(line.error.message) : undefined,
     });
     if (isSystematic && line !== undefined) {
@@ -250,9 +236,9 @@ async function priorComparisons(outputDir: string, runs: PerRole<Manifest>): Pro
 /**
  * The Comparison of two runs over their common, unchanged cases (FR-027): cells and their
  * verdicts, the gate, metrics, warnings, the decision summary and samples, redacted (FR-031).
- * `ops`, `gate` and `warnings` group free text, so they are built from redacted text; the
- * evidence of failing samples comes redacted from the grade sets; the rest, sample texts
- * included, is redacted here, so no text is redacted twice.
+ * `ops`, `gate` and `warnings` group free text, and failing samples carry grade evidence, so they
+ * are built from redacted text; the rest, sample texts included, is redacted here, so no text is
+ * redacted twice.
  */
 export async function buildComparison(input: ComparisonInput): Promise<Comparison> {
   const { runs, config } = input;
