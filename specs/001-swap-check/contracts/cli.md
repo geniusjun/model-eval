@@ -6,7 +6,7 @@
 
 | Command | Calls models | Does |
 |---|---|---|
-| `model-eval init [--adapter python\|node]` | no | Creates a config template, example rules and cases, and adds the output directory to the `.gitignore` of the config file's folder. Files that already exist are kept; only missing ones are created. With `--adapter`, also an adapter skeleton that uses the helper (feature 003) |
+| `model-eval init [--adapter python\|node]` | no | Creates a config template, example rules and cases, and adds the output directory to the `.gitignore` of the config file's folder. Files that already exist are kept. Example rules and cases are written only together with a new config file; with an existing one, `init` adds that config's `output.dir` to `.gitignore` and stops with exit code 4 if the config cannot be loaded. With `--adapter`, also an adapter skeleton that uses the helper (feature 003) |
 | `model-eval lint` | no | Checks file schemas, ID references, provenance, examples, case input schemas, the sample plan of gated cells and the helper version. `--render` also renders cases per variant and checks anchors. Starts the adapter unless `--no-adapter` (see [adapter-protocol §Security](adapter-protocol.md#security)) |
 | `model-eval run --variant <id>` | yes | Runs every case with one variant, records the run and grades it |
 | `model-eval grade <runId>` | no | Re-grades stored trials with the current rules into a grade set |
