@@ -1,0 +1,16 @@
+# The candidate's process exits on every generate after writing a stderr line with a phone number.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, maxConcurrency: 1 }
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  '*':
+    answer: { '*': "answer to {caseId}" }
+    usage: { input: 40, output: 18 }
+    calls: true
+    stderr: "mock: handling {caseId} for 010-1234-5678"
+    outcomes:
+      - { row: crash, probability: 1 }

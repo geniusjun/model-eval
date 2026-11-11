@@ -1,0 +1,221 @@
+{
+  "runId": "20261105-101500-next-a1b2",
+  "swapId": "20261105-101500-swap-c3d4",
+  "tool": {
+    "name": "model-eval",
+    "version": "0.1.0",
+    "protocolVersion": "1",
+    "startedAt": "2026-11-05T10:15:00.000Z"
+  },
+  "adapter": {
+    "name": "pogo-chat",
+    "version": "0.3.0",
+    "protocolVersion": "1",
+    "launchHash": "sha256:6164c16405ffad14780cca15e85cf8688c355069ccb5b8dfa55b25603379a449",
+    "helper": {
+      "language": "python",
+      "version": "0.1.0"
+    },
+    "capabilities": {
+      "render": true,
+      "stages": true,
+      "postprocess": true,
+      "cancel": true,
+      "maxConcurrency": 4
+    }
+  },
+  "service": {
+    "version": "0123456789abcdef0123456789abcdef01234567",
+    "dirty": false,
+    "treeHash": "sha256:ec545c4839b455042abf79ea8201df2aaf6c3eca68a4f4f63b45a0fd82501746"
+  },
+  "variant": {
+    "id": "next",
+    "model": "model-b",
+    "params": {
+      "reasoning": "none"
+    },
+    "fingerprint": "sha256:6360a111005127eda7ba6bc55b9f679527abb04dee42259c5ec90dd873055ec8"
+  },
+  "cases": [
+    {
+      "id": "greet-ko",
+      "target": "chat",
+      "lang": "ko",
+      "hash": "sha256:efad142bd258c59017c521d56b338c07b7439a5d35997247facbbcdb9e822ab6"
+    },
+    {
+      "id": "greet-ja",
+      "target": "chat",
+      "lang": "ja",
+      "hash": "sha256:f0e02d1b2ae37b7c5db972d03df9df9c697ea67eea088e39bf17a6bef7dd2cc4"
+    }
+  ],
+  "rulesHash": "sha256:13c43d05388c2dbb11d5f4bd9bd7bd68e4afc7eee78ed27ec5a040df6c92b344",
+  "prompts": {
+    "greet-ko": "sha256:610130e2626b300166f3c1840f65d97909f34c1a20040851fa4236c59c767aa5",
+    "greet-ja": "sha256:e0bf558a0d8dbc9352126dc2f8a5602d0f74f095b62296464a7a3ecf1263c5f6"
+  },
+  "sampling": {
+    "repeats": 2,
+    "seed": 1729,
+    "cases": null
+  },
+  "limits": {
+    "retries": 2,
+    "timeoutMs": 120000
+  },
+  "pricing": {
+    "model-b": {
+      "input": 0.2,
+      "cachedInput": 0.02,
+      "cacheWrite": 0.25,
+      "output": 1.2
+    }
+  },
+  "budget": {
+    "maxCostUsd": 1,
+    "scope": "swap"
+  },
+  "estimate": {
+    "expected": 0.0021,
+    "conservative": 0.0068,
+    "basis": {
+      "ko": "structure",
+      "ja": "structure"
+    },
+    "projected": [
+      {
+        "trigger": "first-batch",
+        "totalUsd": 0.0024
+      },
+      {
+        "trigger": "repeat-round",
+        "repeat": 0,
+        "totalUsd": 0.0023
+      }
+    ]
+  },
+  "costProfile": {
+    "ko": {
+      "repeat0MeanUsd": 0.00031,
+      "repeatNMeanUsd": 0.00012,
+      "inputTokensMean": 4120,
+      "outputTokensMean": 22,
+      "outputTokensP95": 40,
+      "cacheHitRatio": 0.48,
+      "callsPerTrialP95": 1,
+      "callsPerAttemptMax": 1
+    },
+    "ja": {
+      "repeat0MeanUsd": 0.00029,
+      "repeatNMeanUsd": null,
+      "inputTokensMean": 3980,
+      "outputTokensMean": 25,
+      "outputTokensP95": 44,
+      "cacheHitRatio": null,
+      "callsPerTrialP95": 1,
+      "callsPerAttemptMax": 2
+    }
+  },
+  "totals": {
+    "outcomes": {
+      "ok": 7,
+      "config": 1,
+      "adapter": 1,
+      "transient": 1,
+      "permanent": 1,
+      "timeout": 1,
+      "stopped": 1
+    },
+    "tokens": {
+      "input": 1800,
+      "cachedInput": 24000,
+      "cacheWrite": 4000,
+      "output": 310,
+      "reasoning": 40
+    },
+    "costUsd": 0.0031,
+    "reservedUsd": 0.0016,
+    "overrunUsd": 0.0002,
+    "durationMs": 41250
+  },
+  "segments": [
+    {
+      "segment": 1,
+      "startedAt": "2026-11-05T10:15:00.000Z",
+      "endedAt": "2026-11-05T10:15:41.250Z",
+      "tool": {
+        "version": "0.1.0"
+      },
+      "adapter": {
+        "version": "0.3.0",
+        "helper": {
+          "language": "python",
+          "version": "0.1.0"
+        }
+      },
+      "pricing": {
+        "model-b": {
+          "input": 0.2,
+          "cachedInput": 0.02,
+          "cacheWrite": 0.25,
+          "output": 1.2
+        }
+      },
+      "maxCostUsd": 1,
+      "concurrency": 4,
+      "toolPaths": [
+        "/work/eval/model-eval.config.yaml",
+        "/work/eval/rules/base.yaml",
+        "/work/eval/cases/chat.yaml",
+        "/work/eval/.model-eval"
+      ],
+      "spentUsd": 0.0031,
+      "resumeWarnings": []
+    }
+  ],
+  "warnings": [
+    {
+      "code": "budget-overrun",
+      "variants": [
+        "next"
+      ],
+      "params": {
+        "overrunUsd": {
+          "next": 0.0002
+        }
+      }
+    },
+    {
+      "code": "abandoned-trials",
+      "variants": [
+        "next"
+      ],
+      "caseIds": [
+        "greet-ja"
+      ],
+      "params": {
+        "trials": {
+          "next": {
+            "timeout": 1,
+            "restart": 0
+          }
+        },
+        "timeoutMs": {
+          "next": 120000
+        },
+        "lateFailures": {
+          "next": {
+            "transient": {
+              "trials": 1,
+              "maxRetryAfterMs": 2000
+            }
+          }
+        }
+      }
+    }
+  ],
+  "status": "partial",
+  "stopReason": "config-error"
+}

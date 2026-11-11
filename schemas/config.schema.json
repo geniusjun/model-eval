@@ -1,0 +1,396 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "lang": {
+      "default": "en",
+      "type": "string",
+      "enum": [
+        "en",
+        "ko"
+      ]
+    },
+    "adapter": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "cwd": {
+          "default": ".",
+          "type": "string",
+          "minLength": 1
+        },
+        "env": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "timeoutMs": {
+          "default": 120000,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "additionalProperties": false
+    },
+    "files": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "rules": {
+          "default": "rules/**/*.yaml",
+          "type": "string",
+          "minLength": 1
+        },
+        "cases": {
+          "default": "cases/**/*.yaml",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "variants": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "params": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "model"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cachedInput": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cacheWrite": {
+            "type": "number",
+            "minimum": 0
+          },
+          "output": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "input",
+          "output"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "sampling": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "repeats": {
+          "default": 5,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "seed": {
+          "default": 1729,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "stats": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "default": 0.95,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "minCases": {
+          "default": 3,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "gate": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "severities": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "blocking",
+              "major",
+              "minor"
+            ]
+          }
+        },
+        "margin": {
+          "default": 0.1,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "run": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "concurrency": {
+          "default": 4,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "retries": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxAdapterErrorRate": {
+          "default": 0.05,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maxTransientRate": {
+          "default": 0.5,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "budget": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "maxCostUsd": {
+          "default": 1,
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "estimate": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "outputTokens": {
+          "default": 600,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "report": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "lowBaseline": {
+          "default": 0.9,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "samples": {
+          "default": 3,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "warn": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "transientRate": {
+              "default": 0.05,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "discardRateIncrease": {
+              "default": 0.01,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "regenerationRateIncrease": {
+              "default": 0.03,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "latencyP95Ratio": {
+              "default": 1.5,
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "costRatio": {
+              "default": 2,
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "output": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "dir": {
+          "default": ".model-eval",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "redact": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "minLength": 1
+          },
+          "replace": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "pattern",
+          "replace"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "adapter",
+    "variants",
+    "pricing"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

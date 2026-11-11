@@ -1,0 +1,58 @@
+{
+  "name": "model-eval",
+  "version": "0.1.0",
+  "description": "Checks whether an LLM service's prompt rules and post-processing still hold when it moves to another model.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/geniusjun/model-eval.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.17"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "bin": {
+    "model-eval": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "pnpm build && vitest run",
+    "schemas": "tsx scripts/generate-schemas.ts",
+    "format:check": "prettier --check .",
+    "check:coverage": "tsx scripts/check-spec-coverage.ts",
+    "bench": "tsx bench/sc003.ts",
+    "bench:overhead": "pnpm build && tsx bench/overhead.ts"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
+    "publint": "^0.3.25",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
+  }
+}

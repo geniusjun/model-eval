@@ -1,0 +1,13 @@
+# The case noisy-1 prints a debug line longer than 200 characters on stdout instead of answering.
+targets:
+  - name: chat
+    inputSchema: { type: object }
+capabilities: { maxConcurrency: 2 }
+variants:
+  '*':
+    answer: { '*': 'answer to {caseId}' }
+    outcomes:
+      - row: noise
+        probability: 1
+        caseIds: [noisy-1]
+        message: "debug: building the prompt for {caseId} 0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789 END"

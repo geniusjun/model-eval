@@ -1,0 +1,13 @@
+# One slot and no cancel: the case late-1 answers after the tool's time limit, but before a
+# second time limit passes, which would restart the adapter.
+targets:
+  - name: chat
+    inputSchema: { type: object }
+capabilities: { cancel: false, maxConcurrency: 1 }
+variants:
+  '*':
+    answer: { '*': 'answer to {caseId}' }
+    usage: { input: 100, output: 20 }
+    calls: true
+    outcomes:
+      - { row: late, probability: 1, caseIds: [late-1], delayMs: 1500 }

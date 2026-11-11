@@ -1,0 +1,21 @@
+# Broken answers: missing-1 lacks raw and finishReason, rpc-1 is a JSON-RPC error whose data
+# carries the billed call and the raw answer the service received.
+targets:
+  - name: chat
+    inputSchema: { type: object }
+capabilities: { maxConcurrency: 2 }
+variants:
+  '*':
+    answer: { '*': 'answer to {caseId}' }
+    usage: { input: 100, output: 20 }
+    calls: true
+    outcomes:
+      - { row: missing-fields, probability: 1, caseIds: [missing-1] }
+      - row: adapter
+        probability: 1
+        caseIds: [rpc-1]
+        message: "KeyError: 'profile'"
+        data:
+          capturedRaw: answer to rpc-1
+          calls:
+            - { model: model-b, outcome: ok, branch: answer, usage: { input: 100, output: 20 } }

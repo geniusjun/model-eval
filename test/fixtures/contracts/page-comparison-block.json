@@ -1,0 +1,1077 @@
+{
+  "schemaVersion": "1",
+  "kind": "comparison",
+  "lang": "en",
+  "comparison": {
+    "comparisonId": "cmp-c3185cc21556",
+    "createdAt": "2026-11-05T10:20:00.000Z",
+    "baseline": {
+      "runId": "20261105-101500-current-1a2b",
+      "gradeSetId": "gs-0a1b2c3d4e5f",
+      "variant": {
+        "id": "current",
+        "model": "model-a",
+        "fingerprint": "sha256:d813d10cf979dfaaeb90e05756ae795ef4dae5c7196b8be39a195baaf64e8f31"
+      },
+      "status": "complete",
+      "tool": {
+        "name": "model-eval",
+        "version": "0.1.0"
+      },
+      "adapter": {
+        "name": "pogo-chat",
+        "version": "0.3.0",
+        "launchHash": "sha256:6164c16405ffad14780cca15e85cf8688c355069ccb5b8dfa55b25603379a449",
+        "helper": {
+          "language": "python",
+          "version": "0.1.0"
+        }
+      },
+      "service": {
+        "version": "0123456789abcdef0123456789abcdef01234567",
+        "dirty": false,
+        "treeHash": "sha256:ec545c4839b455042abf79ea8201df2aaf6c3eca68a4f4f63b45a0fd82501746"
+      },
+      "postprocess": true
+    },
+    "candidate": {
+      "runId": "20261105-101500-next-a1b2",
+      "gradeSetId": "gs-5f4e3d2c1b0a",
+      "variant": {
+        "id": "next",
+        "model": "model-b",
+        "params": {
+          "reasoning": "none"
+        },
+        "fingerprint": "sha256:6360a111005127eda7ba6bc55b9f679527abb04dee42259c5ec90dd873055ec8"
+      },
+      "status": "complete",
+      "tool": {
+        "name": "model-eval",
+        "version": "0.1.0"
+      },
+      "adapter": {
+        "name": "pogo-chat",
+        "version": "0.3.0",
+        "launchHash": "sha256:6164c16405ffad14780cca15e85cf8688c355069ccb5b8dfa55b25603379a449",
+        "helper": {
+          "language": "python",
+          "version": "0.1.0"
+        }
+      },
+      "service": {
+        "version": "0123456789abcdef0123456789abcdef01234567",
+        "dirty": false,
+        "treeHash": "sha256:ec545c4839b455042abf79ea8201df2aaf6c3eca68a4f4f63b45a0fd82501746"
+      },
+      "postprocess": true
+    },
+    "cells": [
+      {
+        "ruleId": "script-ja",
+        "lang": "ja",
+        "surface": "raw",
+        "gated": true,
+        "cases": 30,
+        "droppedCases": 0,
+        "baseline": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 149,
+          "rate": 0.9933333333333333,
+          "pooledRate": 0.9933333333333333,
+          "low": 0.9533333333333333,
+          "high": 1,
+          "nEff": 150
+        },
+        "candidate": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 105,
+          "rate": 0.7,
+          "pooledRate": 0.7,
+          "low": 0.6399999999999999,
+          "high": 0.73,
+          "nEff": 150
+        },
+        "diff": {
+          "estimate": -0.293,
+          "low": -0.371,
+          "high": -0.192
+        },
+        "deff": 1.4,
+        "failRatio": 45,
+        "masked": {
+          "baseline": 0.007,
+          "candidate": 0.273
+        },
+        "margin": 0.1,
+        "verdict": "regressed"
+      },
+      {
+        "ruleId": "script-ja",
+        "lang": "ja",
+        "surface": "final",
+        "gated": false,
+        "cases": 30,
+        "droppedCases": 0,
+        "baseline": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 150,
+          "rate": 1,
+          "pooledRate": 1,
+          "low": 0.96,
+          "high": 1,
+          "nEff": 150
+        },
+        "candidate": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 149,
+          "rate": 0.9933333333333333,
+          "pooledRate": 0.9933333333333333,
+          "low": 0.9333333333333333,
+          "high": 1,
+          "nEff": 150
+        },
+        "diff": {
+          "estimate": -0.007,
+          "low": -0.04,
+          "high": 0.02
+        },
+        "deff": 1.4,
+        "failRatio": null,
+        "margin": 0.1,
+        "verdict": "non-inferior"
+      },
+      {
+        "ruleId": "completed",
+        "lang": "ko",
+        "surface": "trial",
+        "gated": true,
+        "cases": 30,
+        "droppedCases": 0,
+        "systematic": {
+          "baseline": {
+            "trials": 0,
+            "cases": 0
+          },
+          "candidate": {
+            "trials": 0,
+            "cases": 0
+          }
+        },
+        "baseline": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 150,
+          "rate": 1,
+          "pooledRate": 1,
+          "low": 0.96,
+          "high": 1,
+          "nEff": 150
+        },
+        "candidate": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 135,
+          "rate": 0.9,
+          "pooledRate": 0.9,
+          "low": 0.83,
+          "high": 0.94,
+          "nEff": 150
+        },
+        "diff": {
+          "estimate": -0.1,
+          "low": -0.16,
+          "high": -0.04
+        },
+        "deff": 1.4,
+        "failRatio": null,
+        "margin": 0.1,
+        "verdict": "inconclusive",
+        "note": "drop-margin-undecided",
+        "needed": {
+          "kind": "on-margin"
+        }
+      },
+      {
+        "ruleId": "completed",
+        "lang": "en",
+        "surface": "trial",
+        "gated": true,
+        "cases": 2,
+        "droppedCases": 0,
+        "systematic": {
+          "baseline": {
+            "trials": 0,
+            "cases": 0
+          },
+          "candidate": {
+            "trials": 0,
+            "cases": 0
+          }
+        },
+        "baseline": {
+          "cases": 2,
+          "trials": 10,
+          "passes": 10,
+          "rate": 1.0,
+          "pooledRate": 1.0,
+          "low": 0.72,
+          "high": 1,
+          "nEff": 10
+        },
+        "candidate": {
+          "cases": 2,
+          "trials": 10,
+          "passes": 9,
+          "rate": 0.9,
+          "pooledRate": 0.9,
+          "low": 0.6,
+          "high": 0.98,
+          "nEff": 10
+        },
+        "diff": {
+          "estimate": -0.1,
+          "low": -0.4,
+          "high": 0.2
+        },
+        "deff": 1,
+        "failRatio": null,
+        "margin": 0.1,
+        "verdict": "insufficient",
+        "needed": {
+          "kind": "cases",
+          "cases": 3
+        }
+      },
+      {
+        "ruleId": "completed",
+        "lang": "ja",
+        "surface": "trial",
+        "gated": true,
+        "cases": 30,
+        "droppedCases": 0,
+        "systematic": {
+          "baseline": {
+            "trials": 0,
+            "cases": 0
+          },
+          "candidate": {
+            "trials": 2,
+            "cases": 1
+          }
+        },
+        "baseline": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 149,
+          "rate": 0.9933333333333333,
+          "pooledRate": 0.9933333333333333,
+          "low": 0.9533333333333333,
+          "high": 1,
+          "nEff": 150
+        },
+        "candidate": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 140,
+          "rate": 0.9333333333333333,
+          "pooledRate": 0.9333333333333333,
+          "low": 0.8733333333333333,
+          "high": 0.9633333333333334,
+          "nEff": 150
+        },
+        "diff": {
+          "estimate": -0.06,
+          "low": -0.12,
+          "high": -0.005
+        },
+        "deff": 1.4,
+        "failRatio": 9.999999999999934,
+        "margin": 0.1,
+        "verdict": "inconclusive",
+        "needed": {
+          "kind": "repeats",
+          "repeats": 15,
+          "cellTrials": 450,
+          "trialsPerVariant": 900,
+          "nearMargin": false
+        },
+        "note": "drop-margin-undecided"
+      },
+      {
+        "ruleId": "no-emoji",
+        "lang": "ko",
+        "surface": "raw",
+        "gated": false,
+        "cases": 30,
+        "droppedCases": 0,
+        "baseline": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 148,
+          "rate": 0.9866666666666667,
+          "pooledRate": 0.9866666666666667,
+          "low": 0.9466666666666667,
+          "high": 0.9966666666666667,
+          "nEff": 150
+        },
+        "candidate": {
+          "cases": 30,
+          "trials": 150,
+          "passes": 147,
+          "rate": 0.98,
+          "pooledRate": 0.98,
+          "low": 0.9199999999999999,
+          "high": 1,
+          "nEff": 150
+        },
+        "diff": {
+          "estimate": -0.007,
+          "low": -0.045,
+          "high": 0.03
+        },
+        "deff": 1.4,
+        "failRatio": 1.5000000000000042,
+        "margin": 0.1,
+        "verdict": "non-inferior"
+      },
+      {
+        "ruleId": "no-emoji",
+        "lang": "ja",
+        "surface": "raw",
+        "gated": false,
+        "cases": 0,
+        "droppedCases": 0,
+        "baseline": {
+          "cases": 0,
+          "trials": 0,
+          "passes": 0,
+          "rate": null,
+          "pooledRate": null,
+          "low": null,
+          "high": null,
+          "nEff": null
+        },
+        "candidate": {
+          "cases": 0,
+          "trials": 0,
+          "passes": 0,
+          "rate": null,
+          "pooledRate": null,
+          "low": null,
+          "high": null,
+          "nEff": null
+        },
+        "diff": null,
+        "deff": null,
+        "failRatio": null,
+        "margin": 0.1,
+        "verdict": "not-applicable"
+      }
+    ],
+    "aggregates": [
+      {
+        "ruleId": "script-ja",
+        "surface": "raw",
+        "baseline": {
+          "trials": 150,
+          "passes": 149,
+          "rate": 0.9933333333333333
+        },
+        "candidate": {
+          "trials": 150,
+          "passes": 105,
+          "rate": 0.7
+        },
+        "diff": -0.293
+      },
+      {
+        "ruleId": "completed",
+        "surface": "trial",
+        "baseline": {
+          "trials": 300,
+          "passes": 299,
+          "rate": 0.9966666666666667
+        },
+        "candidate": {
+          "trials": 300,
+          "passes": 287,
+          "rate": 0.9566666666666667
+        },
+        "diff": -0.04
+      }
+    ],
+    "rules": [
+      {
+        "id": "completed",
+        "title": "The user gets a complete answer from the model",
+        "severity": "blocking",
+        "languages": [],
+        "gateOn": "raw",
+        "margin": 0.1,
+        "anchors": [],
+        "origin": []
+      },
+      {
+        "id": "script-ja",
+        "title": "Japanese answers use only kana, kanji and Latin letters",
+        "severity": "blocking",
+        "languages": [
+          "ja"
+        ],
+        "gateOn": "raw",
+        "margin": 0.1,
+        "anchors": [
+          {
+            "lang": "ja",
+            "quote": "日本語だけで話す"
+          }
+        ],
+        "origin": [
+          {
+            "commit": "1a2b3c4",
+            "date": "2026-01-15",
+            "layer": "code"
+          }
+        ]
+      },
+      {
+        "id": "no-emoji",
+        "title": "No emoji",
+        "severity": "major",
+        "languages": [],
+        "gateOn": "raw",
+        "margin": 0.1,
+        "anchors": [
+          {
+            "lang": "ko",
+            "quote": "이모지를 붙이지 않는다"
+          }
+        ],
+        "origin": []
+      },
+      {
+        "id": "no-unprompted-self-state",
+        "title": "Does not describe its own clothes, room or activity before being asked",
+        "severity": "blocking",
+        "languages": [],
+        "gateOn": "raw",
+        "margin": 0.1,
+        "anchors": [],
+        "origin": []
+      }
+    ],
+    "summary": {
+      "worse": [
+        {
+          "ruleId": "script-ja",
+          "lang": "ja",
+          "surface": "raw",
+          "verdict": "regressed"
+        },
+        {
+          "ruleId": "completed",
+          "lang": "ja",
+          "surface": "trial",
+          "verdict": "inconclusive",
+          "note": "drop-margin-undecided",
+          "needed": {
+            "kind": "repeats",
+            "repeats": 15,
+            "cellTrials": 450,
+            "trialsPerVariant": 900,
+            "nearMargin": false
+          }
+        },
+        {
+          "ruleId": "completed",
+          "lang": "ko",
+          "surface": "trial",
+          "verdict": "inconclusive",
+          "note": "drop-margin-undecided",
+          "needed": {
+            "kind": "on-margin"
+          }
+        }
+      ],
+      "improved": [],
+      "unknown": [
+        {
+          "ruleId": "completed",
+          "lang": "ja",
+          "surface": "trial",
+          "verdict": "inconclusive",
+          "needed": {
+            "kind": "repeats",
+            "repeats": 15,
+            "cellTrials": 450,
+            "trialsPerVariant": 900,
+            "nearMargin": false
+          },
+          "note": "drop-margin-undecided"
+        },
+        {
+          "ruleId": "completed",
+          "lang": "ko",
+          "surface": "trial",
+          "verdict": "inconclusive",
+          "note": "drop-margin-undecided",
+          "needed": {
+            "kind": "on-margin"
+          }
+        },
+        {
+          "ruleId": "completed",
+          "lang": "en",
+          "surface": "trial",
+          "verdict": "insufficient",
+          "needed": {
+            "kind": "cases",
+            "cases": 3
+          }
+        }
+      ],
+      "ops": [
+        {
+          "metric": "discard",
+          "baseline": 0.003,
+          "candidate": 0.03,
+          "warning": "discard-rate-increase"
+        },
+        {
+          "metric": "costPerTrial",
+          "baseline": 0.00017,
+          "candidate": 0.00038,
+          "ratio": 2.2,
+          "warning": "cost-ratio"
+        },
+        {
+          "metric": "latencyP95",
+          "baseline": 1900,
+          "candidate": 2600,
+          "ratio": 1.37
+        }
+      ],
+      "scope": {
+        "targets": [
+          "chat"
+        ],
+        "judgedRules": [
+          "completed",
+          "script-ja",
+          "no-emoji"
+        ],
+        "notJudgedRules": [],
+        "reviewRules": [
+          "no-unprompted-self-state"
+        ]
+      }
+    },
+    "gate": {
+      "outcome": "block",
+      "reasons": [
+        {
+          "code": "regressed",
+          "ruleId": "script-ja",
+          "lang": "ja",
+          "surface": "raw"
+        },
+        {
+          "code": "cell-undecided",
+          "ruleId": "completed",
+          "lang": "ja",
+          "surface": "trial"
+        },
+        {
+          "code": "cell-undecided",
+          "ruleId": "completed",
+          "lang": "ko",
+          "surface": "trial"
+        },
+        {
+          "code": "cell-undecided",
+          "ruleId": "completed",
+          "lang": "en",
+          "surface": "trial"
+        },
+        {
+          "code": "abandoned-in-systematic",
+          "ruleId": "completed",
+          "lang": "ja",
+          "surface": "trial",
+          "params": {
+            "trials": {
+              "current": {
+                "timeout": 0,
+                "restart": 0
+              },
+              "next": {
+                "timeout": 1,
+                "restart": 0
+              }
+            },
+            "timeoutMs": {
+              "current": 120000,
+              "next": 120000
+            }
+          }
+        }
+      ],
+      "blocking": [
+        {
+          "ruleId": "script-ja",
+          "lang": "ja",
+          "surface": "raw"
+        }
+      ],
+      "undecided": [
+        {
+          "ruleId": "completed",
+          "lang": "ja",
+          "surface": "trial",
+          "needed": {
+            "kind": "repeats",
+            "repeats": 15,
+            "cellTrials": 450,
+            "trialsPerVariant": 900,
+            "nearMargin": false
+          }
+        },
+        {
+          "ruleId": "completed",
+          "lang": "ko",
+          "surface": "trial",
+          "needed": {
+            "kind": "on-margin"
+          }
+        },
+        {
+          "ruleId": "completed",
+          "lang": "en",
+          "surface": "trial",
+          "needed": {
+            "kind": "cases",
+            "cases": 3
+          }
+        }
+      ],
+      "excluded": [
+        {
+          "ruleId": "no-unprompted-self-state",
+          "cause": "review"
+        }
+      ]
+    },
+    "completion": [
+      {
+        "lang": "ko",
+        "trials": 150,
+        "passes": 150,
+        "rate": 1
+      },
+      {
+        "lang": "ja",
+        "trials": 150,
+        "passes": 149,
+        "rate": 0.9933333333333333
+      },
+      {
+        "lang": "en",
+        "trials": 10,
+        "passes": 10,
+        "rate": 1
+      }
+    ],
+    "ops": {
+      "baseline": {
+        "rates": {
+          "rejection": {
+            "count": 0,
+            "total": 300,
+            "rate": 0,
+            "low": 0,
+            "high": 0.02
+          },
+          "timeout": {
+            "count": 1,
+            "total": 300,
+            "rate": 0.0033333333333333335,
+            "low": 0,
+            "high": 0.023333333333333334
+          },
+          "transient": {
+            "count": 0,
+            "total": 300,
+            "rate": 0,
+            "low": 0,
+            "high": 0.02
+          },
+          "adapter": {
+            "count": 0,
+            "total": 300,
+            "rate": 0,
+            "low": 0,
+            "high": 0.02
+          },
+          "discard": {
+            "count": 1,
+            "total": 300,
+            "rate": 0.0033333333333333335,
+            "low": 0,
+            "high": 0.023333333333333334
+          },
+          "fallback": {
+            "count": 1,
+            "total": 300,
+            "rate": 0.0033333333333333335,
+            "low": 0,
+            "high": 0.023333333333333334
+          },
+          "empty": {
+            "count": 0,
+            "total": 300,
+            "rate": 0,
+            "low": 0,
+            "high": 0.02
+          },
+          "regeneration": {
+            "count": 2,
+            "total": 300,
+            "rate": 0.006666666666666667,
+            "low": 0,
+            "high": 0.02666666666666667
+          }
+        },
+        "systematic": {
+          "trials": 0,
+          "cases": 0
+        },
+        "discardReasons": [
+          {
+            "discardReason": "AnswerCut: the answer ended mid-sentence",
+            "count": 1
+          }
+        ],
+        "topMessages": [],
+        "sideCallFailures": [],
+        "abandoned": {
+          "timeout": 0,
+          "restart": 0
+        },
+        "finishReasons": {
+          "stop": 296,
+          "length": 3,
+          "content_filter": 0,
+          "other": 1
+        },
+        "latencyMs": {
+          "p50": 1200,
+          "p95": 1900,
+          "values": [
+            800,
+            950,
+            1200,
+            1900
+          ]
+        },
+        "tokensPerTrial": {
+          "input": 152,
+          "cachedInput": 3968,
+          "cacheWrite": 0,
+          "output": 22,
+          "reasoning": 0
+        },
+        "costPerTrialUsd": 0.00017,
+        "responseModels": [
+          {
+            "model": "model-a-2026-01-01",
+            "trials": 300
+          }
+        ]
+      },
+      "candidate": {
+        "rates": {
+          "rejection": {
+            "count": 0,
+            "total": 300,
+            "rate": 0,
+            "low": 0,
+            "high": 0.02
+          },
+          "timeout": {
+            "count": 1,
+            "total": 300,
+            "rate": 0.0033333333333333335,
+            "low": 0,
+            "high": 0.023333333333333334
+          },
+          "transient": {
+            "count": 10,
+            "total": 300,
+            "rate": 0.03333333333333333,
+            "low": 0.02333333333333333,
+            "high": 0.05333333333333333
+          },
+          "adapter": {
+            "count": 0,
+            "total": 300,
+            "rate": 0,
+            "low": 0,
+            "high": 0.02
+          },
+          "discard": {
+            "count": 9,
+            "total": 300,
+            "rate": 0.03,
+            "low": 0.019999999999999997,
+            "high": 0.05
+          },
+          "fallback": {
+            "count": 1,
+            "total": 300,
+            "rate": 0.0033333333333333335,
+            "low": 0,
+            "high": 0.023333333333333334
+          },
+          "empty": {
+            "count": 0,
+            "total": 300,
+            "rate": 0,
+            "low": 0,
+            "high": 0.02
+          },
+          "regeneration": {
+            "count": 2,
+            "total": 300,
+            "rate": 0.006666666666666667,
+            "low": 0,
+            "high": 0.02666666666666667
+          }
+        },
+        "systematic": {
+          "trials": 0,
+          "cases": 0
+        },
+        "discardReasons": [
+          {
+            "discardReason": "AnswerCut: the answer ended mid-sentence",
+            "count": 9
+          }
+        ],
+        "topMessages": [
+          {
+            "kind": "transient",
+            "message": "429 rate limited `retry`",
+            "count": 10
+          }
+        ],
+        "sideCallFailures": [],
+        "abandoned": {
+          "timeout": 0,
+          "restart": 0
+        },
+        "finishReasons": {
+          "stop": 296,
+          "length": 3,
+          "content_filter": 0,
+          "other": 1
+        },
+        "latencyMs": {
+          "p50": 2100,
+          "p95": 2600,
+          "values": [
+            900,
+            1400,
+            2100,
+            2600
+          ]
+        },
+        "tokensPerTrial": {
+          "input": 152,
+          "cachedInput": 3968,
+          "cacheWrite": 0,
+          "output": 22,
+          "reasoning": 0
+        },
+        "costPerTrialUsd": 0.00038,
+        "responseModels": [
+          {
+            "model": "model-b-2026-10-01",
+            "trials": 300
+          }
+        ]
+      }
+    },
+    "samples": {
+      "texts": [
+        {
+          "variant": "baseline",
+          "caseId": "greet-ja",
+          "repeat": 0,
+          "raw": "こんにちは。",
+          "finalKind": "model",
+          "final": "こんにちは。",
+          "finishReason": "stop"
+        },
+        {
+          "variant": "candidate",
+          "caseId": "greet-ja",
+          "repeat": 0,
+          "raw": "こんにちは </script><!-- $& <img src=x onerror=alert(1)> ```js\nalert(1)\n``` 안녕",
+          "finalKind": "model",
+          "final": "こんにちは <b>ok</b> `` x `` $1",
+          "finishReason": "stop"
+        },
+        {
+          "variant": "baseline",
+          "caseId": "mood-vague-ko",
+          "repeat": 0,
+          "raw": "오늘 좀 그랬구나. 무슨 일 있었어?",
+          "finalKind": "model",
+          "final": "오늘 좀 그랬구나. 무슨 일 있었어?",
+          "finishReason": "stop"
+        },
+        {
+          "variant": "candidate",
+          "caseId": "mood-vague-ko",
+          "repeat": 0,
+          "error": {
+            "kind": "transient",
+            "message": "429 rate limited <!-- $& -->"
+          }
+        }
+      ],
+      "review": [
+        {
+          "ruleId": "no-unprompted-self-state",
+          "keys": [
+            {
+              "variant": "baseline",
+              "caseId": "mood-vague-ko",
+              "repeat": 0
+            },
+            {
+              "variant": "candidate",
+              "caseId": "mood-vague-ko",
+              "repeat": 0
+            }
+          ]
+        }
+      ],
+      "failing": [
+        {
+          "ruleId": "script-ja",
+          "lang": "ja",
+          "surface": "raw",
+          "keys": [
+            {
+              "variant": "candidate",
+              "caseId": "greet-ja",
+              "repeat": 0,
+              "evidence": [
+                "안",
+                "녕"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "warnings": [
+      {
+        "code": "adapter-warnings",
+        "variants": [
+          "next"
+        ],
+        "caseIds": [
+          "greet-ja"
+        ],
+        "params": {
+          "sentence": "the service regenerated after a filter",
+          "trials": {
+            "next": 2
+          }
+        }
+      },
+      {
+        "code": "discard-rate-increase",
+        "variants": [
+          "current",
+          "next"
+        ],
+        "params": {
+          "rates": {
+            "current": 0.003,
+            "next": 0.03
+          },
+          "threshold": 0.01
+        }
+      },
+      {
+        "code": "excluded-from-gate",
+        "ruleId": "no-unprompted-self-state",
+        "params": {
+          "cause": "review"
+        }
+      }
+    ],
+    "coverage": {
+      "commonCases": 60,
+      "baselineOnly": [],
+      "candidateOnly": [
+        "greet-en"
+      ],
+      "changedHash": []
+    },
+    "scope": {
+      "targets": [
+        "chat"
+      ],
+      "judgedRules": [
+        "completed",
+        "script-ja",
+        "no-emoji"
+      ],
+      "notJudgedRules": [],
+      "reviewRules": [
+        "no-unprompted-self-state"
+      ]
+    },
+    "priorComparisons": 1,
+    "stats": {
+      "confidence": 0.95,
+      "method": "newcombe-hybrid-score with case-cluster design effect",
+      "gatedCells": 4,
+      "zLower": 1.959964,
+      "zUpper": 2.497705,
+      "minCases": 3
+    },
+    "config": {
+      "gate": {
+        "severities": [
+          "blocking"
+        ],
+        "margin": 0.1
+      },
+      "stats": {
+        "confidence": 0.95,
+        "minCases": 3
+      },
+      "report": {
+        "lowBaseline": 0.9,
+        "samples": 3,
+        "warn": {
+          "transientRate": 0.05,
+          "discardRateIncrease": 0.01,
+          "regenerationRateIncrease": 0.03,
+          "latencyP95Ratio": 1.5,
+          "costRatio": 2
+        }
+      }
+    }
+  }
+}

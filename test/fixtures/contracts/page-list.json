@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1",
+  "lang": "en",
+  "kind": "list",
+  "comparisons": [
+    {
+      "comparisonId": "cmp-c3185cc21556",
+      "href": "comparisons/cmp-c3185cc21556/report.html",
+      "baseline": "current",
+      "candidate": "next",
+      "createdAt": "2026-11-05T10:20:00.000Z",
+      "gate": "block"
+    },
+    {
+      "comparisonId": "cmp-ff954570aec2",
+      "href": "comparisons/cmp-ff954570aec2/report.html",
+      "baseline": "current",
+      "candidate": "next",
+      "createdAt": "2026-11-05T09:10:00.000Z",
+      "gate": "undecided"
+    },
+    {
+      "comparisonId": "cmp-89b170c0e72a",
+      "href": "comparisons/cmp-89b170c0e72a/report.html",
+      "baseline": "current",
+      "candidate": "next",
+      "createdAt": "2026-11-04T18:00:00.000Z",
+      "gate": "no-gate"
+    }
+  ]
+}

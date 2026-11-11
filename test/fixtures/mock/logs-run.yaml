@@ -1,0 +1,19 @@
+# Every generate writes a stderr line and three log notifications; two of them carry a phone
+# number that the config's redaction rule must remove.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, maxConcurrency: 4 }
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  '*':
+    answer: { '*': "answer to {caseId}" }
+    usage: { input: 40, output: 18 }
+    calls: true
+    stderr: "mock: handling {caseId} for 010-1234-5678"
+    logs:
+      - { level: warn, message: "cache miss for 010-1234-5678" }
+      - { level: error, message: "background write failed" }
+      - { level: debug, message: "prompt built for 010-1234-5678" }

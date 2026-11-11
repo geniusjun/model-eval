@@ -1,0 +1,6 @@
+# Declares a different major protocol version.
+protocolVersion: "2"
+targets:
+  - name: chat
+variants:
+  '*': {}

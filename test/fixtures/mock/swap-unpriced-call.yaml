@@ -1,0 +1,22 @@
+# After each candidate result the service calls another model in the background and reports it
+# in a `calls` notification 20 ms after the response.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true, maxConcurrency: 4 }
+prompts:
+  ko: 짧게 답한다.
+  ja: 短く答える。
+inputTokens: 400
+variants:
+  current:
+    answer: { '*': "answer {caseId} {repeat}" }
+    usage: { input: 40, cachedInput: 360, output: 18 }
+    calls: true
+  next:
+    answer: { '*': "answer {caseId} {repeat}" }
+    usage: { input: 40, cachedInput: 360, output: 18 }
+    calls: true
+    afterCalls:
+      - { model: model-side, outcome: ok, branch: side, usage: { input: 50, output: 5 } }
+    afterCallsDelayMs: 20

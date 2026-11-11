@@ -1,0 +1,9 @@
+# An adapter that answers initialize and render but exits on shutdown without answering it.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true }
+shutdownReply: exit
+variants:
+  "*": {}

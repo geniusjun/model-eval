@@ -1,0 +1,77 @@
+rules:
+  - id: completed
+    title: The user gets a complete answer from the model
+    severity: blocking
+    scope: global
+    check: { type: completed } # Surface trial. Rejections, time-outs, cuts, empty answers, discards and fallbacks fail.
+
+  - id: script-ko
+    title: Korean answers use only Hangul and Latin letters
+    severity: blocking
+    scope: global
+    languages: [ko]
+    check:
+      type: script
+      allow: [Hangul, Latin, Common, Inherited]
+      ignoreFrom: input.nickname # The nickname's own spelling is allowed; missing means an empty list.
+    origin:
+      - { commit: 1a2b3c4, date: 2026-01-15, layer: code }
+
+  - id: script-ja
+    title: Japanese answers use only kana, kanji and Latin letters
+    severity: blocking
+    scope: global
+    languages: [ja]
+    check:
+      type: script
+      allow: [Hiragana, Katakana, Han, Latin, Common, Inherited]
+      ignoreFrom: input.nickname
+    anchors:
+      - { lang: ja, quote: '日本語だけで話す' }
+
+  - id: no-emoji
+    title: No emoji
+    severity: major
+    scope: global
+    anchors:
+      - { lang: ko, quote: '이모지를 붙이지 않는다' }
+      - { lang: en, quote: 'Never use emoji' }
+    check: { type: emoji }
+
+  - id: banmal-ko
+    title: Korean answers use the casual speech level
+    severity: major
+    scope: global
+    languages: [ko]
+    check:
+      type: pattern
+      regex: '((?<![필중])요|습니다|세요)[.?!]*$'
+      flags: m
+      mode: forbid
+    examples: # Lint runs the check on these (FR-005).
+      pass: ['오늘 어땠어?', '그건 필요.', '그게 중요.'] # Nouns ending in 요 would be caught here.
+      fail: ['오늘 어땠어요?', '좋습니다.', '필요해요.']
+
+  - id: mood-not-revealed
+    title: Does not name the mood picked in the app during small talk
+    severity: major
+    check: { type: phrases, mode: forbid, anyFrom: params.words } # Lint error when a case omits words.
+    examples:
+      params: { words: [짜증] }
+      pass: ['오늘 좀 그랬구나. 무슨 일 있었어?']
+      fail: ['오늘 짜증 골랐더라.']
+
+  - id: no-unprompted-self-state
+    title: Does not describe its own clothes, room or activity before being asked
+    severity: major
+    check: { type: review, samples: 3 } # Judged by people in the side-by-side view.
+
+  - id: no-example-copy
+    title: Does not copy the prompt's example lines
+    severity: minor
+    scope: global
+    languages: [ko]
+    check:
+      type: overlap
+      with: ['나라면 조용한 부분부터 다시 들을래']
+      minChars: 10

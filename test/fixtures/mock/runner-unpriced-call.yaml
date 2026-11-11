@@ -1,0 +1,11 @@
+# Every result includes a side call to a model the config has no price for.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+variants:
+  '*':
+    usage: { input: 10, output: 5 }
+    afterCalls:
+      - { model: model-x, outcome: ok, branch: side, usage: { input: 10, output: 5 } }

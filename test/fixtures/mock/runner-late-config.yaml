@@ -1,0 +1,12 @@
+# A background call after every result fails with a configuration problem.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+variants:
+  '*':
+    calls: true
+    usage: { input: 10, output: 5 }
+    afterCalls:
+      - { model: model-a, outcome: failed, errorKind: config, branch: side }

@@ -1,0 +1,30 @@
+# Two variants of a chat target in two languages. `next` breaks the script rule in ja.
+adapter: { name: mock-chat, version: 0.1.0 }
+service: { version: 0123456789abcdef0123456789abcdef01234567, dirty: false }
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, stages: true, postprocess: true, cancel: false, maxConcurrency: 4 }
+prompts:
+  ko: 이모지를 붙이지 않는다. 반말로 짧게 답한다.
+  ja: 日本語だけで話す。絵文字を使わない。
+inputTokens: 400
+maxOutputTokens: 1024
+variants:
+  current:
+    answer: { ko: "안녕! {caseId} 오늘 어땠어?", ja: "こんにちは、{caseId}。" }
+    usage: { input: 40, cachedInput: 360, cacheWrite: 0, output: 18, reasoning: 0 }
+    calls: true
+    stages: true
+    modelSnapshot: model-a-2026-01-01
+    latencyMs: 120
+  next:
+    answer: { ko: "안녕! {caseId} 오늘 어땠어?", ja: "こんにちは、{caseId}。" }
+    violations:
+      - { text: " 안녕", probability: 0.5, langs: [ja], masked: true }
+    usage: { input: 40, cachedInput: 360, cacheWrite: 0, output: 30, reasoning: 8 }
+    calls: true
+    stages: true
+    modelSnapshot: model-b-2026-10-01
+    latencyMs: 180

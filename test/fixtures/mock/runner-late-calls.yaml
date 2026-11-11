@@ -1,0 +1,17 @@
+# Calls reported outside results: before and after each response, and once at shutdown without an id.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+maxOutputTokens: 100
+shutdownCalls:
+  - { model: model-a, outcome: ok, branch: side, usage: { input: 50, output: 5 } }
+variants:
+  '*':
+    calls: true
+    usage: { input: 100, output: 10 }
+    beforeCalls:
+      - { model: model-a, outcome: ok, branch: side, usage: { input: 20, output: 2 } }
+    afterCalls:
+      - { model: model-a, outcome: ok, branch: side, usage: { input: 900, output: 40 } }

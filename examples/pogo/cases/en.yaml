@@ -1,0 +1,191 @@
+# Synthetic small talk with Pogo in English. Every global rule applies to each case.
+cases:
+  - id: greet-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input:
+      nickname: Sky
+      user: hi
+      state: { wearing: [scarf] }
+    note: A plain greeting. Every global rule applies.
+
+  - id: mood-vague-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input:
+      user: I feel kind of off today
+      mood: { label: annoyed }
+    rules:
+      - { id: mood-not-revealed, params: { words: [annoyed] } }
+      - no-unprompted-self-state
+    note: A vague remark without naming a mood; does the answer name the picked mood?
+
+  - id: rain-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: "It's raining again." }
+
+  - id: lunch-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I had ramen for lunch.' }
+
+  - id: tired-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: "I'm so tired today." }
+
+  - id: exam-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'My exam is tomorrow.' }
+
+  - id: song-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I found a new song I like.' }
+
+  - id: movie-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'Should I watch a movie tonight?' }
+
+  - id: weekend-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'Any ideas for the weekend?' }
+
+  - id: cat-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'My cat knocked over a cup.' }
+
+  - id: run-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I went for a run this morning.' }
+
+  - id: late-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I was late for class.' }
+
+  - id: argue-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I argued with a friend.' }
+
+  - id: cook-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I want to try cooking pasta.' }
+
+  - id: sleep-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: "I can't sleep." }
+
+  - id: book-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I finished a book today.' }
+
+  - id: walk-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I took a long walk.' }
+
+  - id: coffee-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I had too much coffee.' }
+
+  - id: game-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I lost a game again.' }
+
+  - id: plant-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'My plant has a new leaf.' }
+
+  - id: bored-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: "I'm bored." }
+
+  - id: birthday-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: "It's my birthday next week." }
+
+  - id: interview-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I have a job interview.' }
+
+  - id: snow-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'It snowed a little.' }
+
+  - id: bus-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I missed the bus.' }
+
+  - id: clean-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'I cleaned my whole room.' }
+
+  - id: draw-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: "I'm learning to draw." }
+
+  - id: trip-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: "I'm planning a short trip." }
+
+  - id: day-off-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'Today is a day off.' }
+
+  - id: thanks-en
+    target: chat
+    lang: en
+    provenance: synthetic
+    input: { user: 'Thanks for listening yesterday.' }

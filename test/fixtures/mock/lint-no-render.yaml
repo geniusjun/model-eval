@@ -1,0 +1,8 @@
+# An adapter that does not declare render, so lint --render cannot check anchors.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: false }
+variants:
+  "*": {}
