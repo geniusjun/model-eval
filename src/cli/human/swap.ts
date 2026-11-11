@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 
+import { LOSSES_IN_A_ROW, type AdapterFault } from '../../adapter/client.js';
 import type { Diagnostic, LintFinding } from '../../config/diagnostics.js';
 import type { Lang, Variant } from '../../config/schema.js';
 import { message } from '../../messages/index.js';
@@ -240,6 +241,7 @@ export function startFailureLines(
           kind: failure.error.kind,
           message: quote(failure.error.message),
         }),
+        ...stderrTailLines(t, variantId, failure.stderrTail),
       ];
     case 'cases':
       return failure.problems.map((problem) =>
@@ -277,6 +279,76 @@ export function startFailureLines(
             }),
       ];
   }
+}
+
+// The adapter
+
+function stderrTailLines(t: Text, variantId: string, tail: readonly string[]): string[] {
+  return tail.length === 0
+    ? []
+    : [
+        t('human.adapter.stderrTail', { variant: variantId, count: tail.length }),
+        ...tail.map((line) => `${INDENT}${line}`),
+      ];
+}
+
+/** A restart of the adapter, or the fault that stops its run, shown when it happens. */
+export function adapterFaultLines(lang: Lang, variantId: string, fault: AdapterFault): string[] {
+  const t = textOf(lang);
+  const variant = { variant: variantId };
+  switch (fault.kind) {
+    case 'restarted':
+      return [];
+    case 'restarting':
+      return [t('human.adapter.restarting', { ...variant, message: quote(fault.message) })];
+    case 'crashed':
+      return [
+        t('human.adapter.crashed', {
+          ...variant,
+          count: LOSSES_IN_A_ROW,
+          message: quote(fault.message),
+        }),
+      ];
+    case 'restart-failed':
+      return [
+        t('human.adapter.restartFailed', {
+          ...variant,
+          kind: fault.error.kind,
+          message: quote(fault.error.message),
+        }),
+      ];
+    case 'restart-changed':
+      return [
+        t('human.adapter.restartChanged', { ...variant, fields: fault.changes.join(', ') }),
+        ...(fault.changes.includes('service') ? [t('human.adapter.serviceChanged')] : []),
+      ];
+  }
+}
+
+/**
+ * At the end of the runs: the stderr tail of each run its adapter stopped, and each run's `warn`
+ * and `error` logs grouped by message (adapter-protocol §Transport 3, §`log`).
+ */
+export function adapterEndLines(lang: Lang, runs: readonly RunEnd[]): string[] {
+  const t = textOf(lang);
+  return runs.flatMap(({ manifest, adapterFailure, adapterLogs }) => {
+    const variant = manifest.variant.id;
+    const logs =
+      adapterLogs.length === 0
+        ? []
+        : [
+            t('human.adapter.logs', { variant }),
+            ...adapterLogs.map(
+              (group) =>
+                `${INDENT}${t('human.adapter.logGroup', {
+                  level: group.level,
+                  count: group.count,
+                  message: group.message,
+                })}`,
+            ),
+          ];
+    return [...stderrTailLines(t, variant, adapterFailure?.stderrTail ?? []), ...logs];
+  });
 }
 
 // The plan of --dry-run and of a refused start
@@ -372,10 +444,18 @@ function configCauses(t: Text, runs: readonly RunEnd[]): string[] {
   ];
 }
 
+/** The stop reason; `adapter-errors` reached by the loss limit says so, not the error rate. */
+function stopText(t: Text, runs: readonly RunEnd[], reason: StopReason): string {
+  const lossLimit = runs.some((run) => run.adapterFailure?.fault?.kind === 'crashed');
+  return reason === 'adapter-errors' && lossLimit
+    ? t('human.stop.adapter-restarts', { count: LOSSES_IN_A_ROW })
+    : t(`human.stop.${reason}`);
+}
+
 /** The stop, what caused a `config-error`, and on a cost stop the outcomes so far (FR-011). */
 function stoppedLines(t: Text, runs: readonly RunEnd[], reason: StopReason): string[] {
   const key = runs.length === 1 ? 'human.run.stopped' : 'human.stopped';
-  const lines = [t(key, { reason: t(`human.stop.${reason}`) })];
+  const lines = [t(key, { reason: stopText(t, runs, reason) })];
   if (reason === 'config-error') {
     return [...lines, ...configCauses(t, runs)];
   }
@@ -758,6 +838,16 @@ function opsLines(t: Text, comparison: Comparison): string[] {
   return ['', ...aligned(rows, OPS_LAYOUT), `${INDENT}${t('human.opsNote')}`];
 }
 
+/** Variants whose adapter declares no post-processing ship their raw answer (FR-029). */
+function postprocessLines(t: Text, comparison: Comparison): string[] {
+  const notices = ROLES.flatMap((role) =>
+    comparison[role].postprocess
+      ? []
+      : [t('report.noPostprocess', { variant: comparison[role].variant.id })],
+  );
+  return notices.length === 0 ? [] : ['', ...notices];
+}
+
 function comparisonLines(t: Text, comparison: Comparison): string[] {
   return [
     ...summaryLines(t, comparison),
@@ -765,6 +855,7 @@ function comparisonLines(t: Text, comparison: Comparison): string[] {
     ...gateLines(t, comparison),
     ...referenceLines(t, comparison),
     ...opsLines(t, comparison),
+    ...postprocessLines(t, comparison),
   ];
 }
 

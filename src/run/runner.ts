@@ -4,13 +4,16 @@ import path from 'node:path';
 import {
   startAdapter,
   type AdapterClient,
+  type AdapterFault,
   type StartFailure as AdapterStartFailure,
 } from '../adapter/client.js';
+import { AdapterLog, StderrTail } from '../adapter/logs.js';
 import { PROTOCOL_VERSION, type LogParams } from '../adapter/protocol.js';
-import type { Project } from '../config/load.js';
+import { expandGlob, type Project } from '../config/load.js';
 import type { Sha256 } from '../config/identifiers.js';
 import type { Price, Rule, Variant } from '../config/schema.js';
 import { NO_LANGUAGE } from '../grade/grade.js';
+import { createRedactor } from '../report/redact.js';
 import { ActiveRun, type RunEnd } from './active-run.js';
 import { createCapLedger, exceedsCap, type CapLedger } from './cap.js';
 import { createCallsRouter, type CallsRouter } from './calls-router.js';
@@ -74,12 +77,19 @@ export interface RunRequest {
   readonly runIdSuffix?: SuffixSource;
   readonly onLog?: (params: LogParams) => void;
   readonly onStderr?: (line: string) => void;
+  /** Restarts and stops of the adapter while the run sends. */
+  readonly onAdapterFault?: (variantId: string, fault: AdapterFault) => void;
 }
 
 /** Why a run did not start. Each ends as a configuration error (exit code 4) before any call. */
 export type RunStartFailure =
   | { readonly kind: 'unpriced-variant'; readonly model: string }
-  | { readonly kind: 'adapter'; readonly error: AdapterStartFailure }
+  | {
+      readonly kind: 'adapter';
+      readonly error: AdapterStartFailure;
+      /** The last lines of adapter stderr, as written. */
+      readonly stderrTail: readonly string[];
+    }
   | { readonly kind: 'cases'; readonly problems: readonly CaseProblem[] }
   | { readonly kind: 'no-cases'; readonly caseFilter: string | null }
   | { readonly kind: 'render'; readonly failures: readonly RenderFailure[] }
@@ -155,6 +165,17 @@ export function toolPaths(project: Project): string[] {
   ];
 }
 
+/** {@link toolPaths} with the rule and case globs matched again, for a restarted adapter. */
+async function matchedToolPaths(project: Project): Promise<string[]> {
+  const { files } = project.config.data;
+  const { configFile, configDir, outputDir } = project.paths;
+  const [rules, cases] = await Promise.all([
+    expandGlob(files.rules, configDir),
+    expandGlob(files.cases, configDir),
+  ]);
+  return [...new Set([configFile, ...rules, ...cases, outputDir])];
+}
+
 function variantPrice(pricing: Readonly<Record<string, Price>>, model: string): Price | undefined {
   const choice = priceFor(pricing, model);
   return choice.kind === 'none' ? undefined : choice.price;
@@ -195,6 +216,8 @@ interface Started {
   readonly rendered: RenderedCases;
   readonly previous: ProfileMap;
   readonly estimate: StartEstimate;
+  readonly adapterLog: AdapterLog;
+  readonly stderr: StderrTail;
 }
 
 /**
@@ -212,6 +235,8 @@ export async function prepareRun(request: RunRequest): Promise<PrepareResult> {
   const startedAt = now();
   const paths = toolPaths(project);
   const router = createCallsRouter();
+  const adapterLog = new AdapterLog(createRedactor(config.redact), now);
+  const stderr = new StderrTail();
   const started = await startAdapter({
     launch: {
       command: config.adapter.command,
@@ -232,19 +257,36 @@ export async function prepareRun(request: RunRequest): Promise<PrepareResult> {
     onCalls: (params) => {
       router.receive(params);
     },
-    ...(request.onLog === undefined ? {} : { onLog: request.onLog }),
-    ...(request.onStderr === undefined ? {} : { onStderr: request.onStderr }),
+    onLog: (params) => {
+      adapterLog.record(params);
+      request.onLog?.(params);
+    },
+    onStderr: (line) => {
+      stderr.push(line);
+      request.onStderr?.(line);
+    },
   });
   if (!started.ok) {
-    return { ok: false, failure: { kind: 'adapter', error: started.error } };
+    return {
+      ok: false,
+      failure: { kind: 'adapter', error: started.error, stderrTail: stderr.lines() },
+    };
   }
   const { client } = started;
   try {
-    return await renderedRun(request, startedAt, paths, client, router);
+    return await renderedRun(request, startedAt, paths, { client, router, adapterLog, stderr });
   } catch (error) {
     await client.shutdown();
     throw error;
   }
+}
+
+/** The running adapter and what listens to it. */
+interface Listened {
+  readonly client: AdapterClient;
+  readonly router: CallsRouter;
+  readonly adapterLog: AdapterLog;
+  readonly stderr: StderrTail;
 }
 
 /** The steps of {@link prepareRun} after the adapter started; refusals shut it down. */
@@ -252,9 +294,9 @@ async function renderedRun(
   request: RunRequest,
   startedAt: Date,
   paths: readonly string[],
-  client: AdapterClient,
-  router: CallsRouter,
+  adapter: Listened,
 ): Promise<PrepareResult> {
+  const { client } = adapter;
   const { project, variant } = request;
   const config = project.config.data;
   const refuse = async (failure: RunStartFailure): Promise<PrepareResult> => {
@@ -290,8 +332,7 @@ async function renderedRun(
   const prepared: Started = {
     request,
     startedAt,
-    client,
-    router,
+    ...adapter,
     toolPaths: paths,
     cases: selected.cases,
     rules,
@@ -468,6 +509,7 @@ async function beginRun(
   const manifest = firstManifest(started, runId, shared);
   await writeManifest(runDir, manifest);
   const log = await openTrialLog(path.join(runDir, RUN_FILES.trials));
+  await started.adapterLog.open(path.join(runDir, RUN_FILES.adapterLog));
   const langOf = new Map(started.cases.map((spec) => [spec.id, spec.lang]));
   const plan = sendOrder(started.cases, targetLanguages(client.info.targets), request.repeats);
   return new ActiveRun({
@@ -495,6 +537,12 @@ async function beginRun(
     rulesHash: started.rulesHash,
     checkerVersion: request.tool.version,
     now: request.now ?? (() => new Date()),
+    adapterLog: started.adapterLog,
+    stderr: started.stderr,
+    matchedToolPaths: () => matchedToolPaths(request.project),
+    onAdapterFault: (fault) => {
+      request.onAdapterFault?.(request.variant.id, fault);
+    },
   });
 }
 

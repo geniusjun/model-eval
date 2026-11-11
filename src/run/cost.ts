@@ -271,10 +271,16 @@ function hasAdapterAnswer(attempt: AttemptLine): boolean {
   );
 }
 
+/** A `stopped` attempt with an empty `calls`, which says no request reached an adapter. */
+function reachedNoAdapter(attempt: AttemptLine): boolean {
+  return attempt.status === 'stopped' && attempt.calls?.length === 0;
+}
+
 /**
  * Billed calls of one attempt, the calls in its cost lines included: `ok` and `unanswered` calls
  * and `failed` calls with usage. Without `calls` an attempt counts as one billed call; one
- * without an adapter answer counts as one, or as the calls of its late response.
+ * without an adapter answer counts as one, or as the calls of its late response; one that never
+ * reached an adapter counts none.
  */
 export function billedCallsOfAttempt(
   attempt: AttemptLine,
@@ -282,11 +288,12 @@ export function billedCallsOfAttempt(
 ): number {
   const late = costLines.filter((line) => line.source === 'late');
   const reported = costLines.filter((line) => line.source === 'calls');
-  const own = hasAdapterAnswer(attempt)
-    ? billedCount(attempt.calls)
-    : late.length === 0
-      ? 1
-      : late.reduce((total, line) => total + billedCount(line.calls), 0);
+  const own =
+    hasAdapterAnswer(attempt) || reachedNoAdapter(attempt)
+      ? billedCount(attempt.calls)
+      : late.length === 0
+        ? 1
+        : late.reduce((total, line) => total + billedCount(line.calls), 0);
   return reported.reduce((total, line) => total + billedCount(line.calls ?? []), own);
 }
 

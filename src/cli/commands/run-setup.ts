@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 
+import type { AdapterFault } from '../../adapter/client.js';
 import type { LogParams } from '../../adapter/protocol.js';
 import { loadProject, type Project } from '../../config/load.js';
 import type { Lang, Variant } from '../../config/schema.js';
@@ -7,11 +8,17 @@ import { samplePlan, type SamplePlan } from '../../lint/sample-plan.js';
 import { message, selectLang, type MessageKey, type MessageParams } from '../../messages/index.js';
 import { milliseconds } from '../../report/format.js';
 import { createRedactor } from '../../report/redact.js';
+import type { RunEnd } from '../../run/active-run.js';
 import type { RunCaseSpec } from '../../run/run-cases.js';
 import type { ToolVersion, VariantPlan } from '../../run/runner.js';
 import type { Warning } from '../../run/warning.js';
 import type { ExitName } from '../exit-codes.js';
-import { diagnosticLines, startWarningLines } from '../human/swap.js';
+import {
+  adapterEndLines,
+  adapterFaultLines,
+  diagnosticLines,
+  startWarningLines,
+} from '../human/swap.js';
 import type { CommandHandler, CommandInvocation } from '../main.js';
 import type { dryRunPlanSchema } from '../results.js';
 
@@ -240,6 +247,28 @@ export function adapterRelay(invocation: CommandInvocation) {
       output.progress(`[${params.level}] ${params.message}`);
     },
   };
+}
+
+/** Restarts of the adapter and the faults that stop a run go to stderr when they happen. */
+export function faultRelay(invocation: CommandInvocation, lang: Lang) {
+  return {
+    onAdapterFault: (variantId: string, fault: AdapterFault) => {
+      for (const line of adapterFaultLines(lang, variantId, fault)) {
+        invocation.output.progress(line);
+      }
+    },
+  };
+}
+
+/** The stderr tails of runs their adapter stopped and the grouped adapter logs, on stderr. */
+export function showAdapterEnd(
+  invocation: CommandInvocation,
+  lang: Lang,
+  runs: readonly RunEnd[],
+): void {
+  for (const line of adapterEndLines(lang, runs)) {
+    invocation.output.progress(line);
+  }
 }
 
 export function printAll(invocation: CommandInvocation, lines: readonly string[]): void {

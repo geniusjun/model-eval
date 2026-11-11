@@ -50,7 +50,9 @@ function lines(seed: number, count: number): TrialLine[] {
       segment: 1,
     };
     const costUsd = pick(next, [0, 0.001, 0.004, null]);
-    switch (pick(next, ['send', 'ok', 'ok', 'transient', 'permanent', 'cost', 'unkeyed'])) {
+    switch (
+      pick(next, ['send', 'ok', 'ok', 'transient', 'permanent', 'abandoned', 'cost', 'unkeyed'])
+    ) {
       case 'send':
         return trialLineSchema.parse({
           ...key,
@@ -64,10 +66,25 @@ function lines(seed: number, count: number): TrialLine[] {
           raw: pick(next, ['a', 'b']),
           ...pick(next, [{}, { modelSnapshot: 's1' }, { modelSnapshot: 's2' }]),
           ...pick(next, [{}, { fingerprint: RENDERED }, { fingerprint: OTHER }]),
+          ...pick(next, [{}, {}, { warnings: [] }, { warnings: ['cost may be counted twice'] }]),
         });
       case 'transient':
       case 'permanent':
-        return errorLine(pick(next, ['transient', 'permanent'] as const), { ...key, costUsd });
+        return errorLine(pick(next, ['transient', 'permanent'] as const), {
+          ...key,
+          costUsd,
+          ...pick(next, [{}, { warnings: ['retried after a rate limit'] }]),
+        });
+      case 'abandoned':
+        return errorLine('adapter', {
+          ...key,
+          costUsd,
+          error: {
+            kind: 'adapter',
+            message: 'no answer',
+            abandoned: pick(next, ['timeout', 'restart']),
+          },
+        });
       case 'cost':
         return trialLineSchema.parse({
           ...key,
@@ -92,12 +109,12 @@ function lines(seed: number, count: number): TrialLine[] {
 function countedCodes(prefix: readonly TrialLine[]): string[] {
   const finished = finishedTrials(prefix, RETRIES, new Set(CASES));
   const overrun = budgetOverrunWarning('next', overrunUsd(prefix));
-  return [
-    ...trialWarnings({ manifest: MANIFEST, finished }, REPORT),
+  const warnings = [
+    ...trialWarnings({ manifest: MANIFEST, lines: prefix, finished }, REPORT),
     ...(overrun === undefined ? [] : [overrun]),
-  ]
-    .map((warning) => warning.code)
-    .sort();
+  ];
+  // `adapter-warnings` comes once per sentence; the live codes hold each code once.
+  return [...new Set(warnings.map((warning) => warning.code))].sort();
 }
 
 describe('live warning codes', () => {
@@ -122,6 +139,8 @@ describe('live warning codes', () => {
     }
     // Every code holds at some point, so the comparison above covers each condition.
     expect([...seen].sort()).toEqual([
+      'abandoned-trials',
+      'adapter-warnings',
       'budget-overrun',
       'identical-repeats',
       'render-mismatch',

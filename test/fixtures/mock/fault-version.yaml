@@ -1,0 +1,14 @@
+# The process exits on crash-1; a restarted process declares another adapter version.
+adapter: { name: mock-chat, version: 0.1.0 }
+service: { version: "1111111111111111111111111111111111111111", dirty: false }
+restarted:
+  adapter: { name: mock-chat, version: 0.2.0 }
+targets:
+  - name: chat
+    inputSchema: { type: object }
+capabilities: { maxConcurrency: 2 }
+variants:
+  '*':
+    answer: { '*': 'answer to {caseId}' }
+    outcomes:
+      - { row: crash, probability: 1, caseIds: [crash-1] }

@@ -120,7 +120,30 @@ function paramsText(
   );
 }
 
+type AbandonedTrials = Extract<Warning, { code: 'abandoned-trials' }>;
+
+/**
+ * Without a trial abandoned at the time limit, only the restarts are stated: the time limit and
+ * late failures would say nothing. Variants without late failures are left out of them.
+ */
+function abandonedText(lang: Lang, warning: AbandonedTrials, quote: Quote): string {
+  const { trials, lateFailures } = warning.params;
+  if (Object.values(trials).every((counts) => counts.timeout === 0)) {
+    return message(lang, 'warning.abandoned-trials.restarts', {
+      trials: valueText(trials, { format: String, quote: undefined }),
+    });
+  }
+  const failed = Object.fromEntries(
+    Object.entries(lateFailures).filter(([, kinds]) => Object.keys(kinds).length > 0),
+  );
+  const params = paramsText(warning.code, { ...warning.params, lateFailures: failed }, quote);
+  return message(lang, 'warning.abandoned-trials', params);
+}
+
 export function warningText(lang: Lang, warning: Warning, quote: Quote): string {
+  if (warning.code === 'abandoned-trials') {
+    return abandonedText(lang, warning, quote);
+  }
   const params = 'params' in warning ? paramsText(warning.code, warning.params, quote) : {};
   return message(lang, `warning.${warning.code}`, params);
 }

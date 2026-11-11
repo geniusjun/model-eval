@@ -20,6 +20,7 @@ interface KeyEntry {
 export interface FinishedCounts {
   readonly finished: number;
   readonly transient: number;
+  readonly adapter: number;
 }
 
 /** Trial keys of one run in send order, with their attempt lines and what is in flight. */
@@ -147,19 +148,23 @@ export class TrialBook {
     return counts;
   }
 
-  /** Finished trials whose effective line `segment` wrote, and how many of them are transient. */
+  /**
+   * Finished trials whose effective line `segment` wrote, and how many of them are transient
+   * and adapter errors.
+   */
   finishedIn(segment: number): FinishedCounts {
     let finished = 0;
     let transient = 0;
+    let adapter = 0;
     for (const { state } of this.entries.values()) {
       if (state.kind === 'finished' && state.effective.segment === segment) {
         finished += 1;
-        if (classifyTrial(state.effective) === 'transient') {
-          transient += 1;
-        }
+        const outcome = classifyTrial(state.effective);
+        transient += outcome === 'transient' ? 1 : 0;
+        adapter += outcome === 'adapter' ? 1 : 0;
       }
     }
-    return { finished, transient };
+    return { finished, transient, adapter };
   }
 
   private entry(key: TrialKey): KeyEntry | undefined {

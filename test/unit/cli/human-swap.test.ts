@@ -46,6 +46,7 @@ function runEnd(comparison: Comparison, role: 'baseline' | 'candidate'): RunEnd 
     gradeSetId: run.gradeSetId,
     lines: [],
     gradeSet,
+    adapterLogs: [],
   };
 }
 

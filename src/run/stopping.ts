@@ -27,10 +27,19 @@ export function createStopSignal(): StopSignal {
   };
 }
 
+function exceedsRate(counts: FinishedCounts, errors: number, maxRate: number): boolean {
+  return counts.finished >= STOP_RATE_MIN_FINISHED && errors / counts.finished > maxRate;
+}
+
 /** The transient error rate of finished trials is above `run.maxTransientRate`. */
 export function exceedsTransientRate(counts: FinishedCounts, maxTransientRate: number): boolean {
-  return (
-    counts.finished >= STOP_RATE_MIN_FINISHED &&
-    counts.transient / counts.finished > maxTransientRate
-  );
+  return exceedsRate(counts, counts.transient, maxTransientRate);
+}
+
+/** The adapter error rate of finished trials is above `run.maxAdapterErrorRate`. */
+export function exceedsAdapterErrorRate(
+  counts: FinishedCounts,
+  maxAdapterErrorRate: number,
+): boolean {
+  return exceedsRate(counts, counts.adapter, maxAdapterErrorRate);
 }

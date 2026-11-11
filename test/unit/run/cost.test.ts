@@ -319,6 +319,13 @@ describe('reservation', () => {
     expect(billedCallsOfAttempt(abandoned, [late])).toBe(2);
   });
 
+  it('001 FR-011 counts no billed call for a stopped attempt that never reached the adapter', () => {
+    const neverSent: AttemptLine = { ...attemptBase, status: 'stopped', costUsd: 0, calls: [] };
+    const closed: AttemptLine = { ...attemptBase, status: 'stopped', costEstimated: true };
+    expect(billedCallsOfAttempt(neverSent, [])).toBe(0);
+    expect(billedCallsOfAttempt(closed, [])).toBe(1);
+  });
+
   it('001 FR-011 keeps the largest billed calls per attempt per language, from the previous run, never below 1', () => {
     const start = initialReservationState({ ko: profile({ callsPerAttemptMax: 3 }) });
     expect(start.maxBilledCalls).toEqual({ ko: 3 });

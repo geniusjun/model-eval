@@ -54,6 +54,9 @@ export class LiveWarningCodes {
   private readonly snapshots = new Map<string, number>();
   private mismatched = 0;
   private readonly identicalCases = new Set<string>();
+  private abandoned = 0;
+  /** Finished trial keys with an attempt the adapter attached warnings to. */
+  private readonly warnedKeys = new Set<string>();
   private readonly costs = new Map<string, AttemptCost>();
   private readonly overrunning = new Set<string>();
   private unkeyedCost = false;
@@ -95,6 +98,12 @@ export class LiveWarningCodes {
     }
     if (this.overrunning.size > 0 || this.unkeyedCost) {
       codes.add('budget-overrun');
+    }
+    if (this.abandoned > 0) {
+      codes.add('abandoned-trials');
+    }
+    if (this.warnedKeys.size > 0) {
+      codes.add('adapter-warnings');
     }
     return codes;
   }
@@ -155,6 +164,12 @@ export class LiveWarningCodes {
       this.effective.set(id, after);
       this.count(after, 1);
     }
+    const warned = attempts.some((attempt) => (attempt.warnings ?? []).length > 0);
+    if (after !== undefined && warned) {
+      this.warnedKeys.add(id);
+    } else {
+      this.warnedKeys.delete(id);
+    }
     this.updateCase(line.caseId, line.repeat, after);
   }
 
@@ -162,6 +177,9 @@ export class LiveWarningCodes {
   private count(line: AttemptLine, sign: 1 | -1): void {
     if (classifyTrial(line) === 'transient') {
       this.transient += sign;
+    }
+    if (line.status === 'error' && line.error.abandoned !== undefined) {
+      this.abandoned += sign;
     }
     if (line.status !== 'ok') {
       return;

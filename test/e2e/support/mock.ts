@@ -6,8 +6,8 @@ import { parse as parseYaml } from 'yaml';
 
 import {
   scenarioSchema,
-  type OutcomeRow,
   type Scenario,
+  type ScenarioRow,
 } from '../../../src/adapter/mock-scenario.js';
 import { ROOT } from './cli.js';
 
@@ -42,7 +42,7 @@ export function mockDraw(trialSeedValue: number, key: string): number {
 
 /**
  * The outcome row a variant's scenario gives one send of a trial: the first row whose cumulative
- * share holds, skipping rows limited to fewer `firstSends`.
+ * share holds, skipping rows limited to fewer `firstSends` or to other cases.
  */
 export function outcomeRowOf(
   scenario: Scenario,
@@ -50,7 +50,7 @@ export function outcomeRowOf(
   caseId: string,
   repeat: number,
   sends = 1,
-): OutcomeRow {
+): ScenarioRow {
   const behaviour = scenario.variants[variant] ?? scenario.variants['*'];
   if (behaviour === undefined) {
     throw new Error(`scenario has no behaviour for ${variant}`);
@@ -59,6 +59,9 @@ export function outcomeRowOf(
   let cumulative = 0;
   for (const outcome of behaviour.outcomes) {
     if (outcome.firstSends !== undefined && sends > outcome.firstSends) {
+      continue;
+    }
+    if (outcome.caseIds !== undefined && !outcome.caseIds.includes(caseId)) {
       continue;
     }
     cumulative += outcome.probability;

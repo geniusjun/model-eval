@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { neededText } from '../../../src/report/code-text.js';
+import { message } from '../../../src/messages/index.js';
+import { neededText, warningText } from '../../../src/report/code-text.js';
 
 describe('trials-needed text', () => {
   it('001 FR-024 states the repeats, the cell trials now and after, and the whole run', () => {
@@ -35,5 +36,65 @@ describe('trials-needed text', () => {
     expect(neededText('en', { kind: 'on-margin' }, 150)).toBe(
       'exactly on the margin, repeats are unlikely to settle it',
     );
+  });
+});
+
+describe('warning text', () => {
+  const quote = (text: string): string => JSON.stringify(text);
+  const abandoned = (
+    trials: Readonly<Record<string, { timeout: number; restart: number }>>,
+    lateFailures: Readonly<
+      Record<string, Record<string, { trials: number; maxRetryAfterMs: number | null }>>
+    >,
+  ) =>
+    ({
+      code: 'abandoned-trials',
+      variants: Object.keys(trials),
+      params: {
+        trials,
+        timeoutMs: Object.fromEntries(Object.keys(trials).map((id) => [id, 120000])),
+        lateFailures,
+      },
+    }) as const;
+
+  it('001 FR-008 states only the restarts when no trial was abandoned at the time limit', () => {
+    const text = warningText(
+      'en',
+      abandoned({ next: { timeout: 0, restart: 2 } }, { next: {} }),
+      quote,
+    );
+    expect(text).toBe(
+      message('en', 'warning.abandoned-trials.restarts', { trials: 'next (timeout 0, restart 2)' }),
+    );
+    expect(text).not.toContain('120000');
+    expect(text).not.toContain('—');
+  });
+
+  it('001 FR-008 leaves variants without late failures out of the late failures', () => {
+    const text = warningText(
+      'en',
+      abandoned(
+        { current: { timeout: 1, restart: 0 }, next: { timeout: 2, restart: 0 } },
+        { current: {}, next: { transient: { trials: 1, maxRetryAfterMs: 2000 } } },
+      ),
+      quote,
+    );
+    expect(text).not.toContain('(—)');
+    expect(text).toContain(
+      'Failed calls in late responses: next (transient (trials 1, maxRetryAfterMs 2000)).',
+    );
+  });
+
+  it('001 FR-023 keeps empty per-variant values in other warnings', () => {
+    const text = warningText(
+      'en',
+      {
+        code: 'response-model-changed',
+        variants: ['current'],
+        params: { models: { current: [], next: ['m-1'] } },
+      },
+      quote,
+    );
+    expect(text).toContain('current (—), next ("m-1")');
   });
 });

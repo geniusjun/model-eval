@@ -26,6 +26,8 @@ export interface ProjectSpec {
   readonly config?: ConfigOverrides;
   /** `adapter.timeoutMs`, for tests of an adapter that does not answer. */
   readonly adapterTimeoutMs?: number;
+  /** Lets the mock tell a restarted process from the first one (`MOCK_STATE_DIR`). */
+  readonly mockState?: boolean;
 }
 
 export interface RecordedRequest {
@@ -112,43 +114,61 @@ export function greetCases(perLanguage: Readonly<Record<string, number>>): CaseI
   );
 }
 
-export async function createProject(spec: ProjectSpec): Promise<Project> {
-  const root = await mkdtemp(path.join(tmpdir(), 'model-eval-e2e-'));
+export interface RecordedAdapter {
+  /** An `adapter.command` that runs the given command behind the recorder. */
+  readonly command: string[];
+  readonly sessions: () => Promise<AdapterSession[]>;
+  readonly generateRequests: () => Promise<GenerateRequest[]>;
+}
+
+/** Writes the recorder into `root` and puts it in front of an adapter command. */
+export async function recordAdapter(
+  root: string,
+  command: readonly string[],
+): Promise<RecordedAdapter> {
   const requestsDir = path.join(root, REQUESTS_DIR);
   await mkdir(requestsDir);
+  await writeFile(path.join(root, RECORDER_FILE), RECORDER);
+  const sessions = (): Promise<AdapterSession[]> => readSessions(requestsDir);
+  return {
+    command: [process.execPath, path.join(root, RECORDER_FILE), requestsDir, ...command],
+    sessions,
+    generateRequests: async () => (await sessions()).flatMap(generateRequestsOf),
+  };
+}
+
+export async function createProject(spec: ProjectSpec): Promise<Project> {
+  const root = await mkdtemp(path.join(tmpdir(), 'model-eval-e2e-'));
+  const recorder = await recordAdapter(root, [
+    process.execPath,
+    MOCK_ADAPTER,
+    scenarioFile(spec.scenario),
+  ]);
   await mkdir(path.join(root, 'rules'));
   await mkdir(path.join(root, 'cases'));
 
   const config: ConfigInput = {
     version: 1,
     adapter: {
-      command: [
-        process.execPath,
-        path.join(root, RECORDER_FILE),
-        requestsDir,
-        process.execPath,
-        MOCK_ADAPTER,
-        scenarioFile(spec.scenario),
-      ],
+      command: recorder.command,
       ...(spec.adapterTimeoutMs === undefined ? {} : { timeoutMs: spec.adapterTimeoutMs }),
+      ...(spec.mockState === true ? { env: { MOCK_STATE_DIR: root } } : {}),
     },
     variants: VARIANTS,
     pricing: PRICING,
     sampling: { repeats: 2 },
     ...spec.config,
   };
-  await writeFile(path.join(root, RECORDER_FILE), RECORDER);
   await writeFile(path.join(root, 'model-eval.config.yaml'), stringify(config));
   await writeFile(path.join(root, 'rules', 'rules.yaml'), stringify({ rules: spec.rules }));
   await writeFile(path.join(root, 'cases', 'cases.yaml'), stringify({ cases: spec.cases }));
 
-  const sessions = (): Promise<AdapterSession[]> => readSessions(requestsDir);
   return {
     root,
     outputDir: path.join(root, '.model-eval'),
     run: (args) => runCli(args, root),
-    sessions,
-    generateRequests: async () => (await sessions()).flatMap(generateRequestsOf),
+    sessions: recorder.sessions,
+    generateRequests: recorder.generateRequests,
     dispose: () => rm(root, { recursive: true, force: true }),
   };
 }

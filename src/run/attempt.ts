@@ -1,4 +1,4 @@
-import type { CallOutcome } from '../adapter/client.js';
+import type { GenerateOutcome, LateResponse } from '../adapter/client.js';
 import type { CallRecord, GenerateResult, Usage } from '../adapter/protocol.js';
 import { hasConfigCall } from '../grade/outcome.js';
 import { attemptCharge, type AttemptReport, type Charge, type ChargeContext } from './cost.js';
@@ -19,7 +19,7 @@ export interface RecordedAttempt {
   readonly charge: Charge;
 }
 
-interface CostFields {
+export interface CostFields {
   readonly usage?: Usage | undefined;
   readonly calls?: readonly CallRecord[] | undefined;
 }
@@ -100,7 +100,7 @@ function adapterError(
   return { ...base, status: 'error', error, ...chargeFields(charge), ...costFields(cost) };
 }
 
-function reportOf(outcome: CallOutcome<GenerateResult>): AttemptReport {
+function reportOf(outcome: GenerateOutcome): AttemptReport {
   switch (outcome.kind) {
     case 'result':
       return { answered: true, usage: outcome.value.usage, calls: outcome.value.calls };
@@ -109,22 +109,38 @@ function reportOf(outcome: CallOutcome<GenerateResult>): AttemptReport {
     case 'invalid':
       return { answered: true };
     case 'lost':
+    case 'timed-out':
       return { answered: false };
+    case 'refused':
+      // Nothing reached an adapter, so no model was called.
+      return { answered: true, calls: [] };
   }
+}
+
+/** What a late response reports about cost; none when it has neither `usage` nor `calls`. */
+export function lateCosts(response: LateResponse): CostFields | undefined {
+  const report = reportOf(response);
+  return report.answered && (report.usage !== undefined || report.calls !== undefined)
+    ? report
+    : undefined;
 }
 
 /**
  * Results and failure results keep what the adapter reported; JSON-RPC errors and broken
- * results are adapter errors; a request whose process died is abandoned with `restart` and
- * charged its reservation.
+ * results are adapter errors; a request without an answer within the time limit is abandoned
+ * with `timeout`, one whose process was lost with `restart`, both charged their reservation. A
+ * request that reached no adapter is `stopped` at no cost, so a resume sends it.
  */
 export function recordAttempt(
   base: AttemptBase,
-  outcome: CallOutcome<GenerateResult>,
+  outcome: GenerateOutcome,
   context: ChargeContext,
 ): RecordedAttempt {
   const charge = attemptCharge(reportOf(outcome), context);
   switch (outcome.kind) {
+    case 'refused':
+      // An empty `calls` records that no model was called, so it counts no billed call.
+      return { line: { ...base, status: 'stopped', ...chargeFields(charge), calls: [] }, charge };
     case 'result':
       return { line: enforceConfig(resultLine(base, outcome.value, charge)), charge };
     case 'rpc-error': {
@@ -142,10 +158,15 @@ export function recordAttempt(
         charge,
       };
     case 'lost':
+    case 'timed-out':
       return {
         line: adapterError(
           base,
-          { kind: 'adapter', message: outcome.message, abandoned: 'restart' },
+          {
+            kind: 'adapter',
+            message: outcome.message,
+            abandoned: outcome.kind === 'lost' ? 'restart' : 'timeout',
+          },
           charge,
         ),
         charge,

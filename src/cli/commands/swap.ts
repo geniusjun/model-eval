@@ -13,11 +13,13 @@ import type { EnvelopeWarning } from '../results.js';
 import {
   adapterRelay,
   dryRunPlan,
+  faultRelay,
   plannedCells,
   refuse,
   RUN_OPTIONS,
   printAll,
   setUpRun,
+  showAdapterEnd,
   showStartWarnings,
   showTimings,
   variantOption,
@@ -74,6 +76,7 @@ async function swap(invocation: CommandInvocation, setup: RunSetup): Promise<Exi
     tool: setup.tool,
     lang,
     ...adapterRelay(invocation),
+    ...faultRelay(invocation, lang),
   });
   if (!prepared.ok) {
     const { variantId, failure } = prepared.failure;
@@ -142,6 +145,7 @@ async function swap(invocation: CommandInvocation, setup: RunSetup): Promise<Exi
       output.print(line.text);
     }
   }
+  showAdapterEnd(invocation, lang, [end.runs.baseline, end.runs.candidate]);
   showTimings(invocation, lang, { start: sending - started, run: Date.now() - sending });
   return exit;
 }

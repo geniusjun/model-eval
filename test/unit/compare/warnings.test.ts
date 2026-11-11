@@ -10,7 +10,7 @@ import type { Sha256 } from '../../../src/config/identifiers.js';
 import { reportConfigSchema } from '../../../src/config/schema.js';
 import { createRedactor } from '../../../src/report/redact.js';
 import { manifestSchema, type Manifest } from '../../../src/run/manifest.js';
-import type { AttemptLine } from '../../../src/run/records.js';
+import { trialLineSchema, type AttemptLine, type TrialLine } from '../../../src/run/records.js';
 import type { Warning } from '../../../src/run/warning.js';
 import manifestFixture from '../../fixtures/contracts/manifest.json' with { type: 'json' };
 import { errorLine, okLine } from '../grade/lines.js';
@@ -41,10 +41,12 @@ function runs(
   return {
     baseline: {
       manifest: manifests.baseline ?? manifest('current', 'model-a'),
+      lines: baseline,
       finished: baseline,
     },
     candidate: {
       manifest: manifests.candidate ?? manifest('next', 'model-b'),
+      lines: candidate,
       finished: candidate,
     },
   };
@@ -163,6 +165,101 @@ describe('manifest warnings', () => {
         code: 'unpriced-model',
         params: { models: ['model-y', 'model-z'] },
         variants: ['current', 'next'],
+      },
+    ]);
+  });
+});
+
+describe('adapter faults in the comparison', () => {
+  const abandoned = (caseId: string, cause: 'timeout' | 'restart') =>
+    errorLine('adapter', {
+      caseId,
+      error: { kind: 'adapter', message: 'no answer', abandoned: cause },
+    });
+  const late = (caseId: string, calls: readonly Record<string, unknown>[]): TrialLine =>
+    trialLineSchema.parse({
+      caseId,
+      repeat: 0,
+      attempt: 1,
+      segment: 1,
+      source: 'late',
+      costUsd: 0,
+      calls: [{ model: 'model-b', outcome: 'ok' }, ...calls],
+      costCorrection: true,
+    });
+  const failed = (errorKind: string, retryAfterMs?: number) => ({
+    model: 'model-b',
+    outcome: 'failed',
+    errorKind,
+    ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+  });
+
+  it('001 FR-008 abandoned-trials counts causes and, per kind, the time-outs whose late responses failed and their longest wait', () => {
+    const finished = [
+      abandoned('a', 'timeout'),
+      abandoned('b', 'timeout'),
+      abandoned('c', 'timeout'),
+      abandoned('d', 'restart'),
+      ok('e', 0),
+    ];
+    const lines = [
+      ...finished,
+      late('a', [failed('transient', 2000), failed('transient', 500)]),
+      late('b', [failed('transient'), failed('timeout')]),
+      late('c', []),
+    ];
+    const candidate = { manifest: manifest('next', 'model-b'), lines, finished };
+    const warnings = comparisonWarnings(
+      { baseline: runs([], []).baseline, candidate },
+      REPORT,
+    ).filter((warning) => warning.code === 'abandoned-trials');
+    expect(warnings).toEqual([
+      {
+        code: 'abandoned-trials',
+        params: {
+          trials: { next: { timeout: 3, restart: 1 } },
+          timeoutMs: { next: candidate.manifest.limits.timeoutMs },
+          lateFailures: {
+            next: {
+              transient: { trials: 2, maxRetryAfterMs: 2000 },
+              timeout: { trials: 1, maxRetryAfterMs: null },
+            },
+          },
+        },
+        variants: ['next'],
+      },
+    ]);
+  });
+
+  it('001 FR-008 adapter-warnings counts each trial once per sentence over all its attempts', () => {
+    const sentence = 'the raw call was not captured';
+    const transient = errorLine('transient', { caseId: 'a', warnings: [sentence] });
+    const finished = [
+      ok('a', 0, { attempt: 2 }),
+      ok('b', 0, { warnings: [sentence, sentence, 'other'] }),
+      ok('c', 0),
+    ];
+    const candidate = {
+      manifest: manifest('next', 'model-b'),
+      lines: [transient, ...finished],
+      finished,
+    };
+    const warnings = comparisonWarnings(
+      { baseline: runs([], []).baseline, candidate },
+      REPORT,
+    ).filter((warning) => warning.code === 'adapter-warnings');
+    expect(warnings).toEqual([
+      {
+        code: 'adapter-warnings',
+        params: { sentence: 'other', trials: { next: 1 } },
+        variants: ['next'],
+        caseIds: ['b'],
+      },
+      {
+        code: 'adapter-warnings',
+        params: { sentence, trials: { next: 2 } },
+        variants: ['next'],
+        caseIds: ['a', 'b'],
       },
     ]);
   });

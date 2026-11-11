@@ -1,4 +1,10 @@
-import type { AdapterClient, ShutdownOutcome } from '../adapter/client.js';
+import type {
+  AdapterClient,
+  AdapterFault,
+  LateResponse,
+  ShutdownOutcome,
+} from '../adapter/client.js';
+import type { AdapterLog, LogGroup, StderrTail } from '../adapter/logs.js';
 import type { CallRecord, CallsParams, Usage } from '../adapter/protocol.js';
 import type { Sha256 } from '../config/identifiers.js';
 import type { Config, Rule } from '../config/schema.js';
@@ -15,6 +21,7 @@ import {
   attemptReservation,
   costProfiles,
   initialReservationState,
+  lateCostLineUsd,
   observeAttempt,
   pricingWarnings,
   reservationTokens,
@@ -31,9 +38,9 @@ import type { HeldLock } from './lock.js';
 import type { Manifest, RunStatus, StopReason } from './manifest.js';
 import type { VariantProgress } from './order.js';
 import type { AttemptLine, CostLine, SendLine, TrialLine } from './records.js';
-import { recordAttempt } from './attempt.js';
+import { lateCosts, recordAttempt } from './attempt.js';
 import type { RunCaseSpec } from './run-cases.js';
-import { exceedsTransientRate, type StopSignal } from './stopping.js';
+import { exceedsAdapterErrorRate, exceedsTransientRate, type StopSignal } from './stopping.js';
 import { addUsages, runTotals } from './totals.js';
 import type { TrialBook } from './trial-book.js';
 import type { Warning } from './warning.js';
@@ -47,6 +54,20 @@ export type ProjectionTrigger =
   | { readonly trigger: 'first-batch' }
   | { readonly trigger: 'repeat-round'; readonly repeat: number };
 
+/** A fault that stops the run: the loss limit, or a new process that failed or changed. */
+export type StoppingFault = Extract<
+  AdapterFault,
+  { readonly kind: 'crashed' | 'restart-failed' | 'restart-changed' }
+>;
+
+/** Why this run's adapter stopped the run, for the failure report. */
+export interface AdapterFailure {
+  /** Absent when the adapter error rate stopped the run. */
+  readonly fault?: StoppingFault;
+  /** The last lines of adapter stderr, as written. */
+  readonly stderrTail: readonly string[];
+}
+
 export interface RunEnd {
   readonly runId: string;
   readonly runDir: string;
@@ -57,6 +78,10 @@ export interface RunEnd {
   /** Every line written to `trials.jsonl`, in file order. */
   readonly lines: readonly TrialLine[];
   readonly gradeSet: GradeSet;
+  /** `warn` and `error` logs of the adapter, grouped by redacted message. */
+  readonly adapterLogs: readonly LogGroup[];
+  /** Present when this run's adapter raised the stop. */
+  readonly adapterFailure?: AdapterFailure;
 }
 
 export interface ActiveRunSetup {
@@ -79,6 +104,12 @@ export interface ActiveRunSetup {
   readonly rulesHash: Sha256;
   readonly checkerVersion: string;
   readonly now: () => Date;
+  /** Receives the adapter's `log` notifications; opened in the run directory. */
+  readonly adapterLog: AdapterLog;
+  readonly stderr: StderrTail;
+  /** The paths the config's globs match when called, for the `toolPaths` of a restarted adapter. */
+  readonly matchedToolPaths: () => Promise<readonly string[]>;
+  readonly onAdapterFault?: (fault: AdapterFault) => void;
 }
 
 interface AttemptRecord {
@@ -110,11 +141,16 @@ export class ActiveRun {
   private manifest: Manifest;
   private writtenWarnings: readonly Warning[];
   private manifestWrites: Promise<void> = Promise.resolve();
-  /** The first failed write; `finish` reports it, since later lines may be missing. */
+  /**
+   * The first failed write or late response that could not be recorded; `finish` reports it,
+   * since later lines may be missing.
+   */
   private writeError: Error | undefined;
   private firstBatchReported = false;
   private roundsReported = 0;
   private readonly startedAt: Date;
+  /** Set when this run's adapter raised the stop. */
+  private adapterStop: { readonly fault?: StoppingFault } | undefined;
 
   constructor(private readonly setup: ActiveRunSetup) {
     this.runId = setup.runId;
@@ -136,6 +172,12 @@ export class ActiveRun {
       },
       unkeyed: (params) => {
         this.unkeyedCostLine(params);
+      },
+    });
+    setup.client.supervise({
+      toolPaths: () => this.restartToolPaths(),
+      onFault: (fault) => {
+        this.onAdapterFault(fault);
       },
     });
   }
@@ -217,6 +259,14 @@ export class ActiveRun {
             requestId = id;
             this.setup.router.bind(id, { key, attempt });
           },
+          // The attempt line is written as soon as the time limit passes, so it precedes this.
+          onLate: (response) => {
+            try {
+              this.lateLine({ key, attempt }, response);
+            } catch (error) {
+              this.writeError ??= error instanceof Error ? error : new Error(String(error));
+            }
+          },
         },
       )
       .then((outcome) => {
@@ -286,6 +336,7 @@ export class ActiveRun {
     const { setup } = this;
     try {
       await setup.log.close();
+      await setup.adapterLog.close();
       if (this.writeError !== undefined) {
         throw this.writeError;
       }
@@ -326,6 +377,8 @@ export class ActiveRun {
         gradeSetId: gradeSet.header.gradeSetId,
         lines: [...this.lines],
         gradeSet,
+        adapterLogs: setup.adapterLog.groups(),
+        ...this.adapterFailure(stopReason),
       };
     } finally {
       await setup.lock.release();
@@ -403,15 +456,119 @@ export class ActiveRun {
     if (classifyTrial(line) === 'config') {
       this.setup.stop.raise('config-error');
     }
-    if (
-      exceedsTransientRate(
-        this.setup.book.finishedIn(SEGMENT),
-        this.setup.config.run.maxTransientRate,
-      )
-    ) {
+    const finished = this.setup.book.finishedIn(SEGMENT);
+    if (exceedsTransientRate(finished, this.setup.config.run.maxTransientRate)) {
       this.setup.stop.raise('transient-errors');
     }
+    if (exceedsAdapterErrorRate(finished, this.setup.config.run.maxAdapterErrorRate)) {
+      this.stopForAdapter('adapter-errors');
+    }
     this.rewriteOnNewWarning();
+  }
+
+  /**
+   * A late response to an abandoned attempt is never graded: it only corrects the attempt's
+   * cost to the larger of its cost and the reservation, and stops the run like a `calls`
+   * notification (adapter-protocol §Time Limits and Recovery).
+   */
+  private lateLine(trial: RequestTrial, response: LateResponse): void {
+    // A `config` failure result stops the run even without calls (data-model §Stopping).
+    if (
+      response.kind === 'result' &&
+      'error' in response.value &&
+      response.value.error.kind === 'config'
+    ) {
+      this.setup.stop.raise('config-error');
+    }
+    const costs = lateCosts(response);
+    if (costs === undefined) {
+      return;
+    }
+    const id = this.attemptId(trial.key, trial.attempt);
+    const record = this.attempts.get(id);
+    const context = this.sendContexts.get(id);
+    if (record === undefined || context === undefined) {
+      throw new RangeError(`no abandoned attempt ${id} in this run`);
+    }
+    const charge = attemptCharge({ answered: true, ...costs }, context);
+    const reservedUsd = record.line.costUsd;
+    const usage = costs.calls === undefined ? costs.usage : callsUsage(costs.calls);
+    const line: KeyedCostLine = {
+      caseId: trial.key.caseId,
+      repeat: trial.key.repeat,
+      attempt: trial.attempt,
+      segment: SEGMENT,
+      source: 'late',
+      costUsd: reservedUsd === null ? null : lateCostLineUsd(charge, reservedUsd),
+      ...(charge.estimated ? { costEstimated: true } : {}),
+      ...(usage === undefined ? {} : { usage }),
+      ...(costs.calls === undefined ? {} : { calls: [...costs.calls] }),
+      costCorrection: true,
+    };
+    this.appendLater(line);
+    record.costLines.push(line);
+    const { lang } = this.spec(trial.key.caseId);
+    this.reservation = observeAttempt(this.reservation, lang, record.line, record.costLines);
+    this.chargeLine(line, charge, costs.calls ?? []);
+  }
+
+  private onAdapterFault(fault: AdapterFault): void {
+    this.setup.onAdapterFault?.(fault);
+    switch (fault.kind) {
+      case 'restarting':
+        return;
+      case 'restarted':
+        this.recordToolPaths(fault.toolPaths);
+        return;
+      case 'crashed':
+        this.stopForAdapter('adapter-errors', fault);
+        return;
+      case 'restart-failed':
+      case 'restart-changed':
+        // One run would mix trials of two code versions (adapter-protocol §Time Limits).
+        this.stopForAdapter('config-error', fault);
+    }
+  }
+
+  /**
+   * The failure report of a run its adapter stopped: by adapter errors (the error rate or the
+   * loss limit) or by a restart that failed to start, which is a start failure. Other stops,
+   * a changed restarted adapter among them, get none (adapter-protocol §Transport 3).
+   */
+  private adapterFailure(stopReason: StopReason | undefined): {
+    adapterFailure?: AdapterFailure;
+  } {
+    const stop = this.adapterStop;
+    const attached =
+      stop !== undefined &&
+      (stopReason === 'adapter-errors' ||
+        (stopReason === 'config-error' && stop.fault?.kind === 'restart-failed'));
+    return attached ? { adapterFailure: { ...stop, stderrTail: this.setup.stderr.lines() } } : {};
+  }
+
+  private stopForAdapter(reason: StopReason, fault?: StoppingFault): void {
+    this.setup.stop.raise(reason);
+    if (fault !== undefined || this.adapterStop === undefined) {
+      this.adapterStop = fault === undefined ? {} : { fault };
+    }
+  }
+
+  /** The paths every earlier start of this run was sent, and those the globs match again. */
+  private async restartToolPaths(): Promise<readonly string[]> {
+    const sent = this.manifest.segments.find((segment) => segment.segment === SEGMENT);
+    return [...new Set([...(sent?.toolPaths ?? []), ...(await this.setup.matchedToolPaths())])];
+  }
+
+  private recordToolPaths(toolPaths: readonly string[]): void {
+    this.manifest = {
+      ...this.manifest,
+      segments: this.manifest.segments.map((segment) =>
+        segment.segment === SEGMENT ? { ...segment, toolPaths: [...toolPaths] } : segment,
+      ),
+    };
+    this.writeManifest().catch((error: unknown) => {
+      this.writeError ??= error instanceof Error ? error : new Error(String(error));
+    });
   }
 
   private costLine(trial: RequestTrial, calls: readonly CallRecord[]): void {
@@ -495,7 +652,10 @@ export class ActiveRun {
     const finished = finishedTrials(this.lines, this.retries, new Set(this.specs.keys()));
     return [
       ...this.setup.manifest.warnings,
-      ...trialWarnings({ manifest: this.manifest, finished }, this.setup.config.report),
+      ...trialWarnings(
+        { manifest: this.manifest, lines: this.lines, finished },
+        this.setup.config.report,
+      ),
       ...(overrun === undefined ? [] : [overrun]),
       ...this.pricingWarnings(),
     ];

@@ -1,3 +1,4 @@
+import type { AdapterFault } from '../adapter/client.js';
 import type { LogParams } from '../adapter/protocol.js';
 import { buildComparison, type CurrentCase } from '../compare/comparison.js';
 import { finishedTrials } from '../compare/finished.js';
@@ -51,6 +52,7 @@ export interface SwapRequest {
   readonly random?: RandomSource;
   readonly onLog?: (params: LogParams) => void;
   readonly onStderr?: (line: string) => void;
+  readonly onAdapterFault?: (variantId: string, fault: AdapterFault) => void;
 }
 
 /** A start failure with the variant whose run it stopped. */
@@ -183,6 +185,7 @@ export async function prepareSwap(request: SwapRequest): Promise<PrepareSwapResu
     ...(request.random === undefined ? {} : { random: request.random }),
     ...(request.onLog === undefined ? {} : { onLog: request.onLog }),
     ...(request.onStderr === undefined ? {} : { onStderr: request.onStderr }),
+    ...(request.onAdapterFault === undefined ? {} : { onAdapterFault: request.onAdapterFault }),
   });
   const variants: PerRole<Variant> = { baseline: request.baseline, candidate: request.candidate };
   const prepared = await bothOrNeither(

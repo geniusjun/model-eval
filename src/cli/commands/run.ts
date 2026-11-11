@@ -7,11 +7,13 @@ import type { EnvelopeWarning } from '../results.js';
 import {
   adapterRelay,
   dryRunPlan,
+  faultRelay,
   plannedCells,
   printAll,
   refuse,
   RUN_OPTIONS,
   setUpRun,
+  showAdapterEnd,
   showStartWarnings,
   showTimings,
   variantOption,
@@ -37,6 +39,7 @@ async function run(invocation: CommandInvocation, setup: RunSetup): Promise<Exit
     maxCostUsd: settings.maxCostUsd,
     tool: setup.tool,
     ...adapterRelay(invocation),
+    ...faultRelay(invocation, lang),
   });
   if (!prepared.ok) {
     return refuse(invocation, 'run', startFailureLines(lang, variant.id, prepared.failure));
@@ -83,6 +86,7 @@ async function run(invocation: CommandInvocation, setup: RunSetup): Promise<Exit
     [...startWarnings, ...end.manifest.warnings],
   );
   printAll(invocation, runLines(lang, { end, ...costs, warnings: end.manifest.warnings }));
+  showAdapterEnd(invocation, lang, [end]);
   showTimings(invocation, lang, { start: sending - started, run: Date.now() - sending });
   return exit;
 }

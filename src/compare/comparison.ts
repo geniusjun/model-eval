@@ -330,7 +330,11 @@ export async function buildComparison(input: ComparisonInput): Promise<Compariso
   // Each source raises its own codes; groupWarnings merges them across sources.
   const warningSources: readonly (readonly Warning[])[] = [
     comparisonWarnings(
-      byRole((role) => ({ manifest: manifests[role], finished: finished[role] })),
+      byRole((role) => ({
+        manifest: manifests[role],
+        lines: runs[role].lines,
+        finished: finished[role],
+      })),
       config.report,
     ),
     opsReview.warnings,

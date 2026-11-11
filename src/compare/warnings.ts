@@ -1,22 +1,32 @@
 import { canonicalJson, compareCodeUnits } from '../adapter/canonical-json.js';
+import { modelErrorKindSchema, type ModelErrorKind } from '../adapter/protocol.js';
 import type { ReportConfig } from '../config/schema.js';
 import { isRecord } from '../report/code-text.js';
 import type { Redactor } from '../report/redact.js';
 import type { Gate } from '../report/schema.js';
+import { indexTrialLines, type KeyLines } from '../run/cost.js';
+import { trialKeyId } from '../run/ids.js';
 import type { Manifest } from '../run/manifest.js';
-import type { AttemptLine } from '../run/records.js';
+import type { AttemptLine, TrialLine } from '../run/records.js';
 import { warningSchema, type Warning, type WarningCode } from '../run/warning.js';
 import type { PerRole } from '../stats/interval.js';
 import { byCase } from './finished.js';
-import { outcomeShare } from './ops.js';
+import { abandonedCounts, outcomeShare } from './ops.js';
 
 // data-model §Warnings: what a comparison re-raises from both runs and how it groups warnings.
 
 export interface WarningRun {
   readonly manifest: Manifest;
+  /** Every complete line of the run's `trials.jsonl`. */
+  readonly lines: readonly TrialLine[];
   /** The run's finished effective lines on common cases (`finishedTrials`). */
   readonly finished: readonly AttemptLine[];
 }
+
+type KeyIndex = ReadonlyMap<string, KeyLines>;
+type LateFailures = Partial<
+  Record<ModelErrorKind, { trials: number; maxRetryAfterMs: number | null }>
+>;
 
 /** Manifest warnings a comparison copies under their run's variant. */
 const COPIED_CODES: ReadonlySet<WarningCode> = new Set([
@@ -103,13 +113,100 @@ function renderMismatch(run: WarningRun): Warning[] {
       ];
 }
 
+/** The longer of two waits; `null` and `undefined` are no wait. */
+function longerWait(a: number | null, b: number | null | undefined): number | null {
+  return b === null || b === undefined ? a : Math.max(a ?? b, b);
+}
+
+/**
+ * Per kind, the abandoned trials whose late responses hold failed calls of that kind, and their
+ * longest `retryAfterMs`. Every call counts, since after `cancel` a successful SDK retry can
+ * follow the failure that made the service wait.
+ */
+function lateFailures(abandoned: readonly AttemptLine[], keys: KeyIndex): LateFailures {
+  const kinds = new Map<ModelErrorKind, { trials: number; maxRetryAfterMs: number | null }>();
+  for (const line of abandoned) {
+    const trialKinds = new Map<ModelErrorKind, number | null>();
+    const late = (keys.get(trialKeyId(line))?.costLines ?? []).filter(
+      (cost) => cost.source === 'late' && cost.attempt === line.attempt,
+    );
+    for (const call of late.flatMap((cost) => cost.calls ?? [])) {
+      if (call.outcome !== 'ok' && call.errorKind !== undefined) {
+        const longest = trialKinds.get(call.errorKind) ?? null;
+        trialKinds.set(call.errorKind, longerWait(longest, call.retryAfterMs));
+      }
+    }
+    for (const [kind, retryAfterMs] of trialKinds) {
+      const entry = kinds.get(kind) ?? { trials: 0, maxRetryAfterMs: null };
+      kinds.set(kind, {
+        trials: entry.trials + 1,
+        maxRetryAfterMs: longerWait(entry.maxRetryAfterMs, retryAfterMs),
+      });
+    }
+  }
+  return Object.fromEntries(
+    modelErrorKindSchema.options.flatMap((kind) => {
+      const entry = kinds.get(kind);
+      return entry === undefined ? [] : [[kind, entry]];
+    }),
+  );
+}
+
+/** Trials abandoned without an answer, per cause, with the late failures of time-outs. */
+function abandonedTrials(run: WarningRun, keys: KeyIndex): Warning[] {
+  const abandoned = run.finished.filter(
+    (line) => line.status === 'error' && line.error.abandoned !== undefined,
+  );
+  if (abandoned.length === 0) {
+    return [];
+  }
+  const timedOut = abandoned.filter(
+    (line) => line.status === 'error' && line.error.abandoned === 'timeout',
+  );
+  const id = run.manifest.variant.id;
+  return [
+    {
+      code: 'abandoned-trials',
+      params: {
+        trials: { [id]: abandonedCounts(abandoned) },
+        timeoutMs: { [id]: run.manifest.limits.timeoutMs },
+        lateFailures: { [id]: lateFailures(timedOut, keys) },
+      },
+      variants: [id],
+    },
+  ];
+}
+
+/** One warning per sentence the adapter attached to any attempt of a finished trial. */
+function adapterWarnings(run: WarningRun, keys: KeyIndex): Warning[] {
+  const trials = new Map<string, AttemptLine[]>();
+  for (const line of run.finished) {
+    const attempts = keys.get(trialKeyId(line))?.attempts ?? [line];
+    for (const sentence of new Set(attempts.flatMap((attempt) => attempt.warnings ?? []))) {
+      trials.set(sentence, [...(trials.get(sentence) ?? []), line]);
+    }
+  }
+  const id = run.manifest.variant.id;
+  return [...trials]
+    .sort(([a], [b]) => compareCodeUnits(a, b))
+    .map(([sentence, lines]) => ({
+      code: 'adapter-warnings',
+      params: { sentence, trials: { [id]: lines.length } },
+      variants: [id],
+      caseIds: sortedUnique(lines.map((line) => line.caseId)),
+    }));
+}
+
 /** The run's trial-based warnings, counted on the given finished lines as the run raises them. */
 export function trialWarnings(run: WarningRun, report: ReportConfig): Warning[] {
+  const { keys } = indexTrialLines(run.lines);
   return [
     ...transientRate(run, report.warn.transientRate),
     ...identicalRepeats(run),
     ...responseModelChanged(run),
     ...renderMismatch(run),
+    ...abandonedTrials(run, keys),
+    ...adapterWarnings(run, keys),
   ];
 }
 

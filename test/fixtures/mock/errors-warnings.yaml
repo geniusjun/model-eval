@@ -1,0 +1,22 @@
+# The candidate answers greet-ja-1 after the tool's time limit and warns on every result; the
+# adapter of both variants declares no post-processing, so the shipped text is the raw answer.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, postprocess: false, maxConcurrency: 4 }
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  current:
+    answer: { '*': "answer to {caseId}" }
+    usage: { input: 40, output: 18 }
+    calls: true
+  next:
+    answer: { '*': "answer to {caseId}" }
+    usage: { input: 40, output: 18 }
+    calls: true
+    warnings:
+      - { text: "the call that produced raw was not captured, so its cost may be counted twice", probability: 1 }
+    outcomes:
+      - { row: late, probability: 1, caseIds: [greet-ja-1], delayMs: 3000 }

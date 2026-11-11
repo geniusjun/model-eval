@@ -9,6 +9,7 @@ import {
   capabilitiesSchema,
   helperSchema,
   PROTOCOL_VERSION,
+  rpcErrorDataSchema,
   serviceSchema,
   usageSchema,
   type CallRecord,
@@ -44,6 +45,16 @@ export const OUTCOME_ROWS = [
 
 export type OutcomeRow = (typeof OUTCOME_ROWS)[number];
 
+/**
+ * Adapter faults of adapter-protocol §Time Limits and Recovery: `hang` never answers (until a
+ * declared `cancel`), `late` answers after `delayMs`, `crash` exits, `noise` writes a non-protocol
+ * line on stdout, and `missing-fields` answers without `raw` and `finishReason`.
+ */
+export const FAULT_ROWS = ['hang', 'late', 'crash', 'noise', 'missing-fields'] as const;
+
+export type FaultRow = (typeof FAULT_ROWS)[number];
+export type ScenarioRow = OutcomeRow | FaultRow;
+
 const probability = z.number().min(0).max(1);
 const perLang = z.record(z.string().min(1), z.string());
 
@@ -67,12 +78,21 @@ const behaviourSchema = z.strictObject({
   outcomes: z
     .array(
       z.strictObject({
-        row: z.enum(OUTCOME_ROWS),
+        row: z.enum([...OUTCOME_ROWS, ...FAULT_ROWS]),
         probability,
+        /** The error message; for `noise`, the line written on stdout. */
         message: z.string().optional(),
         retryAfterMs: z.int().min(0).optional(),
         /** The row applies only to the first N `generate` requests of a trial key. */
         firstSends: z.int().min(1).optional(),
+        /** The row applies only to these cases. */
+        caseIds: z.array(z.string().min(1)).optional(),
+        /** `late`: how long after the request the answer comes. */
+        delayMs: z.int().min(0).optional(),
+        /** `late` and `hang`: the calls of the answer that comes late or after `cancel`. */
+        calls: z.array(callRecordSchema).optional(),
+        /** `adapter`: the `data` of the JSON-RPC error. */
+        data: rpcErrorDataSchema.optional(),
       }),
     )
     .default([]),
@@ -93,6 +113,12 @@ const behaviourSchema = z.strictObject({
   afterCalls: z.array(callRecordSchema).default([]),
   /** Waits this long after the response before sending `afterCalls`; `shutdown` waits for them. */
   afterCallsDelayMs: z.int().min(0).default(0),
+  /** Sentences attached to results as `warnings`, each drawn per trial. */
+  warnings: z.array(z.strictObject({ text: z.string().min(1), probability })).default([]),
+  /** `log` notifications sent at each `generate`; `{caseId}`, `{repeat}` and `{lang}` are filled in. */
+  logs: z.array(z.strictObject({ level: z.string().min(1), message: z.string() })).default([]),
+  /** A line written to stderr at each `generate`, filled in like `logs`. */
+  stderr: z.string().optional(),
 });
 
 export const scenarioSchema = z.strictObject({
@@ -105,6 +131,26 @@ export const scenarioSchema = z.strictObject({
     })
     .default({ name: 'mock', version: '0.0.0' }),
   service: serviceSchema.optional(),
+  /**
+   * What a restarted process declares instead of `adapter` and `service`. A process counts as
+   * restarted when `MOCK_STATE_DIR` is set and an earlier process of its variant started there.
+   */
+  restarted: z
+    .strictObject({
+      adapter: z
+        .strictObject({
+          name: z.string().min(1),
+          version: z.string().min(1),
+          helper: helperSchema.optional(),
+        })
+        .optional(),
+      service: serviceSchema.optional(),
+      /** `at-start` exits before answering `initialize`; `after-initialize` right after it. */
+      exit: z.enum(['at-start', 'after-initialize']).optional(),
+    })
+    .optional(),
+  /** A line written on stdout before anything else, which breaks the protocol at the start. */
+  startNoise: z.string().optional(),
   targets: z
     .array(
       z.strictObject({
@@ -179,11 +225,14 @@ export function delayFor(scenario: Scenario, variant: ProtocolVariant, seed: num
   return max > min ? min + Math.floor(draw(seed, 'delay') * (max - min + 1)) : min;
 }
 
-export function initializeResult(scenario: Scenario): InitializeResult {
+/** `restarted` is whether an earlier process of this variant started (`MOCK_STATE_DIR`). */
+export function initializeResult(scenario: Scenario, restarted = false): InitializeResult {
+  const adapter = (restarted ? scenario.restarted?.adapter : undefined) ?? scenario.adapter;
+  const service = (restarted ? scenario.restarted?.service : undefined) ?? scenario.service;
   return {
     protocolVersion: scenario.protocolVersion,
-    adapter: scenario.adapter,
-    ...(scenario.service === undefined ? {} : { service: scenario.service }),
+    adapter,
+    ...(service === undefined ? {} : { service }),
     targets: scenario.targets,
     capabilities: scenario.capabilities,
   };
@@ -210,19 +259,76 @@ export function renderCase(
   };
 }
 
+/** What the mock does with one `generate` request. */
+export type MockAction =
+  | { readonly kind: 'reply'; readonly reply: MockReply }
+  /** Answers `reply` after `delayMs`, or never without it; a declared `cancel` answers at once. */
+  | { readonly kind: 'late'; readonly reply: MockReply; readonly delayMs?: number }
+  /** A result without `raw` and `finishReason`, which breaks the protocol. */
+  | { readonly kind: 'broken'; readonly result: BrokenResult }
+  | { readonly kind: 'crash' }
+  | { readonly kind: 'noise'; readonly line: string };
+
+export interface BrokenResult {
+  readonly finalKind: 'model';
+  readonly final: string;
+  readonly latencyMs: number;
+}
+
 /** `sends` counts the `generate` requests of this trial key so far, this one included. */
-export function generateTrial(
+export function generateAction(
   scenario: Scenario,
   variant: ProtocolVariant,
   params: GenerateParams,
   sends = 1,
-): MockReply {
+): MockAction {
   const behaviour = behaviourFor(scenario, variant);
-  const outcome = pickOutcome(behaviour, params.seed, sends);
-
-  if (outcome.row === 'adapter') {
-    return { error: { code: -32603, message: outcome.message ?? 'mock adapter exception' } };
+  const outcome = pickOutcome(behaviour, params, sends);
+  switch (outcome.row) {
+    case 'crash':
+      return { kind: 'crash' };
+    case 'noise':
+      return { kind: 'noise', line: fill(outcome.message ?? 'debug: {caseId}', params) };
+    case 'hang':
+      return { kind: 'late', reply: lateReply(scenario, behaviour, variant, params, outcome) };
+    case 'late':
+      return {
+        kind: 'late',
+        reply: lateReply(scenario, behaviour, variant, params, outcome),
+        delayMs: outcome.delayMs ?? 0,
+      };
+    case 'missing-fields':
+      return {
+        kind: 'broken',
+        result: {
+          finalKind: 'model',
+          final: texts(behaviour, params).shipped,
+          latencyMs: behaviour.latencyMs,
+        },
+      };
+    default:
+      return { kind: 'reply', reply: tableReply(scenario, behaviour, variant, params, outcome) };
   }
+}
+
+/** The answer of a trial whose row is a row of data-model §Trial Outcomes. */
+function tableReply(
+  scenario: Scenario,
+  behaviour: Behaviour,
+  variant: ProtocolVariant,
+  params: GenerateParams,
+  outcome: ScenarioOutcome,
+): MockReply {
+  if (outcome.row === 'adapter') {
+    return {
+      error: {
+        code: -32603,
+        message: outcome.message ?? 'mock adapter exception',
+        ...(outcome.data === undefined ? {} : { data: outcome.data }),
+      },
+    };
+  }
+  const warnings = drawnWarnings(behaviour, params);
   const failureKind = FAILURE_KINDS[outcome.row];
   if (failureKind !== undefined) {
     const failure: FailureResult = {
@@ -246,6 +352,7 @@ export function generateTrial(
         ],
         behaviour.calls,
       ),
+      ...warnings,
     };
     return { result: failure };
   }
@@ -267,6 +374,7 @@ export function generateTrial(
     ...(modelSnapshot === undefined ? {} : { modelSnapshot }),
     ...(fingerprint === undefined ? {} : { fingerprint }),
     ...withCalls([answerCallRecord(behaviour, variant, modelSnapshot)], behaviour.calls),
+    ...warnings,
   };
   switch (outcome.row) {
     case 'discarded':
@@ -289,7 +397,28 @@ export function generateTrial(
   }
 }
 
-const FAILURE_KINDS: Partial<Record<OutcomeRow, ModelErrorKind>> = {
+/** The normal answer, with the row's `calls` when it gives them. */
+function lateReply(
+  scenario: Scenario,
+  behaviour: Behaviour,
+  variant: ProtocolVariant,
+  params: GenerateParams,
+  outcome: ScenarioOutcome,
+): MockReply {
+  const reply = tableReply(scenario, behaviour, variant, params, NORMAL);
+  return 'result' in reply && outcome.calls !== undefined
+    ? { result: { ...reply.result, calls: outcome.calls } }
+    : reply;
+}
+
+function drawnWarnings(behaviour: Behaviour, params: GenerateParams): { warnings?: string[] } {
+  const warnings = behaviour.warnings
+    .filter((warning, index) => draw(params.seed, `warning:${String(index)}`) < warning.probability)
+    .map((warning) => warning.text);
+  return warnings.length === 0 ? {} : { warnings };
+}
+
+const FAILURE_KINDS: Partial<Record<ScenarioRow, ModelErrorKind>> = {
   config: 'config',
   transient: 'transient',
   permanent: 'permanent',
@@ -300,11 +429,14 @@ type ScenarioOutcome = Behaviour['outcomes'][number];
 
 const NORMAL: ScenarioOutcome = { row: 'normal', probability: 1 };
 
-function pickOutcome(behaviour: Behaviour, seed: number, sends: number): ScenarioOutcome {
-  const u = draw(seed, 'outcome');
+function pickOutcome(behaviour: Behaviour, params: GenerateParams, sends: number): ScenarioOutcome {
+  const u = draw(params.seed, 'outcome');
   let cumulative = 0;
   for (const outcome of behaviour.outcomes) {
     if (outcome.firstSends !== undefined && sends > outcome.firstSends) {
+      continue;
+    }
+    if (outcome.caseIds !== undefined && !outcome.caseIds.includes(params.caseId)) {
       continue;
     }
     cumulative += outcome.probability;
@@ -373,7 +505,8 @@ function pick(
   return (lang === undefined ? undefined : values[lang]) ?? values['*'];
 }
 
-function fill(template: string, params: GenerateParams): string {
+/** Fills `{caseId}`, `{repeat}` and `{lang}` of a template with one request's values. */
+export function fill(template: string, params: GenerateParams): string {
   const fields: Readonly<Record<string, string>> = {
     caseId: params.caseId,
     repeat: String(params.repeat),
