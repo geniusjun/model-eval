@@ -28,9 +28,12 @@ jobs:
       - run: pnpm format:check
       - run: pnpm build
       - run: pnpm exec vitest run --project unit --project contract
-      - name: End-to-end tests against the mock adapter (SC-001)
+      - name: Example swap check against the mock adapter (SC-001)
         timeout-minutes: 3
-        run: pnpm exec vitest run --project e2e
+        run: pnpm exec vitest run --project e2e test/e2e/example-pogo.test.ts
+      - name: End-to-end tests against the mock adapter
+        timeout-minutes: 10
+        run: pnpm exec vitest run --project e2e --exclude test/e2e/example-pogo.test.ts
       - run: pnpm check:coverage
       - name: SC-003 simulation
         run: pnpm bench
