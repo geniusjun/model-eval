@@ -46,7 +46,7 @@ Result:
   - `dirty`: whether there are uncommitted changes.
   - `treeHash`: hash of the service file contents ([003 data-model §`treeHash`](../../003-adapter-helpers/data-model.md#treehash) defines how helpers compute it).
   - Resume and adapter restarts compare `treeHash` when present, otherwise `version` and `dirty`, so a new commit with identical content is the same service.
-- `adapter.helper` is present only when a helper is used; lint reports `helper-outdated` when it is older than the bundled helper.
+- `adapter.helper` is present only when a helper is used: `language` and `version`, the helper version in the form `MAJOR.MINOR.PATCH`. The tool bundles one helper version, that of the helpers shipped with its release, the same for every helper language. Lint compares `adapter.helper.version` with it and reports `helper-outdated` `{version, bundled}` when the reported version is older or not of that form ([data-model §Validation Rules](../data-model.md#validation-rules)).
 - `postprocess: false` means `final` always equals `raw`, and reports say so.
 - A capability left out is `false`, except `postprocess`, which is `true`. Without `maxConcurrency` the adapter sets no limit and `run.concurrency` alone applies.
 

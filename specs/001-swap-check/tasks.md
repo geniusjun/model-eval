@@ -232,7 +232,7 @@
 
 **Purpose**: Simulation, coverage enforcement, public API, docs, the parts that wait on features 002 and 003, and validation by people
 
-- [ ] T114 [P] Implement the SC-003 simulation in `bench/random.ts` (seeded generator) and `bench/sc003.ts`: the scenarios and grid of [research §Design-time validation](research.md#design-time-validation-sc-003) run through `src/stats`, 1,000 families for item (d), print the tables and exit non-zero when an item misses its target; add the `bench` script (`tsx bench/sc003.ts`) to `package.json` (SC-003)
+- [ ] T114 [P] Implement the SC-003 simulation in `bench/random.ts` (seeded generator) and `bench/sc003.ts`: the scenarios and grid of [research §Design-time validation](research.md#design-time-validation-sc-003) run through `src/stats`, with item (a) over true baselines 0.5 to 0.99 run as the gate procedure per comparison (the default `report.lowBaseline` applied to observed baseline rates, G = the cells left) alongside 5 cells gated whatever their baseline, 1,000 families for items (a) and (d), print the tables and exit non-zero when an item misses its target; add the `bench` script (`tsx bench/sc003.ts`) to `package.json` (SC-003)
 - [ ] T115 [P] Measure tool overhead per trial against the mock adapter in `bench/overhead.ts` and report it next to the 5 ms goal (plan §Technical Context)
 - [ ] T116 [P] Implement `scripts/check-spec-coverage.ts`: read the FR and SC IDs of each feature whose status is `In Progress` or `Implemented`, find test names carrying `NNN FR-###`, and fail with the FR IDs that no test name carries (SC IDs are not enforced); its test in `test/unit/check-spec-coverage.test.ts` asserts that 001 is among the checked features; add the `check:coverage` script (`tsx scripts/check-spec-coverage.ts`) to `package.json` (constitution IX)
 - [ ] T117 Extend `.github/workflows/ci.yml` with `pnpm check:coverage`, `pnpm bench` for SC-003, publint and Are the Types Wrong on `pnpm pack`, and a 3-minute limit on the end-to-end step (SC-001, SC-003, constitution IX)
@@ -243,10 +243,11 @@
 - [ ] T122 [P] Write `README.md`: what the tool checks, install, the example swap check, links to docs and schemas, exit codes (SC-006)
 - [ ] T123 Write `init --adapter` tests in `test/e2e/init-adapter.test.ts`, once feature 003 ships its helpers: `--adapter python` and `--adapter node` create the skeleton, Python also gets the helper file next to it, `lint` passes on each generated skeleton (acceptance scenario 2 of User Story 3), and an older copied helper gives `helper-outdated` (FR-033, FR-035)
 - [ ] T124 Implement `--adapter python` and `--adapter node` in `src/cli/commands/init.ts` with skeletons in `src/cli/templates/` that use the feature 003 helper, copying `adapters/python/model_eval_adapter.py` for Python (FR-033)
-- [ ] T125 [P] Implement `helper-outdated` from `initialize` `adapter.helper` against the bundled helper version in `src/lint/helper-version.ts` (FR-035)
+- [ ] T125 [P] Implement `helper-outdated` in `src/lint/helper-version.ts`: compare `initialize` `adapter.helper.version` with the bundled helper version constant per [data-model §Validation Rules](data-model.md#validation-rules) (older or not comparable reports `{version, bundled}`); tests carrying `001 FR-035`: the comparison in `test/unit/lint/helper-version.test.ts` (older, equal, newer, not comparable, no `adapter.helper`) and `lint` against the mock adapter whose scenario reports an older helper in `test/e2e/lint.test.ts`, with no feature 003 files (FR-035)
 - [ ] T126 Connect the result page template `dist/viewer/report.html`, once feature 002 builds it, to `src/report/write.ts` and `src/cli/commands/report.ts`, so `compare`, `swap` and `report` also write `report.html` and the output `index.html`; run `test/e2e/example-pogo.test.ts` on real output (FR-031, plan §Delivery step 3)
 - [ ] T127 (manual, not for agents) Have a person new to the repository follow `specs/001-swap-check/quickstart.md` alone from a fresh clone, and record the time to the example comparison in `specs/001-swap-check/checklists/validation.md` (SC-006)
 - [ ] T128 (manual, needs real keys, not for agents) Validate against a real service outside this repository per [plan §Validation Against a Real Service](plan.md#validation-against-a-real-service), read the SC-004, SC-005 and SC-007 figures from the manifests' `estimate`, `totals` and `costProfile`, and record the figures only, without service names, prompts or case data (constitution V), in `specs/001-swap-check/checklists/validation.md` (SC-004, SC-005, SC-007)
+- [ ] T129 Implement the upper bound of cells with fewer than 10 cases per [data-model §Statistics](data-model.md#statistics): a deterministic Student t quantile in `src/stats/quantile.ts`, s_U and deff_U in `src/stats/interval.ts` for U only, the same t on the regression side of `src/stats/needed.ts`, one shared few-cases constant used by `src/stats/` and `src/lint/sample-plan.ts`, and the `few-cases` text in `src/messages/` per [data-model §Validation Rules](data-model.md#validation-rules); tests in `test/unit/stats/` carry `001 SC-003` and the FR they cover: t quantiles (t_{2, 0.995} = 9.925, t_{4, 0.995} = 4.604, t_{8, 0.995} = 3.355, t_{2, 0.975} = 4.303), U with gated α/G and ungated α at K = 3, 9 and 10, L and `deff` equal with and without s_U, trials needed with K < 10 (FR-021, FR-022, FR-024, FR-006, SC-003)
 
 ---
 
@@ -260,7 +261,7 @@
 - **User Story 2 (Phase 4)**: Depends on Foundational and on T071 (sample plan) of User Story 1.
 - **User Story 3 (Phase 5)**: Depends on User Story 1 (client, runner, warnings and report it extends) and on User Story 2's lint command for T091 and T092.
 - **User Story 4 (Phase 6)**: Depends on User Story 1 (runs to resume, grade and compare, and the lock of T066).
-- **Polish (Phase 7)**: Depends on the user stories it touches. T123 to T125 depend on feature 003's helpers. T126 depends on feature 002's built template. T127 depends on T122 and T126. T128 depends on T123 to T125.
+- **Polish (Phase 7)**: Depends on the user stories it touches. T123 and T124 depend on feature 003's helpers. T114's item (a) depends on T129. T126 depends on feature 002's built template. T127 depends on T122 and T126. T128 depends on T123 to T125.
 
 ### User Story Dependencies
 
@@ -352,7 +353,7 @@ Every FR and SC of [spec.md](spec.md) and the tasks that serve it. Test tasks ar
 | FR-003 | T078, T083 |
 | FR-004 | T080, T085, T087, T120 |
 | FR-005 | T079, T084 |
-| FR-006 | T038, T071, T075, T080, T086 |
+| FR-006 | T038, T071, T075, T080, T086, T129 |
 | FR-007 | T012, T015, T027, T028, T042, T067, T068, T088 |
 | FR-008 | T088, T089, T090, T093, T094, T095, T096, T097 |
 | FR-009 | T030, T032, T035, T041, T047, T054, T064, T068, T069, T090 |
@@ -367,10 +368,10 @@ Every FR and SC of [spec.md](spec.md) and the tasks that serve it. Test tasks ar
 | FR-018 | T030, T037, T041, T047, T048, T049, T069 |
 | FR-019 | T103, T112, T118 |
 | FR-020 | T033, T046, T057 |
-| FR-021 | T020, T031, T032, T039, T050, T051, T054, T059 |
-| FR-022 | T020, T031, T039, T052, T120 |
+| FR-021 | T020, T031, T032, T039, T050, T051, T054, T059, T129 |
+| FR-022 | T020, T031, T039, T052, T120, T129 |
 | FR-023 | T032, T055, T058 |
-| FR-024 | T031, T039, T053, T059 |
+| FR-024 | T031, T039, T053, T059, T129 |
 | FR-025 | T020, T023, T033, T039, T056, T059, T112 |
 | FR-026 | T033, T056 |
 | FR-027 | T059, T104, T111 |
@@ -384,7 +385,7 @@ Every FR and SC of [spec.md](spec.md) and the tasks that serve it. Test tasks ar
 | FR-035 | T123, T125 |
 | SC-001 | T006, T028, T092, T099, T117 |
 | SC-002 | T105 |
-| SC-003 | T114, T117 |
+| SC-003 | T114, T117, T129 |
 | SC-004 | T128 |
 | SC-005 | T034, T061, T128 |
 | SC-006 | T092, T099, T122, T127 |

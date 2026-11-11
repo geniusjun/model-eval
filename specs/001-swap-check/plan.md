@@ -119,11 +119,11 @@ Adapters run the service's own turn function against fake storage and let only t
 | `ajv` | Validating case inputs against the adapter's `inputSchema` | The schema arrives at run time as JSON Schema; a hand-written validator would not cover the standard |
 | `yaml` | Parsing with line and column positions | A position-aware YAML parser is not small enough to write |
 
-Built in or written in-house: argument parsing (`node:util` `parseArgs`), colour (`node:util` `styleText`), file globbing (`node:fs` `glob`), hashing (`node:crypto`), statistics and the normal quantile, the seeded random generator for the simulation, and Unicode script tests (`\p{Script=…}`, `\p{Extended_Pictographic}`). React is bundled into the result page template at build time and is not a runtime dependency of the package.
+Built in or written in-house: argument parsing (`node:util` `parseArgs`), colour (`node:util` `styleText`), file globbing (`node:fs` `glob`), hashing (`node:crypto`), statistics with the normal and Student t quantiles, the seeded random generator for the simulation, and Unicode script tests (`\p{Script=…}`, `\p{Extended_Pictographic}`). React is bundled into the result page template at build time and is not a runtime dependency of the package.
 
 ### D4. Statistics are closed-form
 
-Case-weighted compliance, Newcombe hybrid score interval with a Rao–Scott design effect, Bonferroni on the blocking upper bound only, regressions checked before sample-size verdicts, and a minimum trial count derived from the margin. Defaults are 5 repeats and margin 0.10, the smallest margin that meets SC-003 with 30 cases per language. See research R3.
+Case-weighted compliance, Newcombe hybrid score interval with a Rao–Scott design effect, Bonferroni on the blocking upper bound only, a Student t quantile on that bound for cells with fewer than 10 cases, regressions checked before sample-size verdicts, and a minimum trial count derived from the margin. Defaults are 5 repeats and margin 0.10, the smallest margin that meets SC-003 with 30 cases per language. See research R3.
 
 ### D5. A small standalone runner, not a plugin for an existing eval tool
 

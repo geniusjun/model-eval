@@ -299,6 +299,7 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 - Rates are counted independently of the outcome table, and one trial can fall in several: discard = `discarded`, fallback = `fallback`, empty answer = `ok` trials with an empty raw answer and `answers` ≥ 1, regeneration = `ok` trials with `answers` ≥ 2.
 - Metric warnings compare point estimates with thresholds; they never change the exit code, so no interval is used (constitution II). Defaults: `discardRateIncrease` 0.01, `regenerationRateIncrease` 0.03 (reasons in research R3).
 - Saved as `comparisons/<comparisonId>/comparison.json` (redacted) with `report.md` and `report.html`; the output root's `index.html` lists comparisons.
+- Human output and `report.md` point readers to the side-by-side `review` samples: to the result page when one is written, else to `samples.review` in `comparison.json`.
 - `report.md` puts every model, service or provider string (examples, samples, error messages, discard reasons) in a code block or span whose fence is longer than the longest backtick run inside, so mentions, links and HTML do not render in pull request comments.
 - A swap check shuts down both adapters and receives late notifications and responses before writing both run statuses and comparing, so call costs after results are included and a later `compare` of the same runs gives the same ID.
 
@@ -354,14 +355,18 @@ d_i   = y_ci − y_bi
 V_cl  = Σ(d_i − Δ̂)² / (K(K−1))
 V_bin = p̂_c(1−p̂_c)/ñ_c + p̂_b(1−p̂_b)/ñ_b
 deff  = max(1, V_cl / V_bin)                 (1 when V_bin = 0)
+s_U   = (t_{K−1, 1−α_U} / z_U)² when K < 10, else 1
+deff_U = max(1, s_U · V_cl / V_bin)          (1 when V_bin = 0)
 n*_v  = ñ_v / deff,  x*_v = p̂_v · n*_v,  [l_v, u_v] = Wilson(x*_v, n*_v, z)
 L = Δ̂ − √((p̂_c − l_c)² + (u_b − p̂_b)²)      with z = z_L
-U = Δ̂ + √((u_c − p̂_c)² + (p̂_b − l_b)²)      with z = z_U
+U = Δ̂ + √((u_c − p̂_c)² + (p̂_b − l_b)²)      with z = z_U and n*_v = ñ_v / deff_U
 ```
 
+- t_{ν, p} is the Student t quantile with ν degrees of freedom (P(T ≤ t) = p). V_cl has only K − 1 degrees of freedom, so with few cases a small V_cl by chance would make U too narrow; s_U widens U by the ratio of the t and normal quantiles. When s_U · V_cl / V_bin ≥ 1 this equals the Wilson interval with t in place of z_U. With α = 0.025 and G = 5, t_{2, 0.995} = 9.925, t_{4, 0.995} = 4.604 and t_{8, 0.995} = 3.355; an ungated cell with 3 cases uses t_{2, 0.975} = 4.303.
+- 10 is the `few-cases` boundary (§Validation Rules). Only U uses s_U: L, the stored `deff` (§Cell) and n_min use z and deff as written.
 - The per-variant rate interval is Wilson(p̂_v·ñ_v/deff_v, ñ_v/deff_v, z_L) with deff_v = max(1, (s²(y_v)/K) ÷ (p̂_v(1−p̂_v)/ñ_v)).
 
-**Levels**: α = (1 − confidence)/2. The lower bound uses z_L = z_{1−α} without correction. The upper bound of a gated cell uses z_U = z_{1−α/G}, where G is the number of gated cells; ungated cells use z_U = z_L.
+**Levels**: α = (1 − confidence)/2. The lower bound uses z_L = z_{1−α} without correction. The upper bound of a gated cell uses z_U = z_{1−α/G}, where G is the number of gated cells; ungated cells use z_U = z_L. The matching tail probability is α_U = α/G for a gated cell and α_U = α for an ungated one. With 3 ≤ K < 10 the upper bound takes t_{K−1, 1−α_U} in place of z_U through s_U (Interval).
 
 **Verdict order** (margin m from the rule's `margin`, else `gate.margin`, else 0.10):
 
@@ -377,7 +382,7 @@ U = Δ̂ + √((u_c − p̂_c)² + (p̂_b − l_b)²)      with z = z_U
 | 8 | Otherwise | `inconclusive` |
 
 - A cell with U < 0 has a confirmed drop whatever its verdict and goes under worse cells in the decision summary with its `note` (§Cell). With K < 3 the interval is not trusted, so only the note `clear-drop-too-few-cases` marks a confirmed drop. Otherwise a confirmed drop would hide under "undecided".
-- With K < 3, if U computed without the design effect is below −m, the cell gets the note `clear-drop-too-few-cases`.
+- With K < 3, if U computed without the design effect (n*_v = ñ_v, z = z_U) is below −m, the cell gets the note `clear-drop-too-few-cases`.
 - n_min(m) = ⌈z_L²(1−m)/m⌉: 73, 35 and 22 for m = 0.05, 0.10 and 0.15 with z_L = 1.96. A cell planned below it gets the lint warning `margin-unreachable`.
 
 **Trials needed** (FR-024), for undecided gated cells only:
@@ -385,7 +390,7 @@ U = Δ̂ + √((u_c − p̂_c)² + (p̂_b − l_b)²)      with z = z_U
 - Cases first. If K < max(3, `minCases`), more repeats fall back into verdict rows 2 or 4, so the cell asks for max(3, `minCases`) cases (kind cases), or for the larger count below when that is higher. The repeat formula applies only to cells with enough cases.
 
 ```text
-z     = z_L if Δ̂ > −m, else z_U
+z     = z_L if Δ̂ > −m, else z_U (t_{K−1, 1−α_U} when K < 10, as in U)
 p̃_v   = (x_v + z²/2) / (n_v + z²)            (x_v, n_v: pooled passes and trials of the cell)
 W     = p̃_b(1−p̃_b) + p̃_c(1−p̃_c),  r̄ = harmonic mean of candidate trials per case
 σ²_B  = max(0, s_d² − W/r̄)                   (s_d²: sample variance of d_i; the between-case part repeats cannot reduce)
@@ -640,12 +645,13 @@ Lint codes. Info does not count as a warning, is not limited by `--max-warnings`
 | `rule-filter-mismatch` | warning | A rule listed on a case does not match its target or language and is not graded | — |
 | `completed-not-gated` | warning | A gate exists but no `completed` rule exists or its severity is not gated, so rejections, time-outs and discards cannot block | `{cause: no-rule | not-gated}` |
 | `language-gap` | warning | A rule language has no cases | — |
-| `few-cases` | warning | A gated cell has fewer than 10 cases; it only catches large drops (research R3) | `{surface, cases}` |
+| `few-cases` | warning | A gated cell has fewer than 10 cases; its upper bound then uses a t quantile (§Statistics), so even a collapsed rule is often not blocked (research R3) | `{surface, cases}` |
 | `margin-unreachable` | warning | A gated cell's planned trials (cases × repeats) are below n_min for its margin; equal compliance cannot pass (§Statistics) | `{surface, plannedTrials, nMin, margin}` |
 | `excluded-from-gate` | warning | Same as the run warning of that name (§Warnings), raised by lint | `{cause: review | uncalibrated-judge}` |
 | `vcs-unknown` | warning | Not a git work tree, so `derived-tracked` cannot be decided; reported once | — |
-| `helper-outdated` | warning | The adapter's helper is older than the one bundled with this tool; copy it again with `init` | `{version, bundled}` |
+| `helper-outdated` | warning | The `initialize` result's `adapter.helper.version` is older than the helper version bundled with this tool, or cannot be compared with it; copy the helper again with `init` | `{version, bundled}`; `version` as reported |
 | `unanchored` | info | A rule without an anchor for a language of the cases it applies to; a notice, not something to fix (for example a rule kept by post-processing alone) | — |
 
-- Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema`, `unknown-target` and anchor checks. Under `--render`, an adapter that does not declare `capabilities.render` is `adapter-failed`, since the anchors asked for cannot be checked, and so is one that does not answer `shutdown`.
+- Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema`, `unknown-target`, `helper-outdated` and anchor checks. Under `--render`, an adapter that does not declare `capabilities.render` is `adapter-failed`, since the anchors asked for cannot be checked, and so is one that does not answer `shutdown`.
+- **Bundled helper version**: the tool bundles one helper version, the version of the helpers shipped with this tool release, the same for the Python and TypeScript helpers. Helper versions have the form `MAJOR.MINOR.PATCH` of non-negative integers and are compared part by part as numbers. Lint compares the `adapter.helper.version` of every `initialize` result it receives with the bundled version and reports `helper-outdated` when the reported one is older. A reported version not of that form cannot be shown to be current, so it is reported too. A newer reported version is not reported, and an adapter without `adapter.helper` is not checked.
 - Without the adapter's targets (`--no-adapter`), the language of a case without `lang` is unknown, so checks that depend on it (`rule-filter-mismatch`, `language-gap`, `unanchored`, `unresolved-ref` of rules limited by language, and the sample plan codes) leave that case out instead of guessing, and `language-gap` is not reported for a language such a case may cover.

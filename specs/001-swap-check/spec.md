@@ -244,7 +244,7 @@ After fixing a check, an operator re-grades saved runs and compares them again w
 - **SC-001**: A test that runs lint, the swap check and report generation against the mock adapter finishes in CI within 3 minutes without calling a model.
 - **SC-002**: Comparing the same run records twice gives the same result apart from volatile fields.
 - **SC-003**: A simulation that uses the shipped statistics code shows, at 0.95 confidence:
-  - (a) With equal true compliance and 5 gated cells, at least one `regressed` appears in at most 5% of families over 3–30 cases and 3–10 repeats, both when per-case rates are equal and when only the means are equal.
+  - (a) With equal true compliance at baselines from 0.5 to 0.99, at least one `regressed` gated cell appears in at most 5% of comparisons over 3–30 cases and 3–10 repeats, both when per-case rates are equal and when only the means are equal. Each comparison has 5 rules, and its gated cells (the family) are those left after the default `report.lowBaseline` removes low-baseline cells.
   - (b) At a true difference of exactly −margin, a cell wrongly passes as `non-inferior` in at most 2.5% of runs on average and 5% at most over the measured range.
   - (c) A drop from 95% to 65% is `regressed` in at least 80% of runs, at 30 cases × 5 repeats with margin 0.10 and at 10 cases × 10 repeats with margin 0.05.
   - (d) At a 95% baseline, 30 cases × 5 repeats and margin 0.10, an unchanged candidate passes one cell at least 90% of the time and all 5 cells at least 70% of the time, measured over 1,000 families.

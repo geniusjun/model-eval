@@ -188,3 +188,4 @@ Report       .model-eval/comparisons/cmp-3f9a1c0e2b7d/report.md
 - The lower bound of a difference uses the configured level; the upper bound of a gated cell is multiplicity-corrected (data-model §Statistics). Ungated cells use neither correction.
 - Metric denominators follow the data model: here the candidate's 435 trials (450 minus 15 transient) are the denominator of discard, fallback, rejection and time-out rates, and the 450 finished trials that of the transient rate.
 - Required repeats and trials are shown for gated cells only.
+- The side-by-side line points to the result page when one is written, as in the example, else to `samples.review` in `comparison.json`; `report.md` follows the same rule ([data-model §Comparison](../data-model.md#comparison)).
