@@ -59,6 +59,7 @@ Rules: [data-model §Captured Call](../data-model.md#captured-call), [data-model
 | S-RESP-09 | Render mode; `print` in the service | Render result, no request sent; output on stderr |
 | S-RESP-10 | Four concurrent requests | Contexts kept apart |
 | S-RESP-11 | Cancel | helper-api §Cancel |
+| S-RESP-12 | Background mode: the first response has `status` `queued` and the target function returns text without raw | data-model §Raw Cannot Be Determined row 3, adapter error A6 |
 
 ## Answer Calls
 
@@ -198,6 +199,7 @@ Rules: [data-model §Raw Call](../data-model.md#raw-call), [data-model §Answer 
 | S-RAW-09 | A streaming same-model classification before a non-stream answer | Outcome row 5 |
 | S-RAW-10 | The answer through an uncaptured transport, only a same-model classification captured and excluded by `reply_call`; the answer is empty (reasoning used the whole output limit) and turned into a message: `Result(raw="", kind="fallback", model=, usage=, finish_reason="length")` | Not the uncaptured-call exception: the call is added, `answers` 1, an empty answer. Also with a swallowed other-model side-call failure |
 | S-RAW-11 | No captured call, only an uncaptured transport; a same-model classification before the answer refuses and a message is shipped | `Result(raw="", kind="fallback", model=, answers=0, finish_reason="other")`: a fallback, `answers` 0. Without `model=`: A7. Without `answers`: an empty answer |
+| S-RAW-12 | A stream answer given as `Result(raw=)` without `finish_reason=` | The raw call is the last unread response and the last answer, so the finish-reason check gives adapter error A9 |
 
 ## Status Codes
 
