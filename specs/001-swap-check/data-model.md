@@ -462,7 +462,7 @@ Adapter and transient error rates are shares of finished trials, checked only af
 | Condition | `stopReason` | Exit code |
 |---|---|---|
 | A `config` failure (also on side calls, `calls` notifications and late responses), a call to an unpriced model while a cap is set (also when reported that way), or a restarted adapter that declares a different adapter or helper version or service code (same rules as resume) | `config-error` | 4 |
-| Adapter error rate above `run.maxAdapterErrorRate` (default 0.05), or three adapter restarts in a row (death, stdout contamination or every slot abandoned) without an answer from the process in between | `adapter-errors` | 3 |
+| Adapter error rate above `run.maxAdapterErrorRate` (default 0.05), or the adapter process lost three times in a row (death, stdout contamination or every slot abandoned) without an answer in between; the third loss starts no new process | `adapter-errors` | 3 |
 | Transient error rate above `run.maxTransientRate` (default 0.5) | `transient-errors` | 3 |
 | Re-estimated total above the cap after the first batch, after a repeat round, or at resume | `budget-projected` | 5 |
 | Before an attempt (tool retries included), the §Cap Check fails | `budget` | 5 |
