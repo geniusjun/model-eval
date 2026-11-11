@@ -73,6 +73,46 @@ const ZOD_LOCALES: Readonly<Record<Lang, z.core.$ZodErrorMap | undefined>> = {
   ko: z.locales.ko().localeError,
 };
 
+export type ConfigLoadResult =
+  | {
+      readonly ok: true;
+      readonly config: SourceFile<Config>;
+      readonly paths: ResolvedPaths;
+    }
+  | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] };
+
+function loadContext(cwd: string, lang: Lang): LoadContext {
+  return { display: (file: string): string => path.relative(cwd, file) || file, lang };
+}
+
+/**
+ * Loads the config file alone; its paths resolve from the config folder. `lang` is the language
+ * of the human text of findings (`--lang`).
+ */
+export async function loadConfig(
+  configPath: string,
+  cwd: string,
+  lang: Lang = 'en',
+): Promise<ConfigLoadResult> {
+  const configFile = path.resolve(cwd, configPath);
+  const config = await loadFile(configFile, configSchema, loadContext(cwd, lang));
+  if (!config.ok) {
+    return { ok: false, diagnostics: config.diagnostics };
+  }
+  const configDir = path.dirname(configFile);
+  const { data } = config.file;
+  return {
+    ok: true,
+    config: config.file,
+    paths: {
+      configFile,
+      configDir,
+      adapterCwd: path.resolve(configDir, data.adapter.cwd),
+      outputDir: path.resolve(configDir, data.output.dir),
+    },
+  };
+}
+
 /**
  * Loads the config and every rule and case file it points to; paths resolve from the config
  * folder. `lang` is the language of the human text of findings (`--lang`).
@@ -82,21 +122,15 @@ export async function loadProject(
   cwd: string,
   lang: Lang = 'en',
 ): Promise<LoadResult> {
-  const configFile = path.resolve(cwd, configPath);
-  const context: LoadContext = {
-    display: (file: string): string => path.relative(cwd, file) || file,
-    lang,
-  };
-
-  const config = await loadFile(configFile, configSchema, context);
-  if (!config.ok) {
-    return { ok: false, diagnostics: config.diagnostics };
+  const loaded = await loadConfig(configPath, cwd, lang);
+  if (!loaded.ok) {
+    return loaded;
   }
-  const configDir = path.dirname(configFile);
-  const { data } = config.file;
+  const context = loadContext(cwd, lang);
+  const { config, paths } = loaded;
   const [ruleFiles, caseFiles] = await Promise.all([
-    loadAll(await expandGlob(data.files.rules, configDir), rulesFileSchema, context),
-    loadAll(await expandGlob(data.files.cases, configDir), casesFileSchema, context),
+    loadAll(await expandGlob(config.data.files.rules, paths.configDir), rulesFileSchema, context),
+    loadAll(await expandGlob(config.data.files.cases, paths.configDir), casesFileSchema, context),
   ]);
   const diagnostics = [...ruleFiles.diagnostics, ...caseFiles.diagnostics];
   if (diagnostics.length > 0) {
@@ -104,17 +138,7 @@ export async function loadProject(
   }
   return {
     ok: true,
-    project: {
-      config: config.file,
-      ruleFiles: ruleFiles.files,
-      caseFiles: caseFiles.files,
-      paths: {
-        configFile,
-        configDir,
-        adapterCwd: path.resolve(configDir, data.adapter.cwd),
-        outputDir: path.resolve(configDir, data.output.dir),
-      },
-    },
+    project: { config, ruleFiles: ruleFiles.files, caseFiles: caseFiles.files, paths },
   };
 }
 
