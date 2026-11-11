@@ -243,6 +243,7 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 - A grade set: `{gradeSetId, runId, rulesHash, checkerVersion, trialsFingerprint, casesHash}`. The last five values identify it and an existing one is reused. `checkerVersion` is the tool version; any tool change re-grades, which is cheap for deterministic checks. `trialsFingerprint` covers every line, so a resumed run gets a new grade set. `casesHash` uses the current case files because checks read case input through `…From`. The file `grades/<gradeSetId>.jsonl` holds the grade set on its first line and its grades after it.
 - Trials of a case whose current hash differs from the manifest, including deleted cases, are not graded and leave the comparison too (FR-027). They get `skip` for every rule that applies to the case as defined now; a deleted case gets it for every `global` rule matching its target and language.
 - A grade set looks at one run. Systematic failures need both runs and are applied by the comparison (§Trial Outcomes).
+- Like `trials.jsonl`, a grade set holds `evidence` as checked. Redaction applies when evidence reaches a comparison or any output (FR-031), so a change to `redact` needs no re-grade and a reused grade set never carries old redaction.
 - `compare` only uses grade sets made with the current rules (FR-019).
 
 ### Cell
