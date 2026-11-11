@@ -6,9 +6,9 @@ An adapter is a separate process that assembles the prompt with the service's co
 
 ## Transport
 
-1. The tool runs `adapter.command` (an array, no shell) in `adapter.cwd` (relative to the config file) with `adapter.env` added.
+1. The tool runs `adapter.command` (an array, no shell) in `adapter.cwd` (relative to the config file) with `adapter.env` added, in its own process group, so an interrupt from the terminal reaches only the tool and the tool decides what the adapter receives (`cancel`, `shutdown`, a termination signal).
 2. Each message is one [JSON-RPC 2.0](https://www.jsonrpc.org/specification) object on one line, UTF-8, ending in `\n`. Messages contain no raw newline; `\n` escapes inside JSON strings are fine.
-3. stdout is reserved for the protocol; debug output goes to stderr. The tool shows stderr with `--verbose` and attaches its last 50 lines to failure reports, redacted in both cases, because adapter stderr easily contains case input and model output. A stray `print` on stdout is the most common adapter bug; the helpers redirect service output to stderr.
+3. stdout is reserved for the protocol; debug output goes to stderr. The tool shows stderr with `--verbose` and attaches its last 50 lines to the report of an adapter start failure and of a run stopped by adapter errors, redacted in both cases, because adapter stderr easily contains case input and model output. A stray `print` on stdout is the most common adapter bug; the helpers redirect service output to stderr.
 4. The tool starts one adapter process per variant. The variant is given once in `initialize` and applies to every request of that process.
 5. The tool may send requests without waiting. Concurrent requests per process never exceed the smaller of the adapter's `maxConcurrency` and `run.concurrency`. Responses may arrive in any order and are matched by `id`.
 6. Shutdown: the tool sends `shutdown`, waits for its response and closes stdin. The adapter must exit within 5 seconds or receives a termination signal.
@@ -46,8 +46,9 @@ Result:
   - `dirty`: whether there are uncommitted changes.
   - `treeHash`: hash of the service file contents ([003 data-model §`treeHash`](../../003-adapter-helpers/data-model.md#treehash) defines how helpers compute it).
   - Resume and adapter restarts compare `treeHash` when present, otherwise `version` and `dirty`, so a new commit with identical content is the same service.
-- `adapter.helper` is present only when a helper is used; lint reports `helper-outdated` when it is older than the bundled helper.
+- `adapter.helper` is present only when a helper is used: `language` and `version`, the helper version in the form `MAJOR.MINOR.PATCH`. The tool bundles one helper version, that of the helpers shipped with its release, the same for every helper language. Lint compares `adapter.helper.version` with it and reports `helper-outdated` `{version, bundled}` when the reported version is older or not of that form ([data-model §Validation Rules](../data-model.md#validation-rules)).
 - `postprocess: false` means `final` always equals `raw`, and reports say so.
+- A capability left out is `false`, except `postprocess`, which is `true`. Without `maxConcurrency` the adapter sets no limit and `run.concurrency` alone applies.
 
 ### `render` (optional, when `capabilities.render`)
 
@@ -197,7 +198,7 @@ Failure results may carry `calls` and `usage` and are priced like normal results
 
 ### `cancel` (notification, tool → adapter, optional)
 
-`{"jsonrpc":"2.0","method":"cancel","params":{"id":3}}` means the tool no longer waits for request 3. With `capabilities.cancel`, the adapter stops the work and, if it stopped, responds with that `id`. The tool never grades that response. It uses its `usage` and `calls` to correct the cost (§Time Limits and Recovery) and its calls for the `abandoned-trials` message, and stops the run as a configuration error when a call failed with `config` or used an unpriced model while a cap is set, like a `calls` notification.
+`{"jsonrpc":"2.0","method":"cancel","params":{"id":3}}` means the tool no longer waits for request 3. With `capabilities.cancel`, the adapter stops the work and, if it stopped, responds with that `id`. The tool never grades that response. It uses its `usage` and `calls` to correct the cost (§Time Limits and Recovery) and its calls for the `abandoned-trials` message, and stops the run as a configuration error when the response is a failure result of kind `config`, a call failed with `config` or used an unpriced model while a cap is set, like a `calls` notification.
 
 ### `shutdown` (required)
 
@@ -225,11 +226,11 @@ The tool never resends trials whose adapter response never came (tool time-out, 
 | Situation | Tool behaviour |
 |---|---|
 | No response within `adapter.timeoutMs` (default 120000) | Record the attempt as an `adapter` error with `abandoned: "timeout"`, charge its reservation, send `cancel` when supported, and add `abandoned-trials` to the result. Set `timeoutMs` longer than one service call can take. Applies while stopping too |
-| Slot of an abandoned request | Stays counted against concurrency until the adapter responds with that `id`. A late response is never graded; like a response after `cancel`, it only corrects cost (as a cost line) and is checked for warnings and configuration errors. When every slot holds an abandoned request and `timeoutMs` passes once more, the adapter is restarted |
-| The adapter process dies | Record in-flight attempts as `adapter` errors with `abandoned: "restart"`, charge their reservations and restart. Three deaths in a row stop the run as `partial` with exit code 3 |
+| Slot of an abandoned request | Stays counted against concurrency until the adapter responds with that `id`. A late response is never graded; like a response after `cancel`, it only corrects cost (as a cost line) and is checked for price warnings and configuration errors. When every slot holds an abandoned request and `timeoutMs` passes once more, the adapter is restarted |
+| The adapter process dies | Record in-flight attempts as `adapter` errors with `abandoned: "restart"`, charge their reservations and restart. Three lost processes in a row (for any restart reason in this table) without an answer in between stop the run as `partial` with exit code 3; the third loss starts no new process |
 | A non-JSON line on stdout | Show its first 200 characters and "stdout is reserved for the protocol", record in-flight attempts as `abandoned: "restart"`, charge their reservations and restart |
 | Adapter error rate above `run.maxAdapterErrorRate` (default 0.05) after 20 finished trials | Stop as `partial` with exit code 3 |
-| Start failure, `initialize` failure or no response within `adapter.timeoutMs`, major version mismatch | Configuration error, exit code 4 |
+| Start failure, `initialize` failure or no response to `initialize` or `render` within `adapter.timeoutMs`, major version mismatch, also when a restarted adapter fails this way | Configuration error, exit code 4 |
 | A restarted adapter declares a different adapter or helper version or service code (compared as in `initialize`) | Stop as a configuration error (exit code 4), since one run would mix trials of two code versions. For changed service code, the message suggests `git status --short` in the service folder; files the service creates while running belong in the ignore list, after which the run can be resumed |
 
 ## Compatibility

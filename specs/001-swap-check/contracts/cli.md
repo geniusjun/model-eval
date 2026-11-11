@@ -6,13 +6,13 @@
 
 | Command | Calls models | Does |
 |---|---|---|
-| `model-eval init [--adapter python\|node]` | no | Creates a config template, example rules and cases, and adds the output directory to `.gitignore`. With `--adapter`, also an adapter skeleton that uses the helper (feature 003) |
+| `model-eval init [--adapter python\|node]` | no | Creates a config template, example rules and cases, and adds the output directory to the `.gitignore` of the config file's folder. Files that already exist are kept. Example rules and cases are written only together with a new config file; with an existing one, `init` adds that config's `output.dir` to `.gitignore` and stops with exit code 4 if the config cannot be loaded. An `output.dir` outside the config file's folder, or that folder itself, is not added; `init` says so. With `--adapter`, also an adapter skeleton that uses the helper (feature 003) |
 | `model-eval lint` | no | Checks file schemas, ID references, provenance, examples, case input schemas, the sample plan of gated cells and the helper version. `--render` also renders cases per variant and checks anchors. Starts the adapter unless `--no-adapter` (see [adapter-protocol §Security](adapter-protocol.md#security)) |
 | `model-eval run --variant <id>` | yes | Runs every case with one variant, records the run and grades it |
 | `model-eval grade <runId>` | no | Re-grades stored trials with the current rules into a grade set |
 | `model-eval compare <baseRunId> <candRunId>` | no | Grades both runs with the current rules, compares cells, applies the gate and writes `report.md` and `report.html` |
 | `model-eval swap --from <id> --to <id>` | yes | Runs both variants, grades, compares, gates and writes the reports in one go. The everyday command |
-| `model-eval report <comparisonId>` | no | Rewrites `report.md`, `report.html` and the output `index.html` from a saved comparison, for example with a newer tool version |
+| `model-eval report <comparisonId>` | no | Rewrites `report.md`, `report.html` and the output `index.html` from a saved comparison, for example with a newer tool version. The comparison is shown with the redaction it was saved under; a changed `redact` takes effect through `compare` |
 
 ### Common Options
 
@@ -24,14 +24,23 @@
 | `--verbose` | Show adapter stderr and per-stage timings |
 | `--no-color` | Disable colour. `NO_COLOR` is honoured too |
 
+### Top-Level Options
+
+Given without a command:
+
+| Option | Meaning |
+|---|---|
+| `--version` | Print the tool version and exit |
+| `--help`, `-h` | Print the commands and common options and exit |
+
 ### `lint` Options
 
 | Option | Meaning |
 |---|---|
-| `--render` | Check anchors through the adapter's `render`; also checks adapter conformance (handshake, stdout contamination) |
-| `--variant <id>` | Render only this variant. Default: every variant, since variant parameters can change prompt blocks |
+| `--render` | Check anchors through the adapter's `render`; also checks adapter conformance (handshake, stdout contamination). An adapter without the `render` capability is `adapter-failed` |
+| `--variant <id>` | Render only this variant. Default: every variant, since variant parameters can change prompt blocks. Only with `--render` |
 | `--max-warnings <n>` | Exit 1 when warnings exceed n. Info codes (`unanchored`) do not count. `0` in CI blocks pull requests on missing anchors |
-| `--no-adapter` | Do not start the adapter; skip input-schema and anchor checks |
+| `--no-adapter` | Do not start the adapter; skip input-schema, target and anchor checks. Together with `--render` it is a usage error (exit 4) |
 
 Without `--render`, lint still starts the adapter with the first variant to obtain input schemas. If the adapter fails to start or breaks the protocol (stdout contamination included), lint reports `adapter-failed` and exits 4, as every command treats adapter problems as configuration problems.
 
@@ -40,9 +49,9 @@ Without `--render`, lint still starts the adapter with the first variant to obta
 | Option | Meaning |
 |---|---|
 | `--repeats <n>` | Repeats for this run; overrides `sampling.repeats` |
-| `--cases <glob>` | Run only cases whose ID matches; comparisons use common cases |
+| `--cases <glob>` | Run only cases whose ID matches, case-sensitively; `*`, `?`, `[...]` (`!` or `^` negates), `{a,b}` and `\` escapes; an unclosed bracket or brace and braces without a comma are literal. Comparisons use common cases |
 | `--max-cost-usd <x>` | Override `budget.maxCostUsd` once; `none` runs without a cap. Allowed on resume, where the cap includes earlier spend |
-| `--dry-run` | Show calls, tokens, expected and conservative cost with their basis (previous run or first-run assumption), reservation per attempt, and planned trials and n_min per gated cell, then exit. Exit 4 when input tokens cannot be estimated, 5 when the expected cost exceeds the cap, else 0. With `--resume`, change nothing and show remaining trials and the re-estimated total; exit 5 when it exceeds the cap |
+| `--dry-run` | Show calls, tokens, expected and conservative cost with their basis (previous run or first-run assumption), reservation per attempt, and planned trials and n_min per gated cell, then exit. Exit 4 when input tokens cannot be estimated, 5 when the expected cost exceeds the cap, else 0. With `--resume`, change nothing, take or check no lock, and show remaining trials and the re-estimated total; exit 5 when it exceeds the cap |
 | `--concurrency <n>` | Concurrent requests per adapter process (per variant), at most the adapter's `maxConcurrency` |
 | `--resume <id>` | `runId` for `run`, `swapId` for `swap`. Resumes only stopped runs; see [data-model §Resume and Locking](../data-model.md#resume-and-locking) for what is resent, kept and refused |
 
@@ -58,6 +67,7 @@ After exit code 2, run again with the suggested `--repeats` as a new run. It is 
 | 3 | `run-failed` | The run could not finish because of the adapter or transient error limits or a user interrupt; it stays `partial` |
 | 4 | `config-error` | See below |
 | 5 | `over-budget` | The expected cost exceeded the cap and no model was called; or a re-estimate after the first batch, a repeat round or at resume exceeded the cap; or the next attempt's reservation, tool retries included, would cross the cap (the last two leave the run `partial`) |
+| 6 | `internal-error` | An unexpected internal error; report it as a bug |
 
 Exit code 4 covers:
 
@@ -69,9 +79,10 @@ Exit code 4 covers:
 6. A model call, side calls included, failed on authentication, model, quota, billing or TLS certificate.
 7. A restarted adapter declares a different adapter or helper version or service code.
 8. Resume problems: generation conditions differ from the record, `--variant`, `--from`/`--to`, `--repeats` or `--cases` differ from the record, the run or swap is `complete`, a run that belongs to a swap is resumed with `run`, or another process holds the lock.
+9. The command line is invalid: an unknown command or option, or an invalid option value, such as `swap --from` and `--to` naming the same variant, or `lint --render` with `--no-adapter` or `lint --variant` without `--render`.
 
-- A stopped run exits with the code of its `stopReason` (`config-error` if present, else the first reason). Other overlaps resolve in the order 4, 5, 3, 1, 2, 0. A `swap` stopped by the cap exits 5 whatever its comparison says; the comparison is still in `result.gate`.
-- File errors exit 1 from `lint`, where they are findings, and 4 from commands that call models, where they prevent the start.
+- A stopped run exits with the code of its `stopReason` (`config-error` if present, else the first reason). Other overlaps resolve in the order 6, 4, 5, 3, 1, 2, 0. A `swap` stopped by the cap exits 5 whatever its comparison says; the comparison is still in `result.gate`.
+- File errors exit 1 from `lint`, where they are findings, and 4 from `init` and from commands that call models, where they prevent the start.
 - A stop with exit code 5 shows the outcome distribution per variant so far. A candidate that times out or is rejected every time has a candidate problem, not a cap problem.
 - An empty gate never blocks: `no-gate` with code 0 when the preconditions hold, otherwise `undecided` with code 2. `no-gate` is shown apart from `pass`, because nothing was judged (constitution II, IV).
 - Code 2 is not a pass; every undecided gated cell says what a new run needs.
@@ -86,17 +97,44 @@ Every command uses the same envelope:
   "schemaVersion": "1",
   "command": "swap",
   "exit": {"code": 1, "name": "failed"},
-  "result": {"swapId": "…", "runs": ["…", "…"], "comparison": {}, "gate": {"outcome": "block", "reasons": [{"code": "regressed", "message": "…", "ruleId": "script-ja", "lang": "ja", "surface": "raw"}]}},
-  "warnings": [{"code": "abandoned-trials", "message": "…", "variants": ["next"]}]
+  "result": {
+    "swapId": "20261105-101500-swap-a1b2",
+    "runs": ["20261105-101500-current-c3d4", "20261105-101500-next-e5f6"],
+    "gate": {
+      "outcome": "block",
+      "reasons": [{"code": "regressed", "ruleId": "script-ja", "lang": "ja", "surface": "raw"}],
+      "blocking": [{"ruleId": "script-ja", "lang": "ja", "surface": "raw"}],
+      "undecided": [],
+      "excluded": []
+    }
+  },
+  "warnings": [{
+    "code": "abandoned-trials",
+    "variants": ["next"],
+    "params": {"trials": {"next": {"timeout": 2, "restart": 0}}, "timeoutMs": {"next": 120000}, "lateFailures": {"next": {}}}
+  }]
 }
 ```
 
-- `result` has a JSON Schema per command (`schemas/<command>.schema.json`).
+The example leaves `result.comparison` out for length; a swap that reached the comparison carries it.
+
+- `result` has a JSON Schema per command (`schemas/<command>.schema.json`). It is `null` when the command ends before it has a result: a usage or configuration error (exit code 4), including one found before a `run` or `swap` starts, or an internal error (exit code 6). A `run` or `swap` refused by the pre-start cost check (exit code 5) has `{plan}`, the same as `--dry-run`, so CI sees the estimate that refused it. A `swap` that stopped without comparing (FR-032 item 3) has `{swapId, runs}` without `comparison` and `gate`. `command` is `null` when the command line names no known command; such an envelope follows `schemas/envelope.schema.json`, the envelope of any command.
+- Findings carry a code and `params`, never a sentence the tool composes; a validator's detail is data in English, and adapter text is data as written. The message files turn them into text in the `--lang` language ([data-model §Warnings](../data-model.md#warnings)).
 - `warnings` holds every warning the command raised, in the shape of the comparison's `warnings[]`, with codes from the warning table or the lint table of the data model.
   - `lint` uses lint codes. Errors go to `result.errors` and info to `result.info` in the same shape, with `file`, `line` and `column` (FR-001). `warnings` holds only warning-level codes, matching what `--max-warnings` counts.
   - `compare`: equal to `result.comparison.warnings`.
   - `run` and `swap` include pre-start warnings (`few-cases`, `margin-unreachable`, `conservative-over-budget`); `swap` raises them once, not per run. `run` adds its run warnings. `swap` that reached the comparison carries `result.comparison.warnings`; one that stopped without comparing carries both runs' warnings grouped the same way, so CI still sees them. Copying run warnings next to the comparison's would duplicate them, since the comparison re-raises every run warning, or make them diverge from the result page counts.
-- `result.comparison` and `result.gate` of `compare` and `swap` are the Comparison and Gate of the data model. The result page reads the same comparison.
+- `result.comparison` and `result.gate` of `compare` and `swap` are the Comparison and Gate of the data model; `result.gate` equals `result.comparison.gate`. The result page reads the same comparison.
+- `run --dry-run` and `swap --dry-run` create no run, so their `result` is `{plan}` alone:
+
+  | Field of `plan` | Meaning |
+  |---|---|
+  | `variants[]` | Per variant: `variant` (ID), `trials` to send (the remaining ones with `--resume`), and `calls`, `inputTokens` and `outputTokens` summed over those trials; `basis` per language key (`*` for cases without a language), `history` or `structure`; `reservationUsd`, the largest attempt reservation of the variant at the start |
+  | `expectedUsd`, `conservativeUsd` | Both estimates over every variant of the command. With `--resume`, `expectedUsd` is the re-estimated total with earlier spend included and `conservativeUsd` is `null` |
+  | `maxCostUsd` | The cap, `null` without one |
+  | `cells[]` | Per gated cell: `{ruleId, lang, surface, plannedTrials, nMin}` |
+
+  Costs are `null` when no price is configured at all.
 - `--json` output is redacted as well.
 - JSON output does not depend on `--lang`.
 
@@ -150,3 +188,4 @@ Report       .model-eval/comparisons/cmp-3f9a1c0e2b7d/report.md
 - The lower bound of a difference uses the configured level; the upper bound of a gated cell is multiplicity-corrected (data-model §Statistics). Ungated cells use neither correction.
 - Metric denominators follow the data model: here the candidate's 435 trials (450 minus 15 transient) are the denominator of discard, fallback, rejection and time-out rates, and the 450 finished trials that of the transient rate.
 - Required repeats and trials are shown for gated cells only.
+- The side-by-side line points to the result page when one is written, as in the example, else to `samples.review` in `comparison.json`; `report.md` follows the same rule ([data-model §Comparison](../data-model.md#comparison)).

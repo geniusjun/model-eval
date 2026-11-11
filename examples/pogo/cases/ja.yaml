@@ -1,0 +1,191 @@
+# Synthetic small talk with Pogo in Japanese. Every global rule applies to each case.
+cases:
+  - id: greet-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input:
+      nickname: ソラ
+      user: こんにちは
+      state: { wearing: [マフラー] }
+    note: A plain greeting. Every global rule applies.
+
+  - id: mood-vague-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input:
+      user: 今日はなんだかね
+      mood: { label: イライラ }
+    rules:
+      - { id: mood-not-revealed, params: { words: [イライラ] } }
+      - no-unprompted-self-state
+    note: A vague remark without naming a mood; does the answer name the picked mood?
+
+  - id: rain-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: 'また雨が降ってる。' }
+
+  - id: lunch-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: 'お昼にラーメンを食べた。' }
+
+  - id: tired-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '今日はすごく疲れた。' }
+
+  - id: exam-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '明日テストなんだ。' }
+
+  - id: song-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '好きな曲を見つけた。' }
+
+  - id: movie-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '今夜映画を見ようかな。' }
+
+  - id: weekend-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '週末どうしよう。' }
+
+  - id: cat-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '猫がコップを倒した。' }
+
+  - id: run-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '朝ランニングした。' }
+
+  - id: late-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '授業に遅れた。' }
+
+  - id: argue-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '友だちとけんかした。' }
+
+  - id: cook-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: 'パスタを作ってみたい。' }
+
+  - id: sleep-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '眠れない。' }
+
+  - id: book-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '今日本を一冊読み終えた。' }
+
+  - id: walk-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '長く散歩した。' }
+
+  - id: coffee-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: 'コーヒーを飲みすぎた。' }
+
+  - id: game-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: 'またゲームで負けた。' }
+
+  - id: plant-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '植物に新しい葉が出た。' }
+
+  - id: bored-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '退屈だな。' }
+
+  - id: birthday-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '来週は誕生日なんだ。' }
+
+  - id: interview-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '面接があるんだ。' }
+
+  - id: snow-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '少し雪が降った。' }
+
+  - id: bus-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: 'バスに乗り遅れた。' }
+
+  - id: clean-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '部屋を全部掃除した。' }
+
+  - id: draw-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '絵を習っている。' }
+
+  - id: trip-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '短い旅行を計画中。' }
+
+  - id: day-off-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '今日は休みの日。' }
+
+  - id: thanks-ja
+    target: chat
+    lang: ja
+    provenance: synthetic
+    input: { user: '昨日は話を聞いてくれてありがとう。' }

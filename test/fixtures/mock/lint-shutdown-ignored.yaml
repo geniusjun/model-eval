@@ -1,0 +1,9 @@
+# An adapter that never answers shutdown, so the tool has to stop it with a signal.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true }
+shutdownReply: ignore
+variants:
+  "*": {}

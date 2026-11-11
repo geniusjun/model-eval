@@ -1,0 +1,10 @@
+# A target with Japanese as its only language, so cases may leave out lang.
+targets:
+  - name: chat
+    languages: [ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true }
+prompts:
+  ja: 日本語だけで話す。
+variants:
+  "*": {}

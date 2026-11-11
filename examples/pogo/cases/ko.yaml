@@ -1,0 +1,191 @@
+# Synthetic small talk with Pogo in Korean. Every global rule applies to each case.
+cases:
+  - id: greet-ko
+    target: chat
+    lang: ko # Required when the target has several languages.
+    provenance: synthetic
+    input:
+      nickname: 하늘
+      user: 안녕
+      state: { wearing: [목도리] }
+    note: A plain greeting. Every global rule applies.
+
+  - id: mood-vague-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input:
+      user: 나 오늘 좀 그래
+      mood: { label: 짜증 }
+    rules:
+      - { id: mood-not-revealed, params: { words: [짜증] } }
+      - no-unprompted-self-state
+    note: A vague remark without naming a mood; does the answer name the picked mood? Without a nickname, script-ko uses an empty list.
+
+  - id: rain-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '또 비 온다.' }
+
+  - id: lunch-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '점심에 라면 먹었어.' }
+
+  - id: tired-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '오늘 너무 피곤해.' }
+
+  - id: exam-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '내일 시험이야.' }
+
+  - id: song-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '좋은 노래 하나 찾았어.' }
+
+  - id: movie-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '오늘 밤에 영화 볼까?' }
+
+  - id: weekend-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '주말에 뭐 하지?' }
+
+  - id: cat-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '고양이가 컵을 엎었어.' }
+
+  - id: run-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '아침에 달리기했어.' }
+
+  - id: late-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '수업에 늦었어.' }
+
+  - id: argue-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '친구랑 좀 다퉜어.' }
+
+  - id: cook-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '파스타 만들어 보고 싶어.' }
+
+  - id: sleep-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '잠이 안 와.' }
+
+  - id: book-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '오늘 책 한 권 다 읽었어.' }
+
+  - id: walk-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '오래 산책했어.' }
+
+  - id: coffee-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '커피를 너무 많이 마셨어.' }
+
+  - id: game-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '게임 또 졌어.' }
+
+  - id: plant-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '화분에 새 잎이 났어.' }
+
+  - id: bored-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '심심해.' }
+
+  - id: birthday-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '다음 주가 내 생일이야.' }
+
+  - id: interview-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '면접 보러 가.' }
+
+  - id: snow-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '눈이 조금 왔어.' }
+
+  - id: bus-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '버스 놓쳤어.' }
+
+  - id: clean-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '방 청소 다 했어.' }
+
+  - id: draw-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '그림 배우고 있어.' }
+
+  - id: trip-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '짧은 여행 계획 중이야.' }
+
+  - id: day-off-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '오늘 쉬는 날이야.' }
+
+  - id: thanks-ko
+    target: chat
+    lang: ko
+    provenance: synthetic
+    input: { user: '어제 얘기 들어줘서 고마워.' }

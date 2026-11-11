@@ -1,0 +1,15 @@
+# The candidate answers greet-ko-2 without raw and finishReason.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, maxConcurrency: 4 }
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  current:
+    answer: { '*': "answer to {caseId}" }
+  next:
+    answer: { '*': "answer to {caseId}" }
+    outcomes:
+      - { row: missing-fields, probability: 1, caseIds: [greet-ko-2] }

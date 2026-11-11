@@ -1,0 +1,12 @@
+# The adapter prints a debug line on stdout before it answers initialize.
+startNoise: "debug: loading the service config"
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, maxConcurrency: 4 }
+inputTokens: 400
+maxOutputTokens: 256
+variants:
+  '*':
+    answer: { '*': "answer to {caseId}" }

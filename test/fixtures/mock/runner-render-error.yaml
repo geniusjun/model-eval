@@ -1,0 +1,10 @@
+# Render fails for one case, so the run must end before any generate request.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+reportInflight: true
+renderErrors: [chat-ja-02]
+variants:
+  '*': {}

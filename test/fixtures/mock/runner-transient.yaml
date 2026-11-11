@@ -1,0 +1,11 @@
+# Every send fails transiently.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+variants:
+  '*':
+    calls: true
+    outcomes:
+      - { row: transient, probability: 1, message: "503 overloaded", retryAfterMs: 0 }

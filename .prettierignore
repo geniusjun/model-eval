@@ -1,0 +1,8 @@
+dist/
+coverage/
+schemas/
+pnpm-lock.yaml
+test/fixtures/
+specs/
+.specify/
+.omc/

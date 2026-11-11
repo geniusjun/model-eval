@@ -1,0 +1,15 @@
+# Rendering greet-ja-2 fails.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true, maxConcurrency: 4 }
+prompts:
+  ko: 짧게 답한다.
+  ja: 短く答える。
+inputTokens: 400
+renderErrors: [greet-ja-2]
+variants:
+  '*':
+    answer: { '*': "answer {caseId} {repeat}" }
+    usage: { input: 40, cachedInput: 360, output: 18 }
+    calls: true

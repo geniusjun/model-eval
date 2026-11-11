@@ -1,0 +1,20 @@
+# The case chat-ko-01 hangs until cancelled; it then reports the calls it made: a rate-limited
+# attempt the SDK retried after waiting, and an answer that cost more than its reservation.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object }
+capabilities: { render: true, cancel: true, maxConcurrency: 2 }
+inputTokens: 400
+maxOutputTokens: 100
+variants:
+  '*':
+    usage: { input: 300, output: 50 }
+    calls: true
+    outcomes:
+      - row: hang
+        probability: 1
+        caseIds: [chat-ko-01]
+        calls:
+          - { model: model-b, outcome: failed, errorKind: transient, retryAfterMs: 2000, branch: answer }
+          - { model: model-b, outcome: ok, branch: answer, usage: { input: 30000, output: 5000 } }

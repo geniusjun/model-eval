@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: In Progress
 
 **Input**: User description: "Check whether the prompt rules and post-processing fixes of an LLM service still hold when the service moves to another model, with repeated trials and statistical verdicts per rule and language."
 
@@ -206,20 +206,21 @@ After fixing a check, an operator re-grades saved runs and compares them again w
   1. decision summary and gate result;
   2. cell table;
   3. failing examples of regressed cells (raw and final);
-  4. masked rate and the discard, fallback and regeneration figures;
+  4. masked rate and the discard, fallback and regeneration figures, or that an adapter declares no post-processing;
   5. cells whose baseline compliance is below the configured level;
   6. anchors and origins;
   7. operational metrics and warnings;
   8. judged scope (judged targets and rule counts, and rules not judged);
   9. reproduction details.
 - **FR-030**: Every command MUST offer `--json` output with a `schemaVersion` and published exit codes.
-- **FR-031**: System MUST pass reports, result pages, saved comparisons, stdout, stderr (including relayed adapter stderr) and logs through the configured redaction rules before writing them.
+- **FR-031**: System MUST pass reports, result pages, saved comparisons, stdout, stderr (including relayed adapter stderr) and logs through the configured redaction rules before writing them. Redaction applies to free text (model and service output, error and log messages, adapter warnings, rule titles, anchor quotes, case notes); identifiers, hashes, codes and other enumerated values are written as they are.
 - **FR-032**: The swap check MUST run both variants, grade, compare, gate and write the outputs in one command:
   1. Both variants use the same trial order and seeds, and their trials are interleaved.
   2. Repeats of a case are sent in repeat order, each only after the previous repeat of that case finished (data-model §Send Order).
   3. A swap check that stops early still compares what finished and marks the result as withheld, unless it stopped on a configuration error, was forced to quit, or finished no trial.
 - **FR-033**: `init` MUST create a config template, example rules and cases and an ignore entry for the output directory. With `--adapter`, it also creates an adapter skeleton that uses the helper for that language, and for Python copies the helper file next to it.
 - **FR-034**: System MUST print human output in English by default and in Korean when asked.
+- **FR-035**: System MUST warn in lint when the adapter's helper is older than the helper bundled with the tool.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -243,7 +244,7 @@ After fixing a check, an operator re-grades saved runs and compares them again w
 - **SC-001**: A test that runs lint, the swap check and report generation against the mock adapter finishes in CI within 3 minutes without calling a model.
 - **SC-002**: Comparing the same run records twice gives the same result apart from volatile fields.
 - **SC-003**: A simulation that uses the shipped statistics code shows, at 0.95 confidence:
-  - (a) With equal true compliance and 5 gated cells, at least one `regressed` appears in at most 5% of families over 3–30 cases and 3–10 repeats, both when per-case rates are equal and when only the means are equal.
+  - (a) With equal true compliance at baselines from 0.5 to 0.99, at least one `regressed` gated cell appears in at most 5% of comparisons over 3–30 cases and 3–10 repeats, both when per-case rates are equal and when only the means are equal. Each comparison has 5 rules, and its gated cells (the family) are those left after the default `report.lowBaseline` removes low-baseline cells.
   - (b) At a true difference of exactly −margin, a cell wrongly passes as `non-inferior` in at most 2.5% of runs on average and 5% at most over the measured range.
   - (c) A drop from 95% to 65% is `regressed` in at least 80% of runs, at 30 cases × 5 repeats with margin 0.10 and at 10 cases × 10 repeats with margin 0.05.
   - (d) At a 95% baseline, 30 cases × 5 repeats and margin 0.10, an unchanged candidate passes one cell at least 90% of the time and all 5 cells at least 70% of the time, measured over 1,000 families.

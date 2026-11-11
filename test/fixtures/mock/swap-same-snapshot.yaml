@@ -1,0 +1,15 @@
+# Both variants answer with the same response model and repeat themselves word for word.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true, maxConcurrency: 4 }
+prompts:
+  ko: 짧게 답한다.
+  ja: 短く答える。
+inputTokens: 400
+variants:
+  '*':
+    answer: { '*': "the same answer to {caseId}" }
+    usage: { input: 40, cachedInput: 360, output: 18 }
+    calls: true
+    modelSnapshot: shared-model-2026-01-01

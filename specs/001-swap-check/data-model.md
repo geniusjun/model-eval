@@ -4,6 +4,8 @@
 
 This file defines entities, fields, enums, validation and state. File syntax is in [contracts/config.md](contracts/config.md), adapter messages in [contracts/adapter-protocol.md](contracts/adapter-protocol.md) and the reasons behind the statistics in [research.md](research.md) R3. "N characters" always means N Unicode code points, and text is cut on code point boundaries.
 
+The tables give each field's meaning. The exact JSON shape of every written record is the generated `schemas/*.schema.json`, and changing it follows constitution VIII.
+
 ## Overview
 
 ```text
@@ -70,7 +72,7 @@ A service function under test, declared by the adapter in `initialize`.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `lang` | string | yes | Language whose prompt must contain the sentence |
-| `quote` | string | yes | Fragment that must appear verbatim in the rendered prompt; whitespace is normalised |
+| `quote` | string | yes | Fragment that must appear verbatim in the rendered prompt; whitespace is normalised, and a quote of whitespace alone is a `schema` error |
 | `target` | string | no | Needed when there are several targets |
 | `cases` | string[] | no | Cases that must contain it; default all cases of that language and target |
 
@@ -106,9 +108,10 @@ Exact semantics:
 | `length` | `chars` counts code points, `graphemes` counts extended grapheme clusters (`Intl.Segmenter`) |
 | `json` | JSON Schema draft 2020-12 |
 
-- `…From` fields are paths into the case (`input.nickname`, `params.words`). A string value is a one-item list. A missing `ignoreFrom` or `withFrom` value is an empty list; a missing `anyFrom` value is a lint error (`unresolved-ref`), because an empty forbid list checks nothing.
+- `…From` fields are paths into the case (`input.nickname`, `params.words`). A string value is a one-item list. A missing `ignoreFrom` or `withFrom` value is an empty list; a missing `anyFrom` value is a lint error (`unresolved-ref`), because an empty forbid list checks nothing. Empty strings in an `anyFrom` value are dropped, and a value with none left is `unresolved-ref`.
 - Overlap with the rendered prompt is a later feature; until then a prompt-leak rule puts the prompt sentence in `with`.
 - `Examples` is `{pass: string[], fail: string[], input?, params?}`; `input` and `params` supply values for `…From` references. Not allowed on `review` or `completed`.
+- Check parameters have no defaults except `normalize` and `samples` above. Required: `allow` (`script`), `regex` and `mode` (`pattern`), `mode` (`phrases`), `minChars` (`overlap`), `unit` (`length`), `checks` (`all`, `any`) and `check` (`not`). A check that checks nothing is a `schema` error: `phrases` without `any` or `anyFrom`, `overlap` without `with` or `withFrom`, `length` without `min` or `max`.
 
 ### Case
 
@@ -127,7 +130,7 @@ Exact semantics:
 
 ### Run
 
-A run is one directory: `manifest.json`, `trials.jsonl`, `grades/`, `adapter.log`, and `run.lock` while running.
+A run is one directory, `runs/<runId>/` under `output.dir`: `manifest.json`, `trials.jsonl`, `grades/`, `adapter.log` (one redacted JSON object `{at, level, message}` per line), and `run.lock` while running.
 
 A swap check also writes `swaps/<swapId>.json`: `{swapId, baselineRunId, candidateRunId, budget, spentUsd, segments[], status, stopReason?, comparisonId?}`. The cap check of a swap uses `spentUsd`, the total of both runs.
 
@@ -138,20 +141,20 @@ Atomic writes: [plan D6](plan.md#d6-runs-are-files-and-grading-is-separate-from-
 | Field | Description |
 |---|---|
 | `runId`, `swapId` | See §Identifiers and Hashing. `swapId` only on runs made by a swap check |
-| `tool`, `adapter`, `service` | Name, version and protocol version. `adapter` always has `launchHash`, the hash of `adapter.command`, `adapter.env` and the real path of `adapter.cwd` (resolved from the config folder with links and letter case resolved, `fs.realpathSync.native`, so a link or a different letter case to the same folder does not block resume), and the helper language and version when a helper is used. Environment values appear only hashed. `service` is what the adapter declares: git SHA, dirty flag and `treeHash`; unknown fields are omitted |
+| `tool`, `adapter`, `service` | Name, version and protocol version. `adapter` always has `launchHash`, the hash of `adapter.command`, `adapter.env` and the real path of `adapter.cwd` (resolved from the config folder with links and letter case resolved, `fs.realpathSync.native`, so a link or a different letter case to the same folder does not block resume), the helper language and version when a helper is used, and the `capabilities` it declared in `initialize`. Environment values appear only hashed. `service` is what the adapter declares: git SHA, dirty flag and `treeHash`; unknown fields are omitted |
 | `variant` | The full variant and its fingerprint |
-| `cases` | `{id, lang, hash}` per case |
-| `rulesHash` | Informational only; not compared on resume, since rules do not affect generation |
+| `cases` | `{id, target, lang, hash}` per case |
+| `rulesHash` | Informational only; not compared on resume, since rules do not affect generation. Resume sets it from the current rules |
 | `prompts` | Render fingerprint per case, when the adapter renders |
 | `sampling` | Repeats, global seed, case filter from `--cases` (`null` when absent) |
 | `limits` | `run.retries` and `adapter.timeoutMs`. They decide when a trial is finished, so resume keeps them |
-| `pricing` | Copy of the prices at run time |
+| `pricing` | Copy of the whole `pricing` table at run time, since unpriced calls are charged from it. Resume sets it from the current config; each segment keeps its own copy |
 | `budget` | Cap and scope. Omitted in config means 1 USD; `null` means no cap. Both runs of a swap share one cap |
-| `estimate` | `{expected, conservative, basis}` before the start, and `projected[]` for every re-estimate. `basis` is `history` or `structure` (§Cost) |
-| `costProfile` | Per variant and language for a finished run: `{repeat0MeanUsd, repeatNMeanUsd, outputTokensMean, outputTokensP95, callsPerTrialP95, callsPerAttemptMax}`. Values per trial sum every line of its key. Both call counts are at least 1 |
-| `totals` | Trials per outcome (effective lines), token buckets and cost of all lines with the part charged as reservations, `overrunUsd`, duration |
+| `estimate` | `{expected, conservative, basis}` before the start, and `projected[]` for every re-estimate. `basis` maps each language key (`*` for cases without a language) to `history` or `structure` (§Cost) |
+| `costProfile` | Per variant and language for a finished run: `{repeat0MeanUsd, repeatNMeanUsd, inputTokensMean, outputTokensMean, outputTokensP95, cacheHitRatio, callsPerTrialP95, callsPerAttemptMax}`. Values per trial sum every line of its key; a trial's input tokens are `input` + `cachedInput` + `cacheWrite`. `cacheHitRatio` = `cachedInput` ÷ (`input` + `cachedInput` + `cacheWrite`), summed over all lines of finished keys. Both call counts are at least 1. Every p95 in records is the nearest-rank 95th percentile |
+| `totals` | Trials per outcome (effective lines), token buckets and cost of all lines with the estimated part (`costEstimated`: reservations and substitute prices), `overrunUsd`, duration (the sum of ended segments; a segment ended by a kill has no end time and adds nothing) |
 | `segments[]` | One per segment, the first run being segment 1: start and end, tool, adapter and helper versions, prices, cap, concurrency, `toolPaths` sent (including on restarts), spend, `resume-unverified` and `resume-config-ignored` details |
-| `warnings` | Warnings this run raises from its own records (§Warnings). Rewritten at segment start (after pre-start checks), whenever a new code appears and at segment end, so a run left `running` still has them. In such a run, values like the overrun are as last written; resume recounts them. They equal the warnings of `run --json` |
+| `warnings` | Warnings this run raises from its own records (§Warnings). Rewritten at segment start (after pre-start checks), whenever a new code appears and at segment end, so a run left `running` still has them. In such a run, values like the overrun are as last written; resume recounts them. `run --json` carries them after the pre-start `few-cases`, `margin-unreachable` and `conservative-over-budget`, which the manifest does not hold |
 | `status` | `running` → `complete` \| `partial` |
 | `stopReason` | When `partial`: `interrupted`, `budget`, `budget-projected`, `adapter-errors`, `transient-errors`, `config-error` |
 
@@ -168,7 +171,7 @@ A late `calls` notification or late response that creates a stop condition (for 
 **Swap status** is `running` → `complete` (after the comparison is written) or `partial` (both runs stopped with the same `stopReason`). A killed swap stays `running`.
 
 - A stopped swap still waits for late notifications and responses of both runs, then compares what finished and writes the report and result page, so the cells that were degrading up to the stop are visible at once. The gate is `undecided`, the page is marked as withheld, and the exit code is that of the stop reason.
-- It does not compare when no trial finished in either run, on `config-error`, or on a second interrupt or kill.
+- It does not compare when neither run finished a trial, on `config-error`, or on a second interrupt or kill.
 - A resume that stops at once with `budget-projected` still compares the earlier segments, because a killed earlier segment left no result page.
 - A compared swap has `comparisonId` even when `partial`.
 
@@ -178,7 +181,7 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 
 | Line | Written | Shape |
 |---|---|---|
-| Send line | Just before an attempt goes to the adapter, after the write is flushed, so a kill cannot lose the reservation | `{caseId, repeat, attempt, segment, reservedUsd, sending: true}` |
+| Send line | Just before an attempt goes to the adapter, after the write is flushed, so a kill cannot lose the reservation | `{caseId, repeat, attempt, segment, reservedUsd, sending: true}`; `reservedUsd` is `null` only without a cap and without any configured price (§Unpriced Models) |
 | Attempt line | When an attempt ends | Fields below |
 | Cost line | When calls or cost appear after the attempt line | `{caseId, repeat, attempt, segment, source, costUsd, costEstimated?, usage?, calls?, costCorrection: true}` |
 
@@ -197,7 +200,7 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 | `attempt` | Attempt number for this key, from 1, continuing across segments |
 | `segment` | Segment number, from 1 |
 | `seed` | Per-trial seed (§Identifiers and Hashing) |
-| `status` | `ok` \| `error` \| `stopped`. `stopped` is an attempt the tool did not wait for when stopping (second interrupt) or one closed on resume after a kill. It is not graded, not counted in error rates, and resent on resume |
+| `status` | `ok` \| `error` \| `stopped`. `stopped` is an attempt the tool did not wait for when stopping (second interrupt), one closed on resume after a kill, or one never sent because the adapter could not be restarted. It is not graded, not counted in error rates, and resent on resume |
 | `raw` | The model's first answer. Required when `ok`, may be empty. A regenerated or picked answer does not replace it (protocol `generate`) |
 | `answers` | Number of answers the service received, integer ≥ 0, default 1. 0 means it ended without a model answer; 2 or more means it regenerated or picked |
 | `finalKind` | `model` (the model's answer, possibly regenerated), `fallback` (a fixed message or another model's answer) or `discarded`. Required when `ok` |
@@ -236,10 +239,12 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 
 ### Grade and GradeSet
 
-- A grade: `{caseId, repeat, ruleId, surface: raw | final | trial, outcome: pass | fail | skip | error, evidence?}`. `evidence` holds the violating characters or matched strings. `error` means the check itself could not run; it leaves the denominator.
-- A grade set: `{gradeSetId, runId, rulesHash, checkerVersion, trialsFingerprint, casesHash}`. The last five values identify it and an existing one is reused. `checkerVersion` is the tool version; any tool change re-grades, which is cheap for deterministic checks. `trialsFingerprint` covers every line, so a resumed run gets a new grade set. `casesHash` uses the current case files because checks read case input through `…From`.
-- Trials of a case whose current hash differs from the manifest, including deleted cases, are not graded (all `skip`) and leave the comparison too (FR-027).
+- A grade: `{caseId, repeat, ruleId, surface: raw | final | trial, outcome: pass | fail | skip | error, evidence?}`. `evidence` holds the violating characters or matched strings; for `length` it is the measured length, and for `json` each schema violation by instance path and message. `error` means the check itself could not run; it leaves the denominator.
+- A grade set: `{gradeSetId, runId, rulesHash, checkerVersion, trialsFingerprint, casesHash}`. The last five values identify it and an existing one is reused; a grade set file that cannot be read is written again, since it is derived from `trials.jsonl`. `checkerVersion` is the tool version; any tool change re-grades, which is cheap for deterministic checks. `trialsFingerprint` covers every line, so a resumed run gets a new grade set. `casesHash` uses the current case files because checks read case input through `…From`. The file `grades/<gradeSetId>.jsonl` holds the grade set on its first line and its grades after it.
+- Trials of a case whose current hash differs from the manifest, including deleted cases, are not graded and leave the comparison too (FR-027). They get `skip` for every rule that applies to the case as defined now; a deleted case gets it for every `global` rule matching its target and language.
 - A grade set looks at one run. Systematic failures need both runs and are applied by the comparison (§Trial Outcomes).
+- Like `trials.jsonl`, a grade set holds `evidence` as checked. Redaction applies when evidence reaches a comparison or any output (FR-031), so a change to `redact` needs no re-grade and a reused grade set never carries old redaction.
+- `grade` and `compare` start no adapter, so a case without `lang` keeps the language key its run recorded.
 - `compare` only uses grade sets made with the current rules (FR-019).
 
 ### Cell
@@ -251,6 +256,7 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 | `cases` | K, the common cases with at least one judged trial in this cell for both variants |
 | `droppedCases` | Cases dropped because one variant had no judged trial. Rejections, time-outs, discards, fallbacks and empty answers without regeneration are caught by the `completed` cell; an empty first answer followed by a regenerated one remains in the empty-answer and regeneration rates; transient and adapter errors stay only in this count unless systematic |
 | `systematic` | `completed` cells only: trials and cases per variant counted as systematic failures |
+| `excluded` | `completed` cells only: per variant, the transient and adapter error trials left out because they were not systematic |
 | `baseline`, `candidate` | Rate |
 | `diff` | `{estimate, low, high}`. `low` at the configured level; `high` multiplicity-corrected when gated (§Statistics) |
 | `deff` | Case-cluster design effect |
@@ -258,10 +264,10 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 | `masked` | `raw` cells only: per variant, the share of trials graded on both surfaces that failed raw and passed final. Shown as "masked by the service" |
 | `margin` | Margin used |
 | `verdict` | `improved`, `non-inferior`, `regressed`, `inconclusive`, `insufficient`, `not-applicable` |
-| `needed` | Undecided gated cells only: `{repeats, cellTrials, trialsPerVariant}` or `{cases}` with the message (§Statistics). `cellTrials` = K × repeats; `trialsPerVariant` = all cases × repeats |
-| `note` | When `high < 0`: "drop confirmed, within margin" (`non-inferior`), "drop confirmed, margin not decided" (`inconclusive`), "drop confirmed, too few samples" (`insufficient` with K ≥ 3). With K < 3 only "clear drop, too few cases to decide" (§Statistics) |
+| `needed` | Undecided gated cells only, one of the kinds of §Statistics, Trials needed: `{kind: repeats, repeats, cellTrials, trialsPerVariant, nearMargin}`, `{kind: cases, cases}` or `{kind: on-margin}`. `cellTrials` = K × repeats; `trialsPerVariant` = the candidate run's cases × repeats. The message files hold the text; the `repeats` text's `currentTrials` is the cell's `candidate.trials` |
+| `note` | A code; the message files hold its text. When `high < 0`: `drop-within-margin` (`non-inferior`), `drop-margin-undecided` (`inconclusive`), `drop-too-few-samples` (`insufficient` with K ≥ 3). With K < 3 only `clear-drop-too-few-cases` (§Statistics) |
 
-- `Rate` is `{cases, trials, passes, rate, pooledRate, low, high, nEff}`. `rate` is case-weighted and drives the verdict; `pooledRate` = passes ÷ trials is for reference; `nEff` is ñ.
+- `Rate` is `{cases, trials, passes, rate, pooledRate, low, high, nEff}`, counted over the K common cases; its statistics are `null` when K = 0. `rate` is case-weighted and drives the verdict; `pooledRate` = passes ÷ trials is for reference; `nEff` is ñ.
 - Display names: `improved` Better, `non-inferior` Held, `regressed` Regressed, `inconclusive` Inconclusive, `insufficient` Too few samples, `not-applicable` Not applicable. "Undecided" covers `inconclusive` and `insufficient`; neither ever counts as passing.
 
 ### Comparison
@@ -270,25 +276,30 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 |---|---|
 | `comparisonId` | Deterministic ID (§Identifiers and Hashing) |
 | `createdAt` | When the comparison was written (volatile) |
-| `baseline`, `candidate` | Run ID, grade set ID, variant, run `status` |
+| `baseline`, `candidate` | Run ID, grade set ID, variant, run `status`, versions from the manifest (`tool`, `adapter` with its helper, `service`) and the `postprocess` capability the adapter declared |
 | `cells[]` | Cells |
 | `aggregates[]` | Per rule and surface, the pooled rate and difference over languages. No verdict |
-| `summary` | In order: `worse[]` (regressed cells, cells with a confirmed drop, "clear drop" cells with K < 3), `improved[]`, `unknown[]` (undecided cells with `needed`), `ops[]` (changes such as cost ratio, latency ratio, discard rate), `scope`. An undecided cell with a confirmed drop appears in both `worse[]` and `unknown[]` |
+| `rules[]` | `active` rules applicable to the compared targets (the targets of the common, unchanged cases): `{id, title, severity, languages, gateOn, margin, anchors, origin}`, with `margin` as used (§Statistics, Verdict order) |
+| `summary` | In order: `worse[]` (regressed cells, cells with a confirmed drop, cells with note `clear-drop-too-few-cases`), `improved[]`, `unknown[]` (undecided cells with `needed`), `ops[]` (changes such as cost ratio, latency ratio, discard rate), `scope`. An undecided cell with a confirmed drop appears in both `worse[]` and `unknown[]` |
+| `gate` | The Gate of this comparison (§Gate) |
+| `completion` | Per language, the baseline completion rate of §Gate (row 3) with its judged trials and passes |
 | `ops` | Per variant: rejection, time-out, transient, adapter error, discard, fallback, empty answer and regeneration rates (each with a Wilson interval); systematic trials and cases; discard reasons; top 3 messages per error kind by frequency; side-call failures per kind; abandoned trials per cause; finish reasons; latency p50, p95 and distribution; token buckets and cost per trial; response model snapshots |
-| `samples` | Texts for side-by-side viewing: `review` samples per case and failing examples of regressed cells, redacted. Each (variant, `caseId`, `repeat`) text is stored once and referenced by key. `review` takes the lowest repeats, `samples` per case, raw and final. Error trials carry the kind and message instead. Failing examples are up to `report.samples` per cell, sorted by case and repeat and taken round-robin across cases |
-| `warnings[]` | `{code, message, ruleId?, lang?, variants?, caseIds?, file?, line?, column?}`, codes from §Warnings only. `file`, `line` and `column` are for file-location warnings |
+| `samples` | Texts for side-by-side viewing: `review` samples per case and failing examples of regressed cells, redacted. Each (variant, `caseId`, `repeat`) text is stored once and referenced by key. `review` takes the lowest repeats, `samples` per case, raw and final. Error trials carry the kind and message instead. Failing examples are candidate failures, up to `report.samples` per cell, sorted by case and repeat and taken round-robin across cases, each stored with the baseline text of the same case and repeat |
+| `warnings[]` | `{code, params?, ruleId?, lang?, variants?, caseIds?, file?, line?, column?}`, codes from §Warnings only. `file`, `line` and `column` are for file-location warnings |
 | `coverage` | Common cases, cases in one run only, cases dropped for a changed hash |
 | `scope` | Judged targets, judged rules / all rules, `review` rules |
 | `priorComparisons` | Number of distinct run pairs among earlier comparisons in the output directory with the same two variant fingerprints in the same roles, excluding the current run pair. Re-grading or finishing the same runs is not a new sample; rerunning only the candidate is |
 | `stats` | Confidence level, method, G, both z values, `minCases` |
-| `config` | Copies of `gate` and `stats` used |
+| `config` | Copies of `gate`, `stats` and `report` used |
 
+- The report, the result page and `report` read rule details, versions and settings from the comparison alone. `rules[]` comes from rule definitions that `rulesHash` covers, versions and `postprocess` from the manifests of the runs the grade sets name, and `config` from the `gate`, `stats` and `report` settings the `comparisonId` input already holds, so these fields add no input to the ID. `gate` and `completion` are derived from those inputs and add none either.
 - Metrics use the same common, unchanged cases as the cells (FR-027).
-- Denominators: rejection, time-out, discard, fallback, empty answer and regeneration rates divide by the variant's trials graded on `completed` in the comparison (systematic failures in, other transient, adapter and config errors out). Transient and adapter error rates divide by all finished trials over the whole run, and systematic trials stay in their numerators.
-- Cost and tokens per trial average keys finished in both runs. Latency uses the `ok` trials among them; the time of trials that ended in errors shows through the time-out and error rates. This keeps a partial run whose repeat 0 alone finished from looking expensive because of cache writes.
+- Denominators: rejection, time-out, discard, fallback, empty answer and regeneration rates divide by the variant's trials graded on `completed` in the comparison (systematic failures in, other transient, adapter and config errors out). Transient and adapter error rates divide by all finished trials of the common cases, in every segment, and systematic trials stay in their numerators.
+- Cost and tokens per trial average keys finished in both runs; token means are not rounded. Latency uses the `ok` trials among them; the time of trials that ended in errors shows through the time-out and error rates. This keeps a partial run whose repeat 0 alone finished from looking expensive because of cache writes.
 - Rates are counted independently of the outcome table, and one trial can fall in several: discard = `discarded`, fallback = `fallback`, empty answer = `ok` trials with an empty raw answer and `answers` ≥ 1, regeneration = `ok` trials with `answers` ≥ 2.
 - Metric warnings compare point estimates with thresholds; they never change the exit code, so no interval is used (constitution II). Defaults: `discardRateIncrease` 0.01, `regenerationRateIncrease` 0.03 (reasons in research R3).
 - Saved as `comparisons/<comparisonId>/comparison.json` (redacted) with `report.md` and `report.html`; the output root's `index.html` lists comparisons.
+- Human output and `report.md` point readers to the side-by-side `review` samples: to the result page when one is written, else to `samples.review` in `comparison.json`.
 - `report.md` puts every model, service or provider string (examples, samples, error messages, discard reasons) in a code block or span whose fence is longer than the longest backtick run inside, so mentions, links and HTML do not render in pull request comments.
 - A swap check shuts down both adapters and receives late notifications and responses before writing both run statuses and comparing, so call costs after results are included and a later `compare` of the same runs gives the same ID.
 
@@ -296,36 +307,37 @@ A trial is the key `(caseId, repeat)`. `trials.jsonl` is append-only and has thr
 
 - **Empty gate**: `gate` absent, `gate.severities` absent or empty. Cells are still judged, with the margin from the rule, `gate.margin` or 0.10.
 - **Gated rules**: `active` rules applicable to the compared targets whose `severity` is in `gate.severities`. `review` rules and uncalibrated judge rules are removed into `excluded[]` with a reason (constitution III).
-- **Gated cells**: cells of gated rules whose surface matches `gateOn` (`trial` for `completed`) and whose verdict is not `not-applicable`.
+- **Gated cells**: cells of gated rules whose surface matches `gateOn` (`trial` for `completed`) and whose verdict is not `not-applicable`, except low-baseline cells. A low-baseline cell is a cell of a rule other than `completed` whose baseline `rate` is below `report.lowBaseline`: the baseline does not hold that rule yet, so there is no held fix to protect, and the report lists these cells separately (FR-029). `completed` has its own premise check (row 3).
 - **Completion rate**: the share of `pass` in the `completed` column among judged trials (all except transient, adapter and config errors and `stopped`; systematic failures included), computed even without a `completed` rule. Preconditions 1–3 use common, unchanged cases only; two runs without a common case fall under 2.
 
 The first matching row decides. Rows 1–3 check the premise of the comparison and come before the gate config, so even with an empty gate a comparison without a basis is `undecided` (constitution II). The human message for each reason code lives in the message files (`src/messages/`).
 
-| Order | Condition | Outcome | Reason code |
-|---|---|---|---|
-| 1 | A run is not `complete` (`partial`, or `running` because it was killed or is still running) | `undecided` | `partial-run` |
-| 2 | A run has no judged trial | `undecided` | `no-judged-trials` |
-| 3 | The baseline completion rate is below 0.5 in some language | `undecided` | `baseline-incomplete` (with the language) |
-| 4 | The gate is empty | `no-gate` | `no-gate` |
-| 5 | No gated cell | `undecided` | `no-gated-cells` |
-| 6 | A gated cell is `regressed` | `block` | `regressed` (one per cell) |
-| 7 | A gated cell is `inconclusive` or `insufficient`, or a gated rule has no judged cell | `undecided` | `cell-undecided` (per cell), `rule-not-judged` (per rule) |
-| 8 | Otherwise | `pass` | — |
+| Order | Condition | Outcome | Reason code | Params |
+|---|---|---|---|---|
+| 1 | A run is not `complete` (`partial`, or `running` because it was killed or is still running) | `undecided` | `partial-run` | As the warning `partial-run` (§Warnings) |
+| 2 | A run has no judged trial | `undecided` | `no-judged-trials` | `{variants: list of variant IDs}` |
+| 3 | The baseline completion rate is below 0.5 in some language | `undecided` | `baseline-incomplete` (with the language) | `{rate}` |
+| 4 | The gate is empty | `no-gate` | `no-gate` | — |
+| 5 | No gated cell | `undecided` | `no-gated-cells` | — |
+| 6 | A gated cell is `regressed` | `block` | `regressed` (one per cell) | — |
+| 7 | A gated cell is `inconclusive` or `insufficient`, or a gated rule has no judged cell | `undecided` | `cell-undecided` (per cell), `rule-not-judged` (per rule) | — |
+| 8 | Otherwise | `pass` | — | — |
 
 | Field | Description |
 |---|---|
 | `outcome` | `pass` \| `block` \| `undecided` \| `no-gate` |
-| `reasons[]` | `{code, message, ruleId?, lang?, surface?}` with the codes above plus two informational ones that never change the outcome: `dominant-error` and `abandoned-in-systematic` |
+| `reasons[]` | `{code, params?, ruleId?, lang?, surface?}` with the codes above plus two informational ones that never change the outcome: `dominant-error` and `abandoned-in-systematic` |
 | `blocking[]` | Regressed gated cells |
 | `undecided[]` | Undecided gated cells with `needed`, and gated rules without a judged cell |
-| `excluded[]` | Rules removed from the gate and why |
+| `excluded[]` | Rules removed from the gate: `{ruleId, cause}`, `cause` as in the warning `excluded-from-gate` (§Warnings) |
 
 - A partial or still-running run never blocks. A CI time-out kills the process and leaves the run `running`; comparing it as finished could pass a half-run. Variants of a stopped run may also have finished different cases. Cell verdicts stay visible and regressed cells are listed in the reasons.
+- When rows 1–3 decide, `reasons[]` holds that reason followed by one `regressed` per regressed gated cell, and `blocking[]` and `undecided[]` stay empty. From row 5 on, `reasons[]` lists every matching row's reasons in table order, and `blocking[]` and `undecided[]` list their cells whatever the outcome.
 - 0.5 in row 3 is a premise check, not a statistical threshold: when the baseline fails to answer half the time, "the candidate is no worse" means nothing.
 - Row 4 is not `pass` because nothing was judged; it exits 0 because nothing can block (constitution II, IV).
 - Row 7 includes rules without a judged cell because a gated rule must be able to block; a run limited by `--cases` that misses a gated rule is `undecided`.
-- `dominant-error`: when at least 80% of the failing trials of the blocking cells end with the same error message (redacted, first 200 characters), the message and its share go first in `reasons[]` and at the top of the summary. A new shape of billing or quota error classified as a rejection would otherwise look like a worse model. The outcome does not change.
-- `abandoned-in-systematic`: abandoned trials inside the systematic failures of a gated `completed` cell, with counts per cause and, for the tool time limit, the run's `adapter.timeoutMs`.
+- `dominant-error`: when at least 80% of the failing candidate trials of the blocking cells end with the same error message (redacted, first 200 characters), the reason goes first in `reasons[]` and at the top of the summary, with params `{message, share}`. A new shape of billing or quota error classified as a rejection would otherwise look like a worse model. The outcome does not change.
+- `abandoned-in-systematic`: abandoned trials inside the systematic failures of a gated `completed` cell, with params `{trials: per variant {timeout, restart}, timeoutMs: per variant}` listing both variants, a variant without abandoned trials with zero counts, `timeoutMs` being each run's `adapter.timeoutMs`.
 - Exit codes per outcome: [contracts/cli.md](contracts/cli.md).
 
 ## Statistics
@@ -343,48 +355,52 @@ d_i   = y_ci − y_bi
 V_cl  = Σ(d_i − Δ̂)² / (K(K−1))
 V_bin = p̂_c(1−p̂_c)/ñ_c + p̂_b(1−p̂_b)/ñ_b
 deff  = max(1, V_cl / V_bin)                 (1 when V_bin = 0)
+s_U   = (t_{K−1, 1−α_U} / z_U)² when K < 10, else 1
+deff_U = max(1, s_U · V_cl / V_bin)          (1 when V_bin = 0)
 n*_v  = ñ_v / deff,  x*_v = p̂_v · n*_v,  [l_v, u_v] = Wilson(x*_v, n*_v, z)
 L = Δ̂ − √((p̂_c − l_c)² + (u_b − p̂_b)²)      with z = z_L
-U = Δ̂ + √((u_c − p̂_c)² + (p̂_b − l_b)²)      with z = z_U
+U = Δ̂ + √((u_c − p̂_c)² + (p̂_b − l_b)²)      with z = z_U and n*_v = ñ_v / deff_U
 ```
 
+- t_{ν, p} is the Student t quantile with ν degrees of freedom (P(T ≤ t) = p). V_cl has only K − 1 degrees of freedom, so with few cases a small V_cl by chance would make U too narrow; s_U widens U by the ratio of the t and normal quantiles. When s_U · V_cl / V_bin ≥ 1 this equals the Wilson interval with t in place of z_U. With α = 0.025 and G = 5, t_{2, 0.995} = 9.925, t_{4, 0.995} = 4.604 and t_{8, 0.995} = 3.355; an ungated cell with 3 cases uses t_{2, 0.975} = 4.303.
+- 10 is the `few-cases` boundary (§Validation Rules). Only U uses s_U: L, the stored `deff` (§Cell) and n_min use z and deff as written.
 - The per-variant rate interval is Wilson(p̂_v·ñ_v/deff_v, ñ_v/deff_v, z_L) with deff_v = max(1, (s²(y_v)/K) ÷ (p̂_v(1−p̂_v)/ñ_v)).
 
-**Levels**: α = (1 − confidence)/2. The lower bound uses z_L = z_{1−α} without correction. The upper bound of a gated cell uses z_U = z_{1−α/G}, where G is the number of gated cells; ungated cells use z_U = z_L.
+**Levels**: α = (1 − confidence)/2. The lower bound uses z_L = z_{1−α} without correction. The upper bound of a gated cell uses z_U = z_{1−α/G}, where G is the number of gated cells; ungated cells use z_U = z_L. The matching tail probability is α_U = α/G for a gated cell and α_U = α for an ungated one. With 3 ≤ K < 10 the upper bound takes t_{K−1, 1−α_U} in place of z_U through s_U (Interval).
 
 **Verdict order** (margin m from the rule's `margin`, else `gate.margin`, else 0.10):
 
 | Order | Condition | Verdict |
 |---|---|---|
-| 1 | No judged trial in this cell for either run | `not-applicable` |
+| 1 | Neither run has a judged trial in this cell | `not-applicable` |
 | 2 | K < 3 | `insufficient` |
 | 3 | U < −m | `regressed` |
 | 4 | K < `minCases` | `insufficient` |
 | 5 | L > 0 | `improved` |
-| 6 | L > −m | `non-inferior` (note "drop confirmed, within margin" when U < 0) |
+| 6 | L > −m | `non-inferior` (note `drop-within-margin` when U < 0) |
 | 7 | min(ñ_b, ñ_c) < n_min(m) | `insufficient` |
 | 8 | Otherwise | `inconclusive` |
 
-- A cell with U < 0 has a confirmed drop whatever its verdict and goes under worse cells in the decision summary with its `note` (§Cell). Otherwise a confirmed drop would hide under "undecided".
-- With K < 3, if U computed without the design effect is below −m, the cell gets the note "clear drop, too few cases to decide".
+- A cell with U < 0 has a confirmed drop whatever its verdict and goes under worse cells in the decision summary with its `note` (§Cell). With K < 3 the interval is not trusted, so only the note `clear-drop-too-few-cases` marks a confirmed drop. Otherwise a confirmed drop would hide under "undecided".
+- With K < 3, if U computed without the design effect (n*_v = ñ_v, z = z_U) is below −m, the cell gets the note `clear-drop-too-few-cases`.
 - n_min(m) = ⌈z_L²(1−m)/m⌉: 73, 35 and 22 for m = 0.05, 0.10 and 0.15 with z_L = 1.96. A cell planned below it gets the lint warning `margin-unreachable`.
 
 **Trials needed** (FR-024), for undecided gated cells only:
 
-- Cases first. If K < max(3, `minCases`), more repeats fall back into verdict rows 2 or 4, so the cell asks for max(3, `minCases`) cases, or for the larger count below when that is higher. The repeat formula applies only to cells with enough cases.
+- Cases first. If K < max(3, `minCases`), more repeats fall back into verdict rows 2 or 4, so the cell asks for max(3, `minCases`) cases (kind cases), or for the larger count below when that is higher. The repeat formula applies only to cells with enough cases.
 
 ```text
-z     = z_L if Δ̂ > −m, else z_U
+z     = z_L if Δ̂ > −m, else z_U (t_{K−1, 1−α_U} when K < 10, as in U)
 p̃_v   = (x_v + z²/2) / (n_v + z²)            (x_v, n_v: pooled passes and trials of the cell)
 W     = p̃_b(1−p̃_b) + p̃_c(1−p̃_c),  r̄ = harmonic mean of candidate trials per case
 σ²_B  = max(0, s_d² − W/r̄)                   (s_d²: sample variance of d_i; the between-case part repeats cannot reduce)
 d     = |Δ̂ + m|,  z_t = z + 0.84             (0.84 gives 80% power)
-d = 0 → "exactly on the margin, repeats are unlikely to settle it" (no number)
+d = 0 → kind on-margin: exactly on the margin, repeats are unlikely to settle it (no number)
 c     = K·d²/z_t² − σ²_B
-c > 0 → r′ = max(⌈W/c⌉, ⌈n_min/K⌉, ⌊r̄⌋ + 1)
-        "a new run with r′ repeats gives this cell K·r′ trials per variant (now n_c) and the whole run (cases)·r′ trials per variant; about 80% chance of a verdict (estimate)"
-c ≤ 0 → "repeats cannot settle it; about ⌈z_t²(σ²_B + W/r̄)/d²⌉ cases are needed"
-r′ > 10·r̄ → append "near the margin, repeats are unlikely to settle it"
+c > 0 → kind repeats with r′ = max(⌈W/c⌉, ⌈n_min/K⌉, ⌊r̄⌋ + 1): a new run with r′ repeats gives this cell
+        K·r′ trials per variant (now n_c) and the whole run (cases)·r′ trials per variant; about 80% chance of a verdict (estimate)
+c ≤ 0 → kind cases with ⌈z_t²(σ²_B + W/r̄)/d²⌉ cases: repeats cannot settle it
+r′ > 10·r̄ → nearMargin: near the margin, repeats are unlikely to settle it
 ```
 
 ## Trial Outcomes
@@ -401,14 +417,14 @@ The first matching row decides. "Judged" means `pass` or `fail`; "excluded" mean
 | 6 | `ok`, empty `raw`, `answers` 1 | Reasoning used the whole output limit | — | fail | excluded | excluded | Empty answer rate |
 | 7 | `ok` · `discarded` | Service threw away a cut or emptied answer (declared discard) | — | fail | judged | excluded | Discard rate and reasons |
 | 8 | `ok` · `fallback` | Fixed message or another model's answer after a failed check | — | fail | judged | excluded | Fallback rate |
-| 9 | `ok` · `model`, empty `final` | Service sent empty text | — | fail | judged | excluded | Empty answer rate |
+| 9 | `ok` · `model`, empty `final` | Service sent empty text | — | fail | judged | excluded | Empty answer rate only when `raw` is empty too |
 | 10 | `ok` · `model`, finish reason not `stop` | Shipped cut (`length`) or filtered | — | fail | judged | judged | Finish reasons |
 | 11 | `ok` · `model`, finish reason `stop` | Normal answer | — | pass | judged | judged | — |
 
 - Raw rules exclude an empty raw answer: an empty string always passes forbidding checks.
 - "Empty" means nothing remains after trimming the 25 Unicode `White_Space` code points from both ends: U+0009–U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000. Whitespace-only answers pass forbidding checks and are empty to users. Records keep the value as received.
 - Raw rules read the first answer; `completed` and final rules read the shipped text. With `answers` ≥ 2, an empty first answer does not make row 6; rows 7–11 apply to the shipped result and the empty first answer stays in the empty-answer and regeneration rates. With `answers` 0, an empty raw answer goes to rows 7–8, since the model did not produce an empty answer.
-- A trial with any call that failed with kind `config` is row 1, whatever the adapter reported; the tool records the reported result in the message, so resume resends the trial after the fix. Calls reported after the result (adapter-protocol `calls`) and late responses to abandoned attempts never change the outcome; they only stop the run.
+- A trial with any call whose `errorKind` is `config` is row 1, whatever the adapter reported; the tool records the reported result in the message, so resume resends the trial after the fix. Calls reported after the result (adapter-protocol `calls`) and late responses to abandoned attempts never change the outcome; they only stop the run.
 - `stopped` is outside this table: it leaves every rule and metric and is resent on resume.
 - Why rejections fail `completed` and configuration problems are kept apart from them: [research R8](research.md#r8-trial-outcomes-and-the-default-gated-surface).
 - Time-outs count as completion failures because the service's limit and retries are production behaviour (research R8). The tool's own `adapter.timeoutMs` is not, so passing it abandons the trial as an adapter error with warning `abandoned-trials`; concentrated on one case of one variant it becomes systematic. Set `adapter.timeoutMs` longer than one service call can take, so the service's own time-out fires first; [003 helper-api §SDK Retries and `adapter.timeoutMs`](../003-adapter-helpers/contracts/helper-api.md#sdk-retries-and-adaptertimeoutms) explains how SDK retry waits add up.
@@ -434,7 +450,7 @@ In both cases the user missed the model's answer because of that error. Which fa
 - A TLS certificate failure also never reaches the model, but it is `config`: retrying does not help and it is an environment problem, so the run stops at the first one.
 - Other statuses the SDK retries, such as 409, are `permanent` when they remain after the SDK's retries; a 409 whose cause code means a configuration problem is `config` ([003 helper-api §Error Classification](../003-adapter-helpers/contracts/helper-api.md#error-classification)).
 - Transient failures are excluded so that rate limits caused by evaluation load and short provider outages do not count against the candidate.
-- Tool retries wait `retryAfterMs` (exponential backoff when absent) but never more than 120 s, so a daily-limit 429 with a long `retry-after` does not freeze the run; such a rejection fails again and shows in the transient rate. 120 s matches the OpenAI Python SDK's own ceiling for honouring `retry-after`.
+- Tool retries wait `retryAfterMs`, or when it is absent 1 s doubled per retry with each wait drawn uniformly between half and all of that value, but never more than 120 s. The random half keeps trials that hit the same 429 together from retrying at the same moment. The ceiling keeps a daily-limit 429 with a long `retry-after` from freezing the run; such a rejection fails again and shows in the transient rate. 120 s matches the OpenAI Python SDK's own ceiling for honouring `retry-after`.
 
 ### Systematic Failures
 
@@ -453,7 +469,7 @@ Adapter and transient error rates are shares of finished trials, checked only af
 | Condition | `stopReason` | Exit code |
 |---|---|---|
 | A `config` failure (also on side calls, `calls` notifications and late responses), a call to an unpriced model while a cap is set (also when reported that way), or a restarted adapter that declares a different adapter or helper version or service code (same rules as resume) | `config-error` | 4 |
-| Adapter error rate above `run.maxAdapterErrorRate` (default 0.05), or three adapter crashes in a row | `adapter-errors` | 3 |
+| Adapter error rate above `run.maxAdapterErrorRate` (default 0.05), or the adapter process lost three times in a row (death, stdout contamination or every slot abandoned) without an answer in between; the third loss starts no new process | `adapter-errors` | 3 |
 | Transient error rate above `run.maxTransientRate` (default 0.5) | `transient-errors` | 3 |
 | Re-estimated total above the cap after the first batch, after a repeat round, or at resume | `budget-projected` | 5 |
 | Before an attempt (tool retries included), the §Cap Check fails | `budget` | 5 |
@@ -461,7 +477,7 @@ Adapter and transient error rates are shares of finished trials, checked only af
 
 - On stop, no new trials or retries are sent and in-flight attempts are awaited and recorded as usual. An attempt without an answer `adapter.timeoutMs` after sending is abandoned as usual; marking it `stopped` would let resume send it again, a chance an uninterrupted run never gets.
 - In a swap check, when one run stops the other stops the same way, and both record the same `stopReason`.
-- SIGINT and SIGTERM are interrupts. The first starts stopping (or keeps waiting if already stopping). The second sends `cancel` to adapters that support it and exits at once; in-flight trials become `stopped`. The first signal never cuts attempts even while stopping, because people press it without knowing a stop is in progress, and resent attempts would get extra chances. CI may send signals in a row or kill after a grace period, leaving `stopped` trials or a `running` run; resume resends only the cut trials either way.
+- SIGINT and SIGTERM are interrupts, handled until the command ends (sending, grading and comparing). The first starts stopping (or keeps waiting if already stopping). The second sends `cancel` to adapters that support it, terminates the adapters and exits at once without waiting for answers; in-flight trials become `stopped`. The first signal never cuts attempts even while stopping, because people press it without knowing a stop is in progress, and resent attempts would get extra chances. CI may send signals in a row or kill after a grace period, leaving `stopped` trials or a `running` run; resume resends only the cut trials either way.
 - With several reasons, `stopReason` is `config-error` if present, else the first one. An unfixed configuration stops every resume again, and unpriced calls make spend untrustworthy. The exit code follows `stopReason`.
 - A stop on cost (`budget` or `budget-projected`) shows the outcome distribution per variant (for example "100% of candidate trials are `timeout`"). A candidate that always times out piles up reservations and hits the cap first, which is not a reason to raise the cap.
 
@@ -485,13 +501,13 @@ Adapter and transient error rates are shares of finished trials, checked only af
 3. Variant, global seed, repeats and case list come from the manifest. A command that sets them differently (`run --variant`, `swap --from`/`--to`, `--repeats`, `--cases`) is refused (exit code 4). Different values only in the config file are ignored with warning `resume-config-ignored`. A manifest case missing from the files is refused; cases only in the files are left out and named in the same warning.
 4. Refused when generation conditions differ from the manifest (exit code 4): case hashes, service code (`treeHash`, else version string and dirty flag), adapter name, version and `launchHash`, helper version, and render fingerprints (re-rendered at resume when the adapter renders). One run never mixes trials of different prompts or service code. Adapter code outside `service_dir` is known only by its version, so bump it on changes. The rules hash and commit SHA are not compared, so rules can be fixed and committed between segments.
 5. `toolPaths` sent to the adapter at every start (restarts included) are the paths the config's globs match now plus every path this run sent before (`segments[]`), so new rule files are not counted as service code and old ones that left the glob still are.
-6. A condition that cannot be verified gives warning `resume-unverified` and resume continues: no service version, `dirty: true` without `treeHash`, or no render fingerprint. Refusing would make resume unusable for services that declare no version. It is stored in the segment and in the comparison.
+6. A condition that cannot be verified gives warning `resume-unverified` and resume continues: no service version (on either side), `dirty: true` without `treeHash`, or no render fingerprint. A restarted adapter follows the same rule: a value missing on one side is not a change. Refusing would make resume unusable for services that declare no version. It is stored in the segment and in the comparison.
 7. Retries and adapter time limit come from `limits`; different config values give `resume-config-ignored`. Prices, cap and concurrency come from the current config and are stored per segment; the cap includes earlier spend.
 8. At start, send lines without attempt lines are closed as `stopped`, then spend and `totals` are recounted from `trials.jsonl`, because a kill may have left the summaries behind the last line.
 9. `transient` trials with retries left get only the remaining retries. Stop rates use only trials finished in this segment, so the errors that stopped the last segment do not stop this one at once.
 10. Resume re-estimates the total from measurements first and ends with `budget-projected` (exit code 5) above the cap without sending; raise the cap and resume again.
 11. With `--dry-run`, resume changes nothing and shows the remaining trials and the re-estimate, counting unclosed send lines at their reservations.
-12. A swap check resumes both runs by `swapId` and interleaves the remaining trials. When both runs finished but the swap did not (killed before comparing), it compares without sending. `run --resume` on a run that belongs to a swap is refused (exit code 4), since both runs share the cap and the interleaving.
+12. A swap check resumes both runs by `swapId` and interleaves the remaining trials. When both runs finished but the swap did not (killed before comparing), it compares without sending. `run --resume` on a run that belongs to a swap is refused (exit code 4), since both runs share the cap and the interleaving. A swap whose runs are one `complete` and one not resumes the unfinished run and then compares.
 
 **Lock**: `run.lock` holds PID, host and start time. On the same host, a lock whose process is gone means the run can be resumed. A live owner or another host's lock is refused (exit code 4) with the lock path. Resuming on another machine is not supported: the owner's liveness cannot be checked and the service code hash can differ between machines.
 
@@ -499,32 +515,34 @@ Adapter and transient error rates are shares of finished trials, checked only af
 
 Run and comparison warning codes (lint codes are in §Validation Rules):
 
-| Code | Condition |
-|---|---|
-| `transient-rate` | Transient error rate above `report.warn.transientRate` |
-| `discard-rate-increase` | Candidate minus baseline discard rate above `report.warn.discardRateIncrease` |
-| `regeneration-rate-increase` | Candidate minus baseline regeneration rate above `report.warn.regenerationRateIncrease`: the service filters the candidate's first answers more often |
-| `latency-p95-ratio` | Latency p95 ratio above `report.warn.latencyP95Ratio` |
-| `cost-ratio` | Cost-per-trial ratio above `report.warn.costRatio` |
-| `identical-repeats` | All repeats of a case returned the same output (FR-016) |
-| `response-model-changed` | More than one response model snapshot within a run: the model behind an alias changed during the run |
-| `same-response-model` | The variants have different `model` values but the same non-empty list of response snapshots: both may have answered with one model (a pinned Azure deployment, a proxy that ignores the model name) |
-| `render-mismatch` | A trial's request fingerprint differs from its case's render fingerprint (FR-015) |
-| `budget-overrun` | Spend above reservations (`overrunUsd` > 0) |
-| `abandoned-trials` | Trials abandoned without an answer, per cause. For trials abandoned at the tool time limit whose late responses contain failed calls with a kind, the message adds per kind the number of such trials and their longest `retryAfterMs`. All calls are checked, not only the last, because after `cancel` a request can still finish and a successful SDK retry would hide the earlier failure. Transient failures here suggest the service's SDK waited before retrying |
-| `resume-unverified` | A generation condition could not be verified on resume |
-| `resume-config-ignored` | On resume, config values for variant, seed, repeats, retries or adapter time limit differ and the manifest wins, or cases only in the files were left out |
-| `unpriced-model` | Without a cap, an unpriced call was charged at the most expensive price |
-| `cached-input-unpriced` | No `cachedInput` price, so cache hits were charged at `input` |
-| `estimate-low-accuracy` | Input tokens could not be counted from the render and `estimate.inputTokens` was used (§Cost) |
-| `conservative-over-budget` | The conservative estimate exceeds the cap (before the start); the run may stop at the cap if the cache misses or outputs are long |
-| `excluded-from-gate` | A rule of a gated severity is `review` or an uncalibrated judge and was removed from the gate |
-| `partial-run` | A compared run is not finished (`partial` or `running`) |
-| `versions-differ` | The compared runs differ in service code (`treeHash`, else version and dirty flag), adapter version, `launchHash` or helper version |
-| `adapter-warnings` | The adapter attached warnings to results. One per distinct sentence, with the variants in `variants`, counts per variant in the message and cases in `caseIds`. Helper warnings change how a result reads ([003 helper-api §Trial Warnings](../003-adapter-helpers/contracts/helper-api.md#trial-warnings)) |
+| Code | Condition | Params |
+|---|---|---|
+| `transient-rate` | Transient error rate above `report.warn.transientRate` | `{rates: per variant, threshold}` |
+| `discard-rate-increase` | Candidate minus baseline discard rate above `report.warn.discardRateIncrease` | `{rates: per variant, threshold}` |
+| `regeneration-rate-increase` | Candidate minus baseline regeneration rate above `report.warn.regenerationRateIncrease`: the service filters the candidate's first answers more often | `{rates: per variant, threshold}` |
+| `latency-p95-ratio` | Latency p95 ratio above `report.warn.latencyP95Ratio` | `{p95Ms: per variant, ratio, threshold}` |
+| `cost-ratio` | Cost-per-trial ratio above `report.warn.costRatio` | `{costPerTrialUsd: per variant, ratio, threshold}` |
+| `identical-repeats` | All repeats of a case returned the same output (FR-016) | — |
+| `response-model-changed` | More than one response model snapshot within a run: the model behind an alias changed during the run | `{models: per variant, list of snapshots}` |
+| `same-response-model` | The variants have different `model` values but the same non-empty list of response snapshots: both may have answered with one model (a pinned Azure deployment, a proxy that ignores the model name) | `{models: list of snapshots}` |
+| `render-mismatch` | A trial's request fingerprint differs from its case's render fingerprint (FR-015) | `{trials: per variant}` |
+| `budget-overrun` | Spend above reservations (`overrunUsd` > 0) | `{overrunUsd: per variant}` |
+| `abandoned-trials` | Trials abandoned without an answer, per cause. For trials abandoned at the tool time limit whose late responses contain calls with a kind that did not succeed (`failed` or `unanswered`), `lateFailures` holds per kind the number of such trials and their longest `retryAfterMs`. All calls are checked, not only the last, because after `cancel` a request can still finish and a successful SDK retry would hide the earlier failure. Transient failures here suggest the service's SDK waited before retrying | `{trials: per variant {timeout, restart}, timeoutMs: per variant, lateFailures: per variant {kind: {trials, maxRetryAfterMs}}}`, `timeoutMs` being each run's `adapter.timeoutMs` |
+| `resume-unverified` | A generation condition could not be verified on resume | `{conditions: list of service-version, tree-hash, render-fingerprint}` |
+| `resume-config-ignored` | On resume, config values for variant, seed, repeats, retries or adapter time limit differ and the manifest wins, or cases only in the files were left out | `{fields: list of variant, seed, repeats, retries, timeoutMs}`; left-out cases in `caseIds` |
+| `unpriced-model` | Without a cap, an unpriced call was charged at the most expensive price | `{models: list of model names}` |
+| `cached-input-unpriced` | No `cachedInput` price, so cache hits were charged at `input` | `{models: list of model names}` |
+| `estimate-low-accuracy` | Input tokens could not be counted from the render and `estimate.inputTokens` was used (§Cost) | `{inputTokens}`, the `estimate.inputTokens` used |
+| `conservative-over-budget` | The conservative estimate exceeds the cap (before the start); the run may stop at the cap if the cache misses or outputs are long | `{conservativeUsd, maxCostUsd}` |
+| `excluded-from-gate` | A rule of a gated severity is `review` or an uncalibrated judge and was removed from the gate | `{cause: review | uncalibrated-judge}` |
+| `partial-run` | A compared run is not finished (`partial` or `running`) | `{runs: per unfinished variant {status, stopReason}}`, `stopReason` `null` for a `running` run |
+| `versions-differ` | The compared runs differ in service code (`treeHash`, else version and dirty flag), adapter version, `launchHash` or helper version | `{fields: list of service, adapter-version, launch-hash, helper-version}`; `variants` names the variants of both runs |
+| `adapter-warnings` | The adapter attached warnings to results. One per distinct sentence, with the variants in `variants`, counts per variant in `params` (trials with the sentence on any of their attempts) and cases in `caseIds`. Helper warnings change how a result reads ([003 helper-api §Trial Warnings](../003-adapter-helpers/contracts/helper-api.md#trial-warnings)) | `{sentence, trials: per variant}` |
 
 - **Who raises them**: a run raises codes from its own records. Codes that compare variants (`discard-rate-increase`, `regeneration-rate-increase`, `latency-p95-ratio`, `cost-ratio`, `same-response-model`, `versions-differ`), `excluded-from-gate` (from the gate config) and `partial-run` (from run status) come only from comparisons. `conservative-over-budget` is raised before the start; a swap check raises it once against the combined estimate. A comparison re-raises every other code from both runs' records: trial-based codes are recounted on common cases, and manifest warnings (`budget-overrun`, `unpriced-model`, `cached-input-unpriced`, `estimate-low-accuracy`, `resume-unverified`, `resume-config-ignored`) are copied under their run's variant. A swap that reaches the comparison therefore holds every warning of its runs.
-- **Grouping**: one warning per code per run or comparison; per `ruleId` and `lang` when the code has them; per sentence for `adapter-warnings`. Affected variants go in `variants`, cases in `caseIds`, counts and values per variant in the message, so both variants can be read side by side.
+- **Grouping**: one warning per code per run or comparison; per `ruleId` and `lang` when the code has them; per sentence for `adapter-warnings`. Affected variants go in `variants`, cases in `caseIds`, counts and values per variant in `params`, so both variants can be read side by side.
+- **Text**: records hold no sentences the tool composes. A warning, gate reason or lint finding is its code with the params of its table row, and the message files (`src/messages/`) turn it into text in the `--lang` language. Text that comes from the adapter (the sentence of `adapter-warnings`, error messages) is data and stays in `params` as written; a validator's `detail` is data in English.
+- **Params notation**: in the Params columns, "per variant" is an object keyed by variant ID, "list of" is an array, and a dash (`—`) means the finding has no `params`. Each message template names every params key of its code exactly once as `{key}` and nothing else; the renderer writes objects and lists out.
 - Sample-plan warnings before the start use the lint codes `few-cases` and `margin-unreachable` (FR-006). They go into the `--json` envelope's `warnings`, not the comparison, because they can occur without one.
 
 ## Identifiers and Hashing
@@ -536,14 +554,14 @@ Run and comparison warning codes (lint codes are in §Validation Rules):
 
 | Name | Input |
 |---|---|
-| Case hash | `{target, lang, input}`, only what generation uses, so editing `note` or rule lists blocks neither resume nor comparison |
-| `rulesHash` | `active` rule definitions sorted by `id`, and per-case `rules` lists sorted by case `id` |
-| Variant fingerprint | `{id, model, params}` |
+| Case hash | `{target, lang, input}` (`lang` is `*` for a case without a language), only what generation uses, so editing `note` or rule lists blocks neither resume nor comparison |
+| `rulesHash` | `{rules, cases}`: `active` rule definitions sorted by `id`, and `{id, rules}` of the run's cases sorted by case `id` |
+| Variant fingerprint | `{id, model, params}`, without `params` when the variant has none |
 | Render fingerprint | The render's `{messages, tools}` (`tools` is `null` when absent). A `generate` fingerprint converts the first request of the first-answer branch into the same shape first, so the two compare directly |
 | `trialsFingerprint` | Every complete line of `trials.jsonl` in file order, send and cost lines included, because cost metrics come from them; any new line changes the grade set and the comparison ID |
 | `casesHash` | `{id, current case hash or null}` per case of the run, sorted by `id` |
 | `gradeSetId` | `gs-` + 12 hex of `{runId, rulesHash, checkerVersion, trialsFingerprint, casesHash}` |
-| `comparisonId` | `cmp-` + 12 hex of `{baseline gradeSetId, candidate gradeSetId, both run statuses, gate, stats, report, redact}`. Different report or redaction settings write different folders. Status is included because a run killed right after its last line becomes `complete` on resume without new lines, and the new comparison must not overwrite the `undecided` one |
+| `comparisonId` | `cmp-` + 12 hex of `{baseline: {gradeSetId, status}, candidate: {gradeSetId, status}, gate, stats, report, redact}`. Different report or redaction settings write different folders. Status is included because a run killed right after its last line becomes `complete` on resume without new lines, and the new comparison must not overwrite the `undecided` one |
 
 Volatile fields, excluded from the determinism check (SC-002, constitution VI): `createdAt`, `durationMs`, `tool.startedAt`, output path strings, `priorComparisons`.
 
@@ -575,7 +593,7 @@ The helpers implement these rules directly rather than relying on each language'
 - A `Result(usage=)` given to a helper becomes the usage of the raw answer's call and is counted through `calls`; with no captured call there are no `calls` and it becomes the trial's `usage`. Trial `usage` and call `usage` are never counted twice.
 - A `failed` call without usage costs 0, since providers rarely bill rejected requests; with usage (Responses `status: failed`) it costs that. A response that started with 200 and failed without usage may be billed, so it is `unanswered`, not `failed`.
 - An `ok` call without usage (for example a stream the helper does not parse) and an `unanswered` call are charged the call reservation.
-- An attempt without an adapter answer (`abandoned`, `stopped`) is charged the attempt reservation. A late response with usage or calls corrects it to the larger of that cost and the reservation, and a cost line records the difference with the response's tokens and calls. Calls reported by `calls` notifications are added as cost lines. Send lines without an attempt line are closed on resume as `stopped` at their reservation.
+- An attempt without an adapter answer (`abandoned`, `stopped`) is charged the attempt reservation, except a `stopped` attempt that never reached the adapter, which costs nothing. A late response with usage or calls corrects it to the larger of that cost and the reservation, and a cost line records the difference with the response's tokens and calls. Calls reported by `calls` notifications are added as cost lines. Send lines without an attempt line are closed on resume as `stopped` at their reservation.
 - Lines that include a reservation have `costEstimated: true`.
 
 ### Unpriced Models
@@ -589,9 +607,9 @@ The helpers implement these rules directly rather than relying on each language'
 |---|---|---|
 | Expected | Start decision, SC-005 | `basis: history`: the previous run's `costProfile` (mean cost of repeat 0 and of later repeats, per variant and language) times the trial counts. `basis: structure`: repeat 0 writes the whole prompt to the cache, later repeats hit it, output is `estimate.outputTokens` (or the render's smaller `maxOutputTokens`), one call per trial |
 | Conservative | Pre-start warning | No cache hits. Per trial: calls × input tokens per call × max(`input`, `cacheWrite`) price + output tokens per trial × `output` price. Calls = previous `callsPerTrialP95`, else 1. Input per call = the case's input token estimate (below). Output = previous `outputTokensP95`, else the expected-estimate assumption |
-| Reservation | In-run cap check, charge for unanswered calls and attempts | Call reservation = input tokens × max(`input`, `cacheWrite`) price + output tokens × `output` price. Input = the larger of the case's input estimate and the largest input per call seen so far. Output = the request's output limit (render `maxOutputTokens`), else the larger of `estimate.outputTokens` and the largest output per call seen. Attempt reservation = call reservation × the largest number of billed calls per attempt. Prices are the unanswered call's own `model` (unpriced: as above); an attempt with unknown calls uses the variant model |
+| Reservation | In-run cap check, charge for unanswered calls and attempts | Call reservation = input tokens × max(`input`, `cacheWrite`) price + output tokens × `output` price. Input = the larger of the case's input estimate and the largest input per call seen so far in the run. Output = the request's output limit (render `maxOutputTokens`), else the larger of `estimate.outputTokens` and the largest output per call seen. Attempt reservation = call reservation × the largest number of billed calls per attempt. Prices are the unanswered call's own `model` (unpriced: as above); an attempt with unknown calls uses the variant model |
 
-- **Billed calls per attempt** are its `ok` and `unanswered` calls and `failed` calls with usage, including calls in the attempt's cost lines, so services that always call a model after returning do not get undersized reservations. `failed` calls without usage are not billed, so two SDK retries of a 429 do not triple the reservation. An attempt without `calls` counts as one billed call. An abandoned or `stopped` attempt counts as one, or as the calls of its late response (`source: late`). Billed calls per trial sum all attempts of the key.
+- **Billed calls per attempt** are its `ok` and `unanswered` calls and `failed` calls with usage, including calls in the attempt's cost lines, so services that always call a model after returning do not get undersized reservations. `failed` calls without usage are not billed, so two SDK retries of a 429 do not triple the reservation. An attempt without `calls` counts as one billed call. An abandoned or `stopped` attempt counts as one, or as the calls of its late response (`source: late`); a `stopped` attempt that never reached the adapter counts none. Billed calls per trial sum all attempts of the key.
 - The maximum is kept per language, starts from the previous run's `callsPerAttemptMax` for that language (else 1), and grows when this run sees more. `costProfile` stores the value seen in this run, so one rare spike does not carry into every later run. The maximum and both call counts are never below 1: a run whose calls all failed unbilled would otherwise make the next reservation 0 and switch the cap check off.
 - **The previous run for `history`** is the latest `complete` run with the same variant fingerprint, at least 2 repeats and no case filter. A one-repeat run cannot measure cache hits, and a filtered run can skew per-language means. Without one, `structure` is used, also for languages the previous run lacks.
 - The conservative estimate and the reservation differ on purpose: output limits usually far exceed real output, so a warning based on them would fire every time, while the in-run check must not undershoot. For the same reason the conservative estimate uses p95 calls per trial and the reservation the maximum per attempt.
@@ -602,35 +620,38 @@ The helpers implement these rules directly rather than relying on each language'
 
 - **Scope**: spend the tool counted, both runs of a swap and every earlier segment of a resumed run. Calls the adapter never reported (for example embeddings the helper does not capture) are not included. Omitted in config means 1 USD; `null` means no cap.
 - **Before every attempt** (tool retries included): send only if spent + in-flight reservations + this reservation ≤ cap. In-flight reservations are the `reservedUsd` of their send lines. Attempts that ended without an answer are already in spent at their reservation and are not added again. Otherwise stop with `budget`.
-- **Re-estimate** after each variant's first batch, after each repeat round and at resume: spent + remaining trials × measured mean per variant and language, with repeat 0 and later repeats separate and each finished trial summing all lines of its key. A variant whose first batch has not finished uses the pre-start expected value per trial, so spent cost is not counted twice. Above the cap, stop with `budget-projected`. Results go to `estimate.projected[]`.
+- **Re-estimate** after each variant's first batch, after each repeat round and at resume: spent + remaining trials × measured mean per variant and language, with repeat 0 and later repeats separate and each finished trial summing all lines of its key. A variant whose first batch has not finished uses the pre-start expected value per trial, so spent cost is not counted twice. Above the cap, stop with `budget-projected`. Results go to `estimate.projected[]`. When both variants of a swap reach a re-estimate point in the same step, both points are recorded even if the first stops the swap; a run records no later point after its stop.
 - **Overrun**: per attempt, (cost of its attempt and cost lines) − (reservation at send). Positive amounts add up in `totals.overrunUsd` and raise `budget-overrun`. Sources are calls without an output limit, longer tool loops than seen before, SDK retries and calls after the result. Cost of calls that belong to no known trial is all overrun.
 
 ## Validation Rules
 
-Lint codes. Info does not count as a warning, is not limited by `--max-warnings` and appears under `result.info` in `--json`.
+Lint codes. Info does not count as a warning, is not limited by `--max-warnings` and appears under `result.info` in `--json`. Lint findings have the shape and the text rule of §Warnings.
 
-| Code | Level | Condition |
-|---|---|---|
-| `schema` | error | A file violates its schema |
-| `duplicate-id` | error | Duplicate rule, case or variant ID |
-| `unknown-rule` | error | A case names a rule that does not exist |
-| `input-schema` | error | A case input violates the target's input schema |
-| `missing-lang` | error | A case of a multi-language target has no `lang` |
-| `unresolved-ref` | error | A required reference (`anyFrom`) is missing from the case |
-| `derived-tracked` | error | A `derived` case file is tracked by git, or sits in a git work tree without being ignored |
-| `example-mismatch` | error | A rule example gives a different result than expected |
-| `adapter-failed` | error | The adapter did not start or initialise, or broke the protocol, so checks that need it could not run. Unlike other lint errors it exits with code 4 |
-| `render-failed` | error | A case failed to render with `--render`, with the adapter's message. Cases on paths that never call a model (input blocks, fixed messages) are not swap-check material; remove them or change the input |
-| `anchor-missing` | warning | An anchor is missing from the rendered prompt |
-| `rule-without-case` | warning | A `listed` rule no case names |
-| `rule-filter-mismatch` | warning | A rule listed on a case does not match its target or language and is not graded |
-| `completed-not-gated` | warning | A gate exists but no `completed` rule exists or its severity is not gated, so rejections, time-outs and discards cannot block |
-| `language-gap` | warning | A rule language has no cases |
-| `few-cases` | warning | A gated cell has fewer than 10 cases; it only catches large drops (research R3) |
-| `margin-unreachable` | warning | A gated cell's planned trials (cases × repeats) are below n_min for its margin; equal compliance cannot pass (§Statistics) |
-| `excluded-from-gate` | warning | Same as the run warning of that name (§Warnings), raised by lint |
-| `vcs-unknown` | warning | Not a git work tree, so `derived-tracked` cannot be decided |
-| `helper-outdated` | warning | The adapter's helper is older than the one bundled with this tool; copy it again with `init` |
-| `unanchored` | info | A rule and language without an anchor; a notice, not something to fix (for example a rule kept by post-processing alone) |
+| Code | Level | Condition | Params |
+|---|---|---|---|
+| `schema` | error | A file violates its schema | `{path, detail}`; `path` is empty for a whole-file finding, and its text then names only `detail` |
+| `duplicate-id` | error | Duplicate rule, case or variant ID | `{kind: rule | case | variant, id}` |
+| `unknown-rule` | error | A case names a rule that does not exist | —; the rule in `ruleId`, the case in `caseIds` |
+| `input-schema` | error | A case input violates the target's input schema | `{target, detail}` |
+| `unknown-target` | error | A case names a target the adapter does not declare; `run` refuses it too | `{target}` |
+| `missing-lang` | error | A case of a multi-language target has no `lang` | `{target}` |
+| `unresolved-ref` | error | A required reference (`anyFrom`) is missing from the case, or a `…From` value is neither text nor a list of text | `{path}` |
+| `derived-tracked` | error | A `derived` case file is tracked by git, or sits in a git work tree without being ignored | `{cause: tracked | not-ignored}` |
+| `example-mismatch` | error | A rule example gives a different result than expected | `{example, expected: pass | fail}` |
+| `adapter-failed` | error | The adapter did not start or initialise, or broke the protocol, so checks that need it could not run. Unlike other lint errors it exits with code 4 | `{detail}` |
+| `render-failed` | error | A case failed to render with `--render`, with the adapter's message. Cases on paths that never call a model (input blocks, fixed messages) are not swap-check material; remove them or change the input | `{detail}`, the adapter's message |
+| `anchor-missing` | warning | An anchor is missing from the rendered prompt | `{quote}` |
+| `rule-without-case` | warning | A `listed` rule no case names | — |
+| `rule-filter-mismatch` | warning | A rule listed on a case does not match its target or language and is not graded | — |
+| `completed-not-gated` | warning | A gate exists but no `completed` rule exists or its severity is not gated, so rejections, time-outs and discards cannot block | `{cause: no-rule | not-gated}` |
+| `language-gap` | warning | A rule language has no cases | — |
+| `few-cases` | warning | A gated cell has fewer than 10 cases; its upper bound then uses a t quantile (§Statistics), so even a collapsed rule is often not blocked (research R3) | `{surface, cases}` |
+| `margin-unreachable` | warning | A gated cell's planned trials (cases × repeats) are below n_min for its margin; equal compliance cannot pass (§Statistics) | `{surface, plannedTrials, nMin, margin}` |
+| `excluded-from-gate` | warning | Same as the run warning of that name (§Warnings), raised by lint | `{cause: review | uncalibrated-judge}` |
+| `vcs-unknown` | warning | Not a git work tree, so `derived-tracked` cannot be decided; reported once | — |
+| `helper-outdated` | warning | The `initialize` result's `adapter.helper.version` is older than the helper version bundled with this tool, or cannot be compared with it; copy the helper again with `init` | `{version, bundled}`; `version` as reported |
+| `unanchored` | info | A rule without an anchor for a language of the cases it applies to; a notice, not something to fix (for example a rule kept by post-processing alone) | — |
 
-- Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema` and anchor checks.
+- Lint starts the adapter with the first variant to obtain input schemas, and with every variant under `--render`. `--no-adapter` skips `input-schema`, `unknown-target`, `helper-outdated` and anchor checks. Under `--render`, an adapter that does not declare `capabilities.render` is `adapter-failed`, since the anchors asked for cannot be checked, and so is one that does not answer `shutdown`.
+- **Bundled helper version**: the tool bundles one helper version, the version of the helpers shipped with this tool release, the same for the Python and TypeScript helpers. Helper versions have the form `MAJOR.MINOR.PATCH` of non-negative integers and are compared part by part as numbers. Lint compares the `adapter.helper.version` of every `initialize` result it receives with the bundled version and reports `helper-outdated` when the reported one is older. A reported version not of that form cannot be shown to be current, so it is reported too. A newer reported version is not reported, and an adapter without `adapter.helper` is not checked.
+- Without the adapter's targets (`--no-adapter`), the language of a case without `lang` is unknown, so checks that depend on it (`rule-filter-mismatch`, `language-gap`, `unanchored`, `unresolved-ref` of rules limited by language, and the sample plan codes) leave that case out instead of guessing, and `language-gap` is not reported for a language such a case may cover.

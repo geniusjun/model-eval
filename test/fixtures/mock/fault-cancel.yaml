@@ -1,0 +1,18 @@
+# The case hang-1 never answers on its own; on cancel it stops and reports the calls it made,
+# a rate-limited attempt the SDK retried after waiting and the answer that followed.
+targets:
+  - name: chat
+    inputSchema: { type: object }
+capabilities: { cancel: true, maxConcurrency: 2 }
+variants:
+  '*':
+    answer: { '*': 'answer to {caseId}' }
+    usage: { input: 100, output: 20 }
+    calls: true
+    outcomes:
+      - row: hang
+        probability: 1
+        caseIds: [hang-1]
+        calls:
+          - { model: model-b, outcome: failed, errorKind: transient, retryAfterMs: 2000, branch: answer }
+          - { model: model-b, outcome: ok, branch: answer, usage: { input: 100, output: 20 } }

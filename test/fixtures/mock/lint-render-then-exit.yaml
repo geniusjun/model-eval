@@ -1,0 +1,9 @@
+# An adapter that exits after answering the render of last-ko, before shutdown.
+targets:
+  - name: chat
+    languages: [ko, ja]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true }
+renderThenExit: [last-ko]
+variants:
+  "*": {}

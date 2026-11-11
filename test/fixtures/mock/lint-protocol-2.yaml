@@ -1,0 +1,7 @@
+# An adapter that speaks another major protocol version, so it cannot be used.
+protocolVersion: "2"
+targets:
+  - name: chat
+    languages: [ko, ja]
+variants:
+  "*": {}

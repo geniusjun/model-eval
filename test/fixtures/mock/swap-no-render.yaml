@@ -1,0 +1,10 @@
+# An adapter that cannot render, so input tokens come only from estimate.inputTokens.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: false, maxConcurrency: 4 }
+variants:
+  '*':
+    answer: { '*': "answer {caseId} {repeat}" }
+    usage: { input: 100, output: 10 }
+    calls: true

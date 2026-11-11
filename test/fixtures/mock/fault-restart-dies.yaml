@@ -1,0 +1,12 @@
+# The process exits on crash-1; every restarted process exits right after answering initialize.
+restarted:
+  exit: after-initialize
+targets:
+  - name: chat
+    inputSchema: { type: object }
+capabilities: { maxConcurrency: 2 }
+variants:
+  '*':
+    answer: { '*': 'answer to {caseId}' }
+    outcomes:
+      - { row: crash, probability: 1, caseIds: [crash-1] }

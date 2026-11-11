@@ -1,0 +1,31 @@
+# Resume tests copy this scenario into the project and edit the copy between segments, the way a
+# user fixes an environment or changes service code. With one repeat and one slot the trials go
+# out as greet-ko-1, greet-en-1, greet-ko-2, ... and greet-ko-4 stops the run with its config
+# failure while greet-en-3 waits for its retry and greet-en-4 is unsent.
+adapter:
+  name: mock-resume
+  version: 1.0.0
+  helper: { language: python, version: 0.1.0 }
+service:
+  version: "3333333333333333333333333333333333333333"
+  dirty: false
+  treeHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+targets:
+  - name: chat
+    languages: [ko, en]
+    inputSchema: { type: object, required: [user], properties: { user: { type: string } } }
+capabilities: { render: true, cancel: true, maxConcurrency: 4 }
+prompts:
+  ko: 짧게 답한다.
+  en: Answer briefly.
+inputTokens: 300
+maxOutputTokens: 200
+variants:
+  '*':
+    usage: { input: 30, cachedInput: 270, cacheWrite: 0, output: 20, reasoning: 0 }
+    outcomes:
+      - { row: adapter, probability: 1, caseIds: [greet-ko-2], message: adapter raised }
+      - { row: permanent, probability: 1, caseIds: [greet-en-2], message: shape rejected }
+      - { row: timeout, probability: 1, caseIds: [greet-ko-3], message: service time limit }
+      - { row: transient, probability: 1, caseIds: [greet-en-3], message: rate limited }
+      - { row: config, probability: 1, caseIds: [greet-ko-4], message: key rejected }

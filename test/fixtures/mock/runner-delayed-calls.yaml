@@ -1,0 +1,14 @@
+# A background call reported well after each response, once the attempt line is written.
+targets:
+  - name: chat
+    languages: [ko, ja]
+capabilities: { render: true }
+inputTokens: 400
+maxOutputTokens: 100
+variants:
+  '*':
+    calls: true
+    usage: { input: 100, output: 10 }
+    afterCallsDelayMs: 100
+    afterCalls:
+      - { model: model-a, outcome: ok, branch: side, usage: { input: 900, output: 40 } }
