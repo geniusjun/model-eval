@@ -198,7 +198,7 @@ Failure results may carry `calls` and `usage` and are priced like normal results
 
 ### `cancel` (notification, tool → adapter, optional)
 
-`{"jsonrpc":"2.0","method":"cancel","params":{"id":3}}` means the tool no longer waits for request 3. With `capabilities.cancel`, the adapter stops the work and, if it stopped, responds with that `id`. The tool never grades that response. It uses its `usage` and `calls` to correct the cost (§Time Limits and Recovery) and its calls for the `abandoned-trials` message, and stops the run as a configuration error when a call failed with `config` or used an unpriced model while a cap is set, like a `calls` notification.
+`{"jsonrpc":"2.0","method":"cancel","params":{"id":3}}` means the tool no longer waits for request 3. With `capabilities.cancel`, the adapter stops the work and, if it stopped, responds with that `id`. The tool never grades that response. It uses its `usage` and `calls` to correct the cost (§Time Limits and Recovery) and its calls for the `abandoned-trials` message, and stops the run as a configuration error when the response is a failure result of kind `config`, a call failed with `config` or used an unpriced model while a cap is set, like a `calls` notification.
 
 ### `shutdown` (required)
 
