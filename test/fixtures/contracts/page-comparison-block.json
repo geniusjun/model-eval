@@ -998,6 +998,21 @@
         }
       },
       {
+        "code": "cost-ratio",
+        "variants": [
+          "current",
+          "next"
+        ],
+        "params": {
+          "costPerTrialUsd": {
+            "current": 0.00017,
+            "next": 0.00038
+          },
+          "ratio": 2.2,
+          "threshold": 2
+        }
+      },
+      {
         "code": "discard-rate-increase",
         "variants": [
           "current",
