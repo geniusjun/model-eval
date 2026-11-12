@@ -11,6 +11,8 @@ export const COMPARISONS_DIR = 'comparisons';
 export const COMPARISON_FILE = 'comparison.json';
 export const REPORT_MARKDOWN_FILE = 'report.md';
 export const REPORT_PAGE_FILE = 'report.html';
+/** The comparison list at the output root (002 page-data §Payloads). */
+export const INDEX_PAGE_FILE = 'index.html';
 
 /** A saved comparison as one reader needs it, under its folder name. */
 export interface SavedComparison<T> {
@@ -18,7 +20,8 @@ export interface SavedComparison<T> {
   readonly comparison: T;
 }
 
-function isMissing(error: unknown): boolean {
+/** Whether a read failed because the file, or a folder on its path, does not exist. */
+export function isMissing(error: unknown): boolean {
   return (
     error instanceof Error &&
     'code' in error &&

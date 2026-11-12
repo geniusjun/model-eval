@@ -282,6 +282,10 @@ describe('001 records of a finished swap', () => {
         expect(jsonAt(grade, ['evidence'])).toEqual([PHONE]);
       }
     }
+    // The result page and the comparison list are written surfaces too (001 T126).
+    expect(written.map((file) => path.basename(file))).toEqual(
+      expect.arrayContaining(['report.html', 'index.html']),
+    );
     const runRecords = [...trialFiles, ...gradeFiles];
     const leaking: string[] = [];
     for (const file of written.filter((item) => !runRecords.includes(item))) {

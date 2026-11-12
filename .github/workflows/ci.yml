@@ -57,4 +57,37 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm build
+      - name: Swap the example (exit 1 expected, its next variant blocks)
+        timeout-minutes: 3
+        run: |
+          cp -R examples/pogo "$RUNNER_TEMP/pogo"
+          cd "$RUNNER_TEMP/pogo"
+          set +e
+          node "$GITHUB_WORKSPACE/dist/cli.js" swap --from current --to next
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::the example swap exited $code, expected 1"
+            exit 1
+          fi
+      - name: Collect index.html and each comparisons/<comparisonId>/report.html
+        run: |
+          out="$RUNNER_TEMP/pogo/.model-eval"
+          pages="$RUNNER_TEMP/example-pages"
+          mkdir -p "$pages"
+          cp "$out/index.html" "$pages/index.html"
+          # The glob skips `.tmp-` folders, whose names start with a dot.
+          for page in "$out"/comparisons/*/report.html; do
+            relative="${page#"$out"/}"
+            mkdir -p "$pages/$(dirname "$relative")"
+            cp "$page" "$pages/$relative"
+          done
+          find "$pages" -type f
+      # The pages of this commit's example, for a reviewer to download and open (002 plan D11).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: example-pages
+          path: ${{ runner.temp }}/example-pages
+          retention-days: 14
+          if-no-files-found: error
       - run: pnpm test:browser --pass-with-no-tests

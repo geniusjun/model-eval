@@ -9,18 +9,23 @@ The behaviour of each command and option is specified in
 
 ## Commands
 
-| Command                                      | Calls models | Does                                                                                               |
-| -------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
-| `model-eval init`                            | no           | Creates a config template, example rules and cases, and adds the output directory to `.gitignore`  |
-| `model-eval lint`                            | no           | Checks the config, rule and case files, references, rule examples, case inputs and the sample plan |
-| `model-eval run --variant <id>`              | yes          | Runs every case with one variant, records the run and grades it                                    |
-| `model-eval grade <runId>`                   | no           | Re-grades stored trials with the current rules                                                     |
-| `model-eval compare <baseRunId> <candRunId>` | no           | Grades both runs with the current rules, compares cells, applies the gate and writes `report.md`   |
-| `model-eval swap --from <id> --to <id>`      | yes          | `run` for both variants, then `compare`, in one command                                            |
-| `model-eval report <comparisonId>`           | no           | Rewrites `report.md` from a saved comparison                                                       |
+| Command                                      | Calls models | Does                                                                                                               |
+| -------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `model-eval init`                            | no           | Creates a config template, example rules and cases, and adds the output directory to `.gitignore`                  |
+| `model-eval lint`                            | no           | Checks the config, rule and case files, references, rule examples, case inputs and the sample plan                 |
+| `model-eval run --variant <id>`              | yes          | Runs every case with one variant, records the run and grades it                                                    |
+| `model-eval grade <runId>`                   | no           | Re-grades stored trials with the current rules                                                                     |
+| `model-eval compare <baseRunId> <candRunId>` | no           | Grades both runs with the current rules, compares cells, applies the gate and writes `report.md` and `report.html` |
+| `model-eval swap --from <id> --to <id>`      | yes          | `run` for both variants, then `compare`, in one command                                                            |
+| `model-eval report <comparisonId>`           | no           | Rewrites `report.md`, `report.html` and the output `index.html` from a saved comparison                            |
 
 `init` keeps files that already exist. With an existing config it only adds that config's
 `output.dir` to `.gitignore`.
+
+`compare`, `swap` and `report` fill the result page from the template the package ships in
+`dist/viewer/report.html`. Without it, as in a source checkout whose viewer is not built, they
+write no `report.html` or `index.html`, print one warning on stderr, point `report.md` to
+`samples.review` in `comparison.json` and exit as they would otherwise.
 
 `lint`, `run` and `swap` start the adapter; `lint --no-adapter` does not. See
 [Running in CI](../guide/ci.md#untrusted-changes-lint---no-adapter) before running them on
@@ -109,6 +114,8 @@ Everything is written under `output.dir` (default `.model-eval`) next to the con
 | `swaps/<swapId>.json`                        | The two runs of a swap                                          |
 | `comparisons/<comparisonId>/comparison.json` | The comparison, redacted                                        |
 | `comparisons/<comparisonId>/report.md`       | The Markdown report                                             |
+| `comparisons/<comparisonId>/report.html`     | The result page, redacted ([guide](../guide/result-page.md))    |
+| `index.html`                                 | The list of comparisons, each linking to its result page        |
 
 Record shapes are in [`schemas/`](../../schemas/): `manifest.schema.json`, `trial.schema.json`
 (one line of `trials.jsonl`), `swap-record.schema.json` and `comparison.schema.json`. Grade lines

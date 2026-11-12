@@ -23,6 +23,8 @@ export interface CliContext {
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly stdout: TextStream;
   readonly stderr: TextStream;
+  /** The result page template; the one the package ships (`PAGE_TEMPLATE`) when left out. */
+  readonly pageTemplate?: string;
 }
 
 export interface CommonOptions {

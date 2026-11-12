@@ -98,7 +98,9 @@ command ends with exit code 4 or 6 before it has a result.
 `swap` and `compare` write `.model-eval/comparisons/<comparisonId>/report.md`, with the ID in
 `result.comparison.comparisonId`. The report is meant to be posted as a pull request comment:
 every model or service string in it sits in a code block, so mentions, links and HTML in model
-output do not render.
+output do not render. The result page `report.html` next to it is a single file that opens
+without a network, so it can be attached as a build artifact on its own
+([result page guide](result-page.md)).
 
 ## What to keep between jobs
 
@@ -111,8 +113,8 @@ Keep the output directory (`output.dir`, `.model-eval` by default) in a cache wh
 
 Do not publish the whole directory as a public build artifact. The trial records and grades under
 `runs/` hold raw answers and are not redacted, because checks must read the original text.
-`comparisons/` (`comparison.json` and `report.md`), stdout, stderr and logs go through the config's
-`redact` rules.
+`comparisons/` (`comparison.json`, `report.md` and `report.html`), `index.html`, stdout, stderr and
+logs go through the config's `redact` rules.
 
 ## Cost
 

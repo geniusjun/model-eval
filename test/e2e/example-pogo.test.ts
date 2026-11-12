@@ -10,6 +10,8 @@ import { z } from 'zod';
 
 import { configSchema, rulesFileSchema } from '../../src/config/schema.js';
 import { message } from '../../src/messages/index.js';
+import { comparisonPage, DATA_PLACEHOLDER, listPage } from '../../src/report/page-data.js';
+import { listPageSchema } from '../../src/report/schema.js';
 import { ROOT, runCli } from './support/cli.js';
 import { SWAP } from './support/commands.js';
 import {
@@ -18,6 +20,7 @@ import {
   parseLintEnvelope,
   parseSwapEnvelope,
   readComparison,
+  readPage,
 } from './support/outputs.js';
 import { recordAdapter } from './support/project.js';
 
@@ -159,6 +162,37 @@ describe('001 example examples/pogo (quickstart.md §Verify: Example Swap Check)
       expect(comparison.summary.worse[0]).toMatchObject({ ruleId: 'script-ja', lang: 'ja' });
       expect(ruleOrder(reportMarkdown, ruleIds)[0]).toBe('script-ja');
       expect(reportMarkdown).toContain(SCRIPT_JA_QUOTE);
+      expect(cli.stdout).toContain(
+        path.join(OUTPUT_DIR, 'comparisons', comparisonId, 'report.html'),
+      );
+    },
+    BUDGET_MS,
+  );
+
+  it(
+    '001 FR-031 the swap also writes report.html and the output index.html from the built template',
+    async () => {
+      const outputDir = path.join(folder, OUTPUT_DIR);
+      const [comparisonId] = await entries(path.join(outputDir, 'comparisons'));
+      if (comparisonId === undefined) {
+        throw new Error('the swap wrote no comparison');
+      }
+      const { comparison, dir } = await readComparison(outputDir, comparisonId);
+      const template = await readFile(path.join(ROOT, 'dist/viewer/report.html'), 'utf8');
+      const emptyTemplate = template.replace(DATA_PLACEHOLDER, '');
+      const page = await readPage(path.join(dir, 'report.html'));
+      expect(page.data).toEqual(comparisonPage(comparison, 'en'));
+      expect(page.frame).toBe(emptyTemplate);
+      const index = await readPage(path.join(outputDir, 'index.html'));
+      expect(index.data).toEqual(await listPage(outputDir, 'en'));
+      expect(index.frame).toBe(emptyTemplate);
+      expect(listPageSchema.parse(index.data).comparisons).toEqual([
+        expect.objectContaining({
+          comparisonId,
+          href: `comparisons/${comparisonId}/report.html`,
+          gate: 'block',
+        }),
+      ]);
     },
     BUDGET_MS,
   );

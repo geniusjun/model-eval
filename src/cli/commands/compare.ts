@@ -11,6 +11,7 @@ import {
   readSavedRun,
   setUpSaved,
 } from './saved.js';
+import { pageTemplateOf, warnWithoutPage } from './run-setup.js';
 
 // `model-eval compare <baseRunId> <candRunId>`: grades both runs with the current rules,
 // compares, gates and writes the outputs, without calling a model (FR-019, FR-025).
@@ -57,7 +58,12 @@ async function compare(invocation: CommandInvocation): Promise<ExitName> {
     outputDir,
     now: () => new Date(),
   });
-  const written = await writeComparison({ outputDir, comparison, lang });
+  const written = await writeComparison({
+    outputDir,
+    comparison,
+    lang,
+    ...pageTemplateOf(invocation),
+  });
   const exit = gateExit(comparison.gate.outcome);
   const { warnings } = comparison;
   // The comparison and its warnings are redacted already (FR-031); writing them as they are
@@ -78,6 +84,7 @@ async function compare(invocation: CommandInvocation): Promise<ExitName> {
       invocation.output.print(line.text);
     }
   }
+  warnWithoutPage(invocation, lang, written);
   return exit;
 }
 

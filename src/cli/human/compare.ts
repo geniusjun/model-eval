@@ -549,9 +549,21 @@ export function comparedLines(t: Text, view: ComparedView): HumanLine[] {
       ...comparisonLines(t, view.comparison, reviewSamplesOf(view.written)),
       ...warningLines(t, warnings),
     ]),
-    ...(view.written === undefined
-      ? []
-      : plainLines(['', t('human.report', { path: view.written.report })])),
+    ...(view.written === undefined ? [] : plainLines(['', ...writtenLines(t, view.written)])),
+  ];
+}
+
+/**
+ * Where the result page and the report are (contracts/cli.md §Human Output). The messages align
+ * the two paths under each other, so each line is one message in either language.
+ */
+function writtenLines(t: Text, written: ShownComparison): string[] {
+  if (written.page === undefined) {
+    return [t('human.report', { path: written.report })];
+  }
+  return [
+    t('human.written.page', { path: written.page }),
+    t('human.written.report', { path: written.report }),
   ];
 }
 
@@ -622,8 +634,8 @@ export function gradeLines(lang: Lang, view: GradeView): string[] {
 
 export interface ReportView {
   readonly comparison: Comparison;
-  /** Where `report.md` was written, as the user should see it. */
-  readonly reportPath: string;
+  /** What `report` wrote, as the user should see it. */
+  readonly written: ShownComparison;
 }
 
 export function reportLines(lang: Lang, view: ReportView): string[] {
@@ -635,6 +647,6 @@ export function reportLines(lang: Lang, view: ReportView): string[] {
       baseline: variantLabel(baseline.variant),
       candidate: variantLabel(candidate.variant),
     }),
-    t('human.report', { path: view.reportPath }),
+    ...writtenLines(t, view.written),
   ];
 }

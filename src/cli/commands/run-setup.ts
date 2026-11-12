@@ -10,6 +10,8 @@ import { samplePlan, type SamplePlan } from '../../lint/sample-plan.js';
 import { message, selectLang, type MessageKey, type MessageParams } from '../../messages/index.js';
 import { milliseconds } from '../../report/format.js';
 import { createRedactor } from '../../report/redact.js';
+import { PAGE_TEMPLATE } from '../../report/template.js';
+import type { WrittenComparison } from '../../report/write.js';
 import type { RunEnd } from '../../run/active-run.js';
 import type { RunCaseSpec } from '../../run/run-cases.js';
 import { processInterrupts } from '../../run/signals.js';
@@ -320,5 +322,23 @@ export function showTimings(
         run: milliseconds(stages.run),
       }),
     );
+  }
+}
+
+/** The page template a command passes to the comparison writer: the context's, if it names one. */
+export function pageTemplateOf(invocation: CommandInvocation): { templateFile?: string } {
+  const file = invocation.context.pageTemplate;
+  return file === undefined ? {} : { templateFile: file };
+}
+
+/** One line on stderr when no result page could be written; the command carries on. */
+export function warnWithoutPage(
+  invocation: CommandInvocation,
+  lang: Lang,
+  written: WrittenComparison,
+): void {
+  if (!written.templateFound) {
+    const file = invocation.context.pageTemplate ?? PAGE_TEMPLATE;
+    invocation.output.progress(message(lang, 'cli.pageTemplateMissing', { file }));
   }
 }

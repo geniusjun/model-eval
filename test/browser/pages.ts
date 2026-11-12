@@ -26,6 +26,11 @@ export const FIXTURES = path.join(ROOT, 'test/fixtures/contracts');
 
 /** The variable through which `global-setup.ts` passes the example page's path to the tests. */
 export const EXAMPLE_PAGE_ENV = 'MODEL_EVAL_EXAMPLE_PAGE';
+/** The variable through which `global-setup.ts` passes the example's output directory. */
+export const EXAMPLE_OUTPUT_ENV = 'MODEL_EVAL_EXAMPLE_OUTPUT';
+/** The variables that name the comparisons of the first and the second example swap. */
+export const EXAMPLE_FIRST_ENV = 'MODEL_EVAL_EXAMPLE_FIRST';
+export const EXAMPLE_SECOND_ENV = 'MODEL_EVAL_EXAMPLE_SECOND';
 
 declare global {
   interface Window {
@@ -130,15 +135,27 @@ export async function openHtml(browser: Browser, html: string): Promise<OpenedPa
   };
 }
 
-/** The example page of `global-setup.ts`. */
-export function examplePagePath(): string {
-  const file = process.env[EXAMPLE_PAGE_ENV];
-  if (file === undefined) {
-    throw new Error(
-      `${EXAMPLE_PAGE_ENV} is not set; run the browser tests through playwright.config.ts`,
-    );
+function fromSetup(variable: string): string {
+  const value = process.env[variable];
+  if (value === undefined) {
+    throw new Error(`${variable} is not set; run the browser tests through playwright.config.ts`);
   }
-  return file;
+  return value;
+}
+
+/** The `report.html` the first example swap of `global-setup.ts` wrote. */
+export function examplePagePath(): string {
+  return fromSetup(EXAMPLE_PAGE_ENV);
+}
+
+/** The output directory of the two example swaps of `global-setup.ts`. */
+export function exampleOutputDir(): string {
+  return fromSetup(EXAMPLE_OUTPUT_ENV);
+}
+
+/** The comparison IDs of the two example swaps, in the order they ran. */
+export function exampleComparisonIds(): { readonly first: string; readonly second: string } {
+  return { first: fromSetup(EXAMPLE_FIRST_ENV), second: fromSetup(EXAMPLE_SECOND_ENV) };
 }
 
 /** The caption of a grid table, one per output surface. */

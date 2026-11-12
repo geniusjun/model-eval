@@ -1,14 +1,25 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
 import en from '../../viewer/src/i18n/en.json' with { type: 'json' };
-import { COMPARISON_FILE, comparisonDir, REPORT_PAGE_FILE } from '../../src/report/layout.js';
+import {
+  COMPARISON_FILE,
+  COMPARISONS_DIR,
+  comparisonDir,
+  REPORT_PAGE_FILE,
+} from '../../src/report/layout.js';
 import { comparisonPage, fillTemplate, listPage } from '../../src/report/page-data.js';
 import { comparisonSchema, type Comparison } from '../../src/report/schema.js';
-import { FIXTURES, openFile, readTemplate } from './pages.js';
+import {
+  exampleComparisonIds,
+  exampleOutputDir,
+  FIXTURES,
+  openFile,
+  readTemplate,
+} from './pages.js';
 
 const INDEX_FILE = 'index.html';
 
@@ -17,7 +28,9 @@ const REPORT_HEADING = 'model-eval report: current (model-a) → next (model-b)'
 
 /**
  * The three fixtures by `createdAt`, newest first. Their IDs sort `89…`, `c3…`, `ff…`, so this
- * order is neither name order nor its reverse, and only a sort by time gives it.
+ * order is neither name order nor its reverse, and only a sort by time gives it. The example's
+ * comparison IDs are hashes whose name order may match their time order, so the order by time
+ * is checked here, on fixtures, and the example output checks what the writer lists.
  */
 const NEWEST = 'cmp-c3185cc21556';
 const MIDDLE = 'cmp-ff954570aec2';
@@ -66,7 +79,7 @@ async function outputDirectory(): Promise<string> {
   return outputDir;
 }
 
-test.describe('002 comparison list', () => {
+test.describe('002 comparison list order', () => {
   let outputDir = '';
 
   test.beforeEach(async () => {
@@ -112,4 +125,54 @@ test.describe('002 comparison list', () => {
       }
     });
   }
+});
+
+/** The example's comparisons as its index lists them: the second swap's, newer, first. */
+function exampleListOrder(): string[] {
+  const { first, second } = exampleComparisonIds();
+  return [second, first];
+}
+
+test.describe('002 comparison list of the example output', () => {
+  test('002 FR-008 index.html written by two swaps lists both, newest first, and not the .tmp- copy', async ({
+    browser,
+  }) => {
+    const outputDir = exampleOutputDir();
+    const expected = exampleListOrder();
+    expect(
+      (await readdir(path.join(outputDir, COMPARISONS_DIR))).filter((name) =>
+        name.startsWith('.tmp-'),
+      ),
+    ).toHaveLength(1);
+    const opened = await openFile(browser, outputDir, INDEX_FILE);
+    try {
+      const table = opened.page.getByRole('table', { name: en['list.heading'] });
+      await expect(table.getByRole('rowheader')).toHaveText(expected);
+      expect(opened.outsideRequests()).toEqual([]);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  test('002 FR-001 FR-008 each link of index.html opens the report.html that swap wrote', async ({
+    browser,
+  }) => {
+    const outputDir = exampleOutputDir();
+    for (const comparisonId of exampleListOrder()) {
+      const opened = await openFile(browser, outputDir, INDEX_FILE);
+      try {
+        const { page } = opened;
+        await page.getByRole('link', { name: comparisonId, exact: true }).click();
+        await expect(page).toHaveURL(
+          new RegExp(`/comparisons/${comparisonId}/${REPORT_PAGE_FILE.replace('.', '\\.')}$`),
+        );
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(REPORT_HEADING);
+        await expect(page.getByText(comparisonId, { exact: true }).first()).toBeVisible();
+        expect(opened.outsideRequests()).toEqual([]);
+        expect(await opened.cspViolations()).toEqual([]);
+      } finally {
+        await opened.close();
+      }
+    }
+  });
 });
