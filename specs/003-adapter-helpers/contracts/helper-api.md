@@ -279,7 +279,7 @@ The first matching row decides. The kind comes from the status code and the erro
 
 Transport exceptions are not split by class name, because transport backends convert or hide exceptions (research R9). Whether response headers arrived, together with the original exception, tells apart: request never arrived, drop before headers, drop mid-body, certificate failure.
 
-- **Python**: follow `__cause__` to the end, and for each exception in the chain also look at exceptions inside its `args`. `__context__` is not followed (research R9). When httpcore hides the original exception with `raise … from None`, it still sits in `args[0]`. An `ssl.SSLCertVerificationError` anywhere in the chain means the certificate row; self-signed, expired, unknown issuer and hostname mismatch all raise it. A failure while writing the request body cannot be told apart from a connection closed before headers on the httpx and httpx2 default transports (K36 of [data-model §Known Limits](../data-model.md#known-limits)).
+- **Python**: follow `__cause__` to the end, and for each exception in the chain also look at exceptions inside its `args`. `__context__` is not followed (research R9). When httpcore hides the original exception with `raise … from None`, it still sits in `args[0]`. An `ssl.SSLCertVerificationError` anywhere in the chain means the certificate row; self-signed, expired, unknown issuer and hostname mismatch all raise it. A failure while writing the request body cannot be told apart from a connection closed before headers, on the httpx and httpx2 default transports or on aiohttp (K36 of [data-model §Known Limits](../data-model.md#known-limits)).
 - **Node**: follow the error's `cause` to the end and look at `code`.
 
   | undici code | Kind |

@@ -229,7 +229,7 @@ Rules: [helper-api §Reading Response Bodies](helper-api.md#reading-response-bod
 | ID | Scenario | Expected |
 |---|---|---|
 | S-CONN-01 | TLS certificate failures: self-signed (Node `DEPTH_ZERO_SELF_SIGNED_CERT`), a proxy that does not send its root (`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`), expired, hostname mismatch; on the httpx and httpx2 default transports, the aiohttp backend and Node | `config`, `failed` |
-| S-CONN-02 | Connection refused, connect time-out, connection-pool wait time-out, request body write failure | `transient`, `failed`; a request body write failure on the httpx and httpx2 default transports is `transient`, `unanswered`, and on the aiohttp backend this row decides which of the two (K36) |
+| S-CONN-02 | Connection refused, connect time-out, connection-pool wait time-out, request body write failure | `transient`, `failed`; a request body write failure is `transient`, `unanswered` (K36) |
 | S-CONN-03 | The server closes the connection after the request without a response | `transient`, `unanswered` |
 | S-CONN-04 | A drop while receiving; a read time-out on a non-stream body | `transient` |
 | S-CONN-05 | A read time-out between stream events | `timeout` in both languages |
