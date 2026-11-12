@@ -596,6 +596,30 @@
         "nowMs": 1709164800000
       },
       {
+        "name": "now 2048-02-29: 28-Feb-98 00:00:00 is 50 years ahead counted from 28 February, so 2098",
+        "headers": {
+          "retry-after": "Saturday, 28-Feb-98 00:00:00 GMT"
+        },
+        "retryAfterMs": 1577836800000,
+        "nowMs": 2466547200000
+      },
+      {
+        "name": "now 2048-02-29: a second before that boundary is 2098",
+        "headers": {
+          "retry-after": "Friday, 27-Feb-98 23:59:59 GMT"
+        },
+        "retryAfterMs": 1577836799000,
+        "nowMs": 2466547200000
+      },
+      {
+        "name": "now 2048-02-29: a second after that boundary is 1998, a past date",
+        "headers": {
+          "retry-after": "Saturday, 28-Feb-98 00:00:01 GMT"
+        },
+        "retryAfterMs": 0,
+        "nowMs": 2466547200000
+      },
+      {
         "name": "an RFC 850 year 50 at now 2051 is 2050",
         "headers": {
           "retry-after": "Saturday, 01-Jan-50 00:00:00 GMT"
