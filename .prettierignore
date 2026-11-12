@@ -6,3 +6,5 @@ test/fixtures/
 specs/
 .specify/
 .omc/
+# The data block stays `<script …>__MODEL_EVAL_DATA__</script>` on one line (002 page-data).
+viewer/index.html

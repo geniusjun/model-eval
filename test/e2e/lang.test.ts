@@ -173,7 +173,7 @@ describe('001 FR-034 every project command with --lang ko', () => {
       grade: { key: 'human.grade.reused', params: { gradeSetId: resultOf(gradeJson).gradeSetId } },
       compare: { key: 'human.opsNote' },
       report: {
-        key: 'human.report',
+        key: 'human.written.report',
         params: { path: path.join('.model-eval', 'comparisons', comparisonId, 'report.md') },
       },
     };

@@ -123,6 +123,8 @@ rules:
       ignoreFrom: input.nickname
     anchors:
       - { lang: ja, quote: "日本語だけで話す" }
+    origin:
+      - { commit: 7e8f9a0, date: 2026-03-04, layer: prompt }
 
   - id: no-emoji
     title: No emoji

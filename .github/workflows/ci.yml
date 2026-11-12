@@ -27,15 +27,67 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm build
-      - run: pnpm exec vitest run --project unit --project contract
-      - name: End-to-end tests against the mock adapter (SC-001)
+      - run: pnpm exec vitest run --project unit --project contract --project viewer
+      - name: Example swap check against the mock adapter (SC-001)
         timeout-minutes: 3
-        run: pnpm exec vitest run --project e2e
+        run: pnpm exec vitest run --project e2e test/e2e/example-pogo.test.ts
+      - name: End-to-end tests against the mock adapter
+        timeout-minutes: 10
+        run: pnpm exec vitest run --project e2e --exclude test/e2e/example-pogo.test.ts
       - run: pnpm check:coverage
       - name: SC-003 simulation
         run: pnpm bench
       - name: Pack
         run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
+      - name: The package ships the page template
+        run: tar -tzf "$RUNNER_TEMP"/pack/*.tgz | grep -x 'package/dist/viewer/report.html'
       - run: pnpm exec publint run "$RUNNER_TEMP"/pack/*.tgz
       # The package is ESM only, so CommonJS resolution is not checked.
       - run: pnpm exec attw "$RUNNER_TEMP"/pack/*.tgz --profile esm-only
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm build
+      - name: Swap the example (exit 1 expected, its next variant blocks)
+        timeout-minutes: 3
+        run: |
+          cp -R examples/pogo "$RUNNER_TEMP/pogo"
+          cd "$RUNNER_TEMP/pogo"
+          set +e
+          node "$GITHUB_WORKSPACE/dist/cli.js" swap --from current --to next
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::the example swap exited $code, expected 1"
+            exit 1
+          fi
+      - name: Collect index.html and each comparisons/<comparisonId>/report.html
+        run: |
+          out="$RUNNER_TEMP/pogo/.model-eval"
+          pages="$RUNNER_TEMP/example-pages"
+          mkdir -p "$pages"
+          cp "$out/index.html" "$pages/index.html"
+          # The glob skips `.tmp-` folders, whose names start with a dot.
+          for page in "$out"/comparisons/*/report.html; do
+            relative="${page#"$out"/}"
+            mkdir -p "$pages/$(dirname "$relative")"
+            cp "$page" "$pages/$relative"
+          done
+          find "$pages" -type f
+      # The pages of this commit's example, for a reviewer to download and open (002 plan D11).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: example-pages
+          path: ${{ runner.temp }}/example-pages
+          retention-days: 14
+          if-no-files-found: error
+      - run: pnpm test:browser --pass-with-no-tests

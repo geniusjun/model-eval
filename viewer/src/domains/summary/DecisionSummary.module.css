@@ -1,0 +1,72 @@
+.summary {
+  margin: 0 0 var(--space-8);
+}
+
+.heading {
+  margin: 0 0 var(--space-3);
+}
+
+.section {
+  margin-top: var(--space-4);
+}
+
+.title {
+  font-size: var(--font-size-body);
+  margin: 0 0 var(--space-2);
+}
+
+.facts {
+  display: grid;
+  gap: var(--space-1) var(--space-4);
+  grid-template-columns: max-content 1fr;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--space-6);
+}
+
+.none {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.cell {
+  font-family: var(--font-code);
+}
+
+.outcome {
+  border-radius: var(--radius);
+  display: inline-block;
+  font-weight: 600;
+  padding: 0 var(--space-2);
+}
+
+.pass {
+  background: var(--verdict-improved-background);
+  color: var(--verdict-improved-text);
+}
+
+.block {
+  background: var(--verdict-regressed-background);
+  color: var(--verdict-regressed-text);
+}
+
+.undecided {
+  background: var(--verdict-inconclusive-background);
+  color: var(--verdict-inconclusive-text);
+}
+
+.no-gate {
+  background: var(--verdict-not-applicable-background);
+  color: var(--verdict-not-applicable-text);
+}

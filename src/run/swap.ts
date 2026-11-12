@@ -63,6 +63,8 @@ export interface SwapRequest extends RunSignals {
   readonly tool: ToolVersion;
   /** The language of `report.md`. */
   readonly lang: Lang;
+  /** The result page template; the package's when left out. */
+  readonly templateFile?: string;
   readonly now?: () => Date;
   readonly random?: RandomSource;
   readonly onLog?: (params: LogParams) => void;
@@ -314,6 +316,7 @@ function currentCases(runs: PerRole<readonly RunCaseSpec[]>): CurrentCase[] {
 interface CompareSetting {
   readonly project: Project;
   readonly lang: Lang;
+  readonly templateFile?: string;
   readonly now?: () => Date;
 }
 
@@ -340,6 +343,7 @@ async function compareRuns(
     outputDir: project.paths.outputDir,
     comparison,
     lang: request.lang,
+    ...(request.templateFile === undefined ? {} : { templateFile: request.templateFile }),
   });
   return { comparison, written };
 }
@@ -550,6 +554,8 @@ export interface SwapResumeRequest extends RunSignals {
   readonly maxCostUsd: number | null;
   readonly tool: ToolVersion;
   readonly lang: Lang;
+  /** The result page template; the package's when left out. */
+  readonly templateFile?: string;
   readonly now?: () => Date;
   readonly random?: RandomSource;
   readonly onLog?: (params: LogParams) => void;

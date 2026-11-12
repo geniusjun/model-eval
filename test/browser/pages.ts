@@ -1,0 +1,294 @@
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import {
+  expect,
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from '@playwright/test';
+
+import en from '../../viewer/src/i18n/en.json' with { type: 'json' };
+import { DATA_PLACEHOLDER, fillTemplate } from '../../src/report/page-data.js';
+import {
+  comparisonPageSchema,
+  pageDataSchema,
+  type ComparisonPage,
+  type PageData,
+} from '../../src/report/schema.js';
+
+export const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+export const TEMPLATE = path.join(ROOT, 'dist/viewer/report.html');
+export const FIXTURES = path.join(ROOT, 'test/fixtures/contracts');
+
+/** The variable through which `global-setup.ts` passes the example page's path to the tests. */
+export const EXAMPLE_PAGE_ENV = 'MODEL_EVAL_EXAMPLE_PAGE';
+/** The variable through which `global-setup.ts` passes the example's output directory. */
+export const EXAMPLE_OUTPUT_ENV = 'MODEL_EVAL_EXAMPLE_OUTPUT';
+/** The variables that name the comparisons of the first and the second example swap. */
+export const EXAMPLE_FIRST_ENV = 'MODEL_EVAL_EXAMPLE_FIRST';
+export const EXAMPLE_SECOND_ENV = 'MODEL_EVAL_EXAMPLE_SECOND';
+
+declare global {
+  interface Window {
+    /** Filled by the init script of `openFile`, which runs before the page's own script. */
+    __modelEvalCspViolations?: string[];
+  }
+}
+
+export function readTemplate(): Promise<string> {
+  return readFile(TEMPLATE, 'utf8');
+}
+
+export async function readPageFixture(name: string): Promise<PageData> {
+  const text = await readFile(path.join(FIXTURES, name), 'utf8');
+  return pageDataSchema.parse(JSON.parse(text));
+}
+
+export async function readComparisonPageFixture(name: string): Promise<ComparisonPage> {
+  const text = await readFile(path.join(FIXTURES, name), 'utf8');
+  return comparisonPageSchema.parse(JSON.parse(text));
+}
+
+/** The built template filled with a payload, as the writer of feature 001 fills it. */
+export async function pageHtml(payload: PageData): Promise<string> {
+  return fillTemplate(await readTemplate(), payload);
+}
+
+/**
+ * The built template with `text` in its data block, for data the writer never produces: an
+ * unknown schema version or a payload that fails validation. Every `<` is escaped as the
+ * writer escapes it.
+ */
+export async function pageHtmlWithData(text: string): Promise<string> {
+  const data = text.replaceAll('<', '\\u003c');
+  return (await readTemplate()).replace(DATA_PLACEHOLDER, () => data);
+}
+
+export interface OpenedPage {
+  readonly page: Page;
+  readonly context: BrowserContext;
+  /** The folder that holds the page files of this test. */
+  readonly folder: string;
+  /** Every request URL since the page's own navigation, in order. */
+  readonly requests: readonly string[];
+  readonly dialogs: readonly string[];
+  /** Requests to anything but a `file://` URL of the page files of this test. */
+  outsideRequests(): string[];
+  /** The `securitypolicyviolation` events the page saw, as `<directive> <blocked URI>`. */
+  cspViolations(): Promise<string[]>;
+  close(): Promise<void>;
+}
+
+/** Opens `file` of `folder` over `file://` in a new offline context and records what it does. */
+export async function openFile(
+  browser: Browser,
+  folder: string,
+  file: string,
+): Promise<OpenedPage> {
+  const context = await browser.newContext({ offline: true });
+  const page = await context.newPage();
+  const requests: string[] = [];
+  const dialogs: string[] = [];
+  const folderUrl = `${pathToFileURL(folder).href}/`;
+  page.on('request', (request) => {
+    requests.push(request.url());
+  });
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.message());
+    void dialog.dismiss();
+  });
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    window.__modelEvalCspViolations = seen;
+    document.addEventListener('securitypolicyviolation', (event) => {
+      seen.push(`${event.violatedDirective} ${event.blockedURI}`);
+    });
+  });
+  await page.goto(pathToFileURL(path.join(folder, file)).href);
+  return {
+    page,
+    context,
+    folder,
+    requests,
+    dialogs,
+    outsideRequests: () => requests.filter((url) => !url.startsWith(folderUrl)),
+    cspViolations: () => page.evaluate(() => window.__modelEvalCspViolations ?? []),
+    close: () => context.close(),
+  };
+}
+
+/** Writes `html` alone into a new temporary folder as `report.html` and opens it. */
+export async function openHtml(browser: Browser, html: string): Promise<OpenedPage> {
+  const folder = await mkdtemp(path.join(tmpdir(), 'model-eval-page-'));
+  await writeFile(path.join(folder, 'report.html'), html);
+  const opened = await openFile(browser, folder, 'report.html');
+  return {
+    ...opened,
+    close: async () => {
+      await opened.close();
+      await rm(folder, { recursive: true, force: true });
+    },
+  };
+}
+
+function fromSetup(variable: string): string {
+  const value = process.env[variable];
+  if (value === undefined) {
+    throw new Error(`${variable} is not set; run the browser tests through playwright.config.ts`);
+  }
+  return value;
+}
+
+/** The `report.html` the first example swap of `global-setup.ts` wrote. */
+export function examplePagePath(): string {
+  return fromSetup(EXAMPLE_PAGE_ENV);
+}
+
+/** The output directory of the two example swaps of `global-setup.ts`. */
+export function exampleOutputDir(): string {
+  return fromSetup(EXAMPLE_OUTPUT_ENV);
+}
+
+/** The comparison IDs of the two example swaps, in the order they ran. */
+export function exampleComparisonIds(): { readonly first: string; readonly second: string } {
+  return { first: fromSetup(EXAMPLE_FIRST_ENV), second: fromSetup(EXAMPLE_SECOND_ENV) };
+}
+
+/** The caption of a grid table, one per output surface. */
+export const SURFACE_CAPTION = new RegExp(`^${en['grid.caption'].replace('{surface}', '.+')}$`);
+
+/** WebKit moves focus to buttons with Tab only when Option is held, as Safari does. */
+export function tabKey(browserName: string): string {
+  return browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+}
+
+/** The cell buttons of the grid: the buttons of the tables captioned with a surface. */
+export function cellButtons(page: Page, surfaceCaption: RegExp): Locator {
+  return page.getByRole('table', { name: surfaceCaption }).getByRole('button');
+}
+
+/** The text of the focused element when it is a cell button, else null. */
+function focusedCellText(page: Page, surfaceCaption: RegExp): Promise<string | null> {
+  return page.evaluate((caption) => {
+    const focused = document.activeElement;
+    const table = focused?.closest('table');
+    const tableCaption = table?.querySelector('caption')?.textContent ?? '';
+    const isCell = focused instanceof HTMLButtonElement && new RegExp(caption).test(tableCaption);
+    return isCell ? focused.textContent : null;
+  }, surfaceCaption.source);
+}
+
+/**
+ * Moves through the page with Tab only. On each cell button it presses Enter, expects the cell's
+ * detail heading to take focus, presses Escape and expects the detail closed and focus back on
+ * the button. Returns the texts of the cell buttons it opened, in Tab order.
+ */
+export async function openEveryCellByKeyboard(
+  page: Page,
+  surfaceCaption: RegExp,
+  tabKey: string,
+): Promise<string[]> {
+  const cells = await cellButtons(page, surfaceCaption).allTextContents();
+  // Each focusable element is reached once; the extra presses cover the browser's own stops.
+  const limit = (await page.locator('button, select, a[href]').count()) + 10;
+  const opened: string[] = [];
+  for (let press = 0; press < limit && opened.length < cells.length; press += 1) {
+    await page.keyboard.press(tabKey);
+    const cellText = await focusedCellText(page, surfaceCaption);
+    if (cellText === null || opened.includes(cellText)) {
+      continue;
+    }
+    const handle = await page.locator(':focus').elementHandle();
+    await page.keyboard.press('Enter');
+    const heading = page.locator('h3:focus');
+    await expect(heading).toHaveCount(1);
+    const label = (await heading.textContent()) ?? '';
+    expect(label, cellText).not.toBe('');
+    expect(cellText.startsWith(label), cellText).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('heading', { level: 3, name: label, exact: true })).toHaveCount(0);
+    await expect
+      .poll(() => handle.evaluate((element) => element === document.activeElement), {
+        message: `focus back on ${cellText}`,
+      })
+      .toBe(true);
+    opened.push(cellText);
+  }
+  return opened;
+}
+
+/** Presses `tabKey` until the focused element's text is `text`, as a keyboard user would. */
+export async function tabTo(page: Page, text: string, tabKey: string): Promise<void> {
+  const limit = (await page.locator('button, select, a[href]').count()) + 10;
+  for (let press = 0; press < limit; press += 1) {
+    await page.keyboard.press(tabKey);
+    const focused = await page.evaluate(() => document.activeElement?.textContent ?? '');
+    if (focused === text) {
+      return;
+    }
+  }
+  throw new Error(`${tabKey} never reached ${text}`);
+}
+
+function sideRegion(page: Page): Locator {
+  return page.getByRole('region', { name: en['side.heading'], exact: true });
+}
+
+/** The side-by-side move button that `key` names, at the open position. */
+function sideMove(page: Page, key: 'side.nextCase' | 'side.nextRepeat'): Locator {
+  return sideRegion(page).getByRole('button', { name: en[key], exact: true });
+}
+
+async function canMove(page: Page, key: 'side.nextCase' | 'side.nextRepeat'): Promise<boolean> {
+  return (await sideMove(page, key).getAttribute('aria-disabled')) !== 'true';
+}
+
+/** Presses a move and waits until the heading names the new position. */
+async function move(page: Page, key: 'side.nextCase' | 'side.nextRepeat'): Promise<void> {
+  const heading = sideRegion(page).locator('section h3');
+  const before = (await heading.textContent()) ?? '';
+  await sideMove(page, key).click();
+  await expect(heading).not.toHaveText(before);
+}
+
+/**
+ * Opens every cell detail, then every position of every rule in the side-by-side view, by
+ * clicking, and calls `visit` on each view the page shows.
+ */
+export async function visitEveryView(page: Page, visit: () => Promise<void>): Promise<void> {
+  await visit();
+  const cells = cellButtons(page, SURFACE_CAPTION);
+  const cellCount = await cells.count();
+  expect(cellCount, 'cell buttons').toBeGreaterThan(0);
+  for (let index = 0; index < cellCount; index += 1) {
+    await cells.nth(index).click();
+    await expect(page.locator('h3:focus')).toHaveCount(1);
+    await visit();
+  }
+  const rules = sideRegion(page)
+    .getByRole('list', { name: en['side.rules'], exact: true })
+    .getByRole('button');
+  const ruleCount = await rules.count();
+  expect(ruleCount, 'side-by-side rules').toBeGreaterThan(0);
+  for (let index = 0; index < ruleCount; index += 1) {
+    const rule = rules.nth(index);
+    await rule.click();
+    await expect(sideRegion(page).locator('section h3')).toContainText(
+      (await rule.textContent()) ?? '',
+    );
+    for (;;) {
+      await visit();
+      if (await canMove(page, 'side.nextRepeat')) {
+        await move(page, 'side.nextRepeat');
+      } else if (await canMove(page, 'side.nextCase')) {
+        await move(page, 'side.nextCase');
+      } else {
+        break;
+      }
+    }
+  }
+}

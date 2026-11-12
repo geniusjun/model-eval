@@ -377,7 +377,14 @@ describe('lost adapter processes', SLOW, () => {
     const ended = await started.client.shutdown();
     expect(ended.answered).toBe(true);
     expect(ended.forced).toBe(true);
-    expect(() => process.kill(helper, 0)).toThrow();
+    // The helper's parent has exited, so another process reaps it, possibly a moment after its
+    // pipes close and `shutdown` returns; until then `kill(pid, 0)` still finds it.
+    await vi.waitFor(
+      () => {
+        expect(() => process.kill(helper, 0)).toThrow();
+      },
+      { timeout: 2000, interval: 20 },
+    );
   });
 
   it('001 FR-008 refuses a restarted adapter that declares another version', async () => {

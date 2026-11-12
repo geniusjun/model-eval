@@ -247,9 +247,13 @@ export async function createProject(spec: ProjectSpec): Promise<Project> {
   };
 }
 
+/**
+ * Sessions in the order the adapters started: by the time of each log's first entry, then by
+ * pid. File names alone do not give that order, since pids wrap around and change length.
+ */
 async function readSessions(dir: string): Promise<AdapterSession[]> {
-  const files = (await readdir(dir)).filter((name) => name.endsWith('.jsonl')).sort();
-  return Promise.all(
+  const files = (await readdir(dir)).filter((name) => name.endsWith('.jsonl'));
+  const logs = await Promise.all(
     files.map(async (name) => {
       const entries = await settledLog(path.join(dir, name));
       const requests = entries.flatMap((entry) => ('line' in entry ? [requestOf(entry)] : []));
@@ -258,9 +262,14 @@ async function readSessions(dir: string): Promise<AdapterSession[]> {
         initialize === undefined
           ? undefined
           : initializeParamsSchema.parse(initialize.params).variant.id;
-      return { variant, requests };
+      return {
+        startedAt: entries[0]?.at ?? Number.POSITIVE_INFINITY,
+        pid: Number(path.basename(name, '.jsonl')),
+        session: { variant, requests },
+      };
     }),
   );
+  return logs.sort((a, b) => a.startedAt - b.startedAt || a.pid - b.pid).map((log) => log.session);
 }
 
 type RecorderEntry =

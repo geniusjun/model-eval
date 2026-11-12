@@ -180,6 +180,21 @@ describe('swap human output', () => {
     expect(withPage).not.toContain('samples.review');
   });
 
+  it('001 FR-031 names the result page above the report when one is written, as contracts/cli.md shows', () => {
+    const folder = '.model-eval/comparisons/cmp-3f9a1c0e2b7d';
+    const written = { report: `${folder}/report.md`, comparison: `${folder}/comparison.json` };
+    const lines = (text: string) => text.split('\n').slice(-3);
+    expect(lines(output(block(), 'en', { ...written, page: `${folder}/report.html` }))).toEqual([
+      '',
+      `Result page  ${folder}/report.html`,
+      `Report       ${folder}/report.md`,
+    ]);
+    expect(lines(output(block(), 'en', written)).slice(1)).toEqual([
+      '',
+      `Report  ${folder}/report.md`,
+    ]);
+  });
+
   it('001 FR-034 writes the same output from the Korean messages', () => {
     const text = output(block(), 'ko');
     expect(text).toContain('판단 요약');

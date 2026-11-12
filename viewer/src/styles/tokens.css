@@ -1,0 +1,79 @@
+/* Colours, spacing and type of the page (plan D9). Each verdict has a text and a background
+   colour; every pair keeps a contrast ratio of at least 4.5:1 in both schemes. Chart intervals
+   keep at least 3:1 against the chart track (WCAG 1.4.11). */
+
+:root {
+  color-scheme: light dark;
+
+  --color-background: #ffffff;
+  --color-surface: #f5f6f8;
+  --color-border: #d4d8de;
+  --color-text: #1b1f24;
+  --color-text-muted: #545c66;
+  --color-accent: #0b5cad;
+  --color-focus: #0b5cad;
+  --color-chart-track: #e3e6ea;
+  --color-chart-interval: #4f73a0;
+  --color-chart-mark: #1b1f24;
+
+  --verdict-improved-text: #0f5323;
+  --verdict-improved-background: #dcf2e1;
+  --verdict-non-inferior-text: #24415e;
+  --verdict-non-inferior-background: #e2ebf5;
+  --verdict-regressed-text: #8a1622;
+  --verdict-regressed-background: #fbe0e2;
+  --verdict-inconclusive-text: #6b4500;
+  --verdict-inconclusive-background: #fbefd6;
+  --verdict-insufficient-text: #5a3d7a;
+  --verdict-insufficient-background: #efe5f8;
+  --verdict-not-applicable-text: #474e57;
+  --verdict-not-applicable-background: #eceef1;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius: 0.375rem;
+
+  --font-body:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans KR',
+    'Apple SD Gothic Neo', sans-serif;
+  --font-code:
+    ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'Noto Sans Mono CJK KR',
+    monospace;
+  --font-size-small: 0.875rem;
+  --font-size-body: 1rem;
+  --font-size-heading: 1.5rem;
+  --line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #15181c;
+    --color-surface: #1f2329;
+    --color-border: #3a4049;
+    --color-text: #e6e9ed;
+    --color-text-muted: #a9b1bb;
+    --color-accent: #7cb4f0;
+    --color-focus: #7cb4f0;
+    --color-chart-track: #2e333b;
+    --color-chart-interval: #5f86b3;
+    --color-chart-mark: #e6e9ed;
+
+    --verdict-improved-text: #9fe0ae;
+    --verdict-improved-background: #133820;
+    --verdict-non-inferior-text: #b5cde8;
+    --verdict-non-inferior-background: #1b2a3b;
+    --verdict-regressed-text: #ffb3ba;
+    --verdict-regressed-background: #4a1419;
+    --verdict-inconclusive-text: #f3cf86;
+    --verdict-inconclusive-background: #3d2d0c;
+    --verdict-insufficient-text: #d8c0f0;
+    --verdict-insufficient-background: #33224a;
+    --verdict-not-applicable-text: #c3c9d1;
+    --verdict-not-applicable-background: #2b3038;
+  }
+}

@@ -17,6 +17,7 @@ import {
   dryRunPlan,
   faultRelay,
   interruptRelay,
+  pageTemplateOf,
   plannedCells,
   refuse,
   RUN_OPTIONS,
@@ -26,6 +27,7 @@ import {
   showStartWarnings,
   showTimings,
   variantOption,
+  warnWithoutPage,
   type RunSetup,
 } from './run-setup.js';
 
@@ -101,6 +103,9 @@ function showEnd(
       output.print(line.text);
     }
   }
+  if (end.written !== undefined) {
+    warnWithoutPage(invocation, lang, end.written);
+  }
   showAdapterEnd(invocation, lang, [end.runs.baseline, end.runs.candidate]);
   showTimings(invocation, lang, view.timings);
   return exit;
@@ -129,6 +134,7 @@ async function resumeSwap(
     maxCostUsd: settings.maxCostUsd,
     tool: setup.tool,
     lang,
+    ...pageTemplateOf(invocation),
     ...adapterRelay(invocation),
     ...faultRelay(invocation, lang),
     ...interruptRelay(invocation, lang),
@@ -206,6 +212,7 @@ async function swap(invocation: CommandInvocation, setup: RunSetup): Promise<Exi
     maxCostUsd: settings.maxCostUsd,
     tool: setup.tool,
     lang,
+    ...pageTemplateOf(invocation),
     ...adapterRelay(invocation),
     ...faultRelay(invocation, lang),
     ...interruptRelay(invocation, lang),
