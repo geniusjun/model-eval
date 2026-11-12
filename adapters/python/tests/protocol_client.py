@@ -19,12 +19,14 @@ import threading
 import time
 import urllib.request
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 JsonObject = dict[str, Any]
+# A case's `expect`, or its `expectPerTrial`: one per trial in send order.
+Expectation = JsonObject | list[JsonObject]
 
 PYTHON_DIR = Path(__file__).resolve().parents[1]
 SERVICES_DIR = PYTHON_DIR / "tests" / "services"
@@ -35,8 +37,12 @@ ROOT_CA = HELPER_FIXTURES / "tls" / "root-ca.pem"
 OPENAI_API_KEY = "test-openai-key"
 ANTHROPIC_API_KEY = "test-anthropic-key"
 BASE_URL_VARIABLES = ("OPENAI_BASE_URL", "ANTHROPIC_BASE_URL")
+# The mock server's plain HTTP address, also in a TLS case, for services that call it directly.
+MOCK_URL_VARIABLE = "MODEL_EVAL_MOCK_URL"
 
 DEFAULT_TIMEOUT_S = 30.0
+# How often `wait` checks whether the adapter is still running.
+POLL_S = 0.05
 DEFAULT_VARIANT = {"id": "next", "model": "model-b"}
 
 
@@ -163,8 +169,10 @@ class AdapterProcess:
         self._responses: dict[int, queue.Queue[JsonObject]] = {}
         self._lock = threading.Lock()
         self._next_id = 0
-        threading.Thread(target=self._read_stdout, daemon=True).start()
-        threading.Thread(target=self._read_stderr, daemon=True).start()
+        self._stdout_reader = threading.Thread(target=self._read_stdout, daemon=True)
+        self._stderr_reader = threading.Thread(target=self._read_stderr, daemon=True)
+        self._stdout_reader.start()
+        self._stderr_reader.start()
 
     # Reading
 
@@ -216,19 +224,37 @@ class AdapterProcess:
         if message.get("params") is None:
             message.pop("params", None)
         assert self.process.stdin is not None
-        self.process.stdin.write((json.dumps(message, ensure_ascii=False) + "\n").encode("utf-8"))
-        self.process.stdin.flush()
+        try:
+            line = json.dumps(message, ensure_ascii=False) + "\n"
+            self.process.stdin.write(line.encode("utf-8"))
+            self.process.stdin.flush()
+        except BrokenPipeError:
+            # The adapter has exited; `wait` reports it with its stderr.
+            pass
 
     def wait(self, request_id: int, timeout: float = DEFAULT_TIMEOUT_S) -> JsonObject:
-        try:
-            response = self._mailbox(request_id).get(timeout=timeout)
-        except queue.Empty:
-            stderr = "".join(self.exchange.stderr)
-            raise AssertionError(
-                f"no response to request {request_id}; stderr:\n{stderr}"
-            ) from None
+        """The response to the request. Fails at the deadline, or as soon as the adapter has
+        exited and every line it wrote has been read, so a crashed adapter fails fast."""
+        mailbox = self._mailbox(request_id)
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                response = mailbox.get(timeout=POLL_S)
+                break
+            except queue.Empty:
+                exited = self.process.poll() is not None and not self._stdout_reader.is_alive()
+                if (exited and mailbox.empty()) or time.monotonic() > deadline:
+                    raise self._no_response(request_id) from None
         self.check_stdout()
         return response
+
+    def _no_response(self, request_id: int) -> AssertionError:
+        code = self.process.poll()
+        if code is not None:
+            self._stderr_reader.join(timeout=1)
+        reason = "" if code is None else f" (the adapter exited with {code})"
+        stderr = "".join(self.exchange.stderr)
+        return AssertionError(f"no response to request {request_id}{reason}; stderr:\n{stderr}")
 
     def request(
         self, method: str, params: Any = None, timeout: float = DEFAULT_TIMEOUT_S
@@ -342,19 +368,25 @@ class ScenarioCase:
     sdk: str
 
     @property
-    def expect(self) -> JsonObject:
-        expected: JsonObject = self.data["expect"]
+    def expect(self) -> Expectation:
+        """`expectPerTrial` when the case gives one, else `expect`."""
+        expected: Expectation = self.data.get("expectPerTrial", self.data.get("expect"))
         return expected
 
 
 @dataclass
 class Outcome:
-    """Everything a case's `expect` is compared with."""
+    """Everything a case's `expect` is compared with. `responses` holds the response of every
+    trial of a case with `trials` or `trialsInARow`, in send order; `response` is the first."""
 
     response: JsonObject
     exchange: Exchange
     requests: list[JsonObject]
     render_fingerprint: str | None = None
+    responses: list[JsonObject] = field(default_factory=list)
+
+    def trial_responses(self) -> list[JsonObject]:
+        return self.responses or [self.response]
 
 
 def scenario_env(case: ScenarioCase) -> dict[str, str]:
@@ -386,6 +418,7 @@ def trial_params(case: ScenarioCase) -> JsonObject:
         "target": "chat",
         "input": {},
         "caseId": "case-1",
+        "lang": "en",
         "repeat": 0,
         "seed": 1,
     }
@@ -396,7 +429,7 @@ def run_case(case: ScenarioCase, mock: MockApi, service: str = "scenario") -> Ou
     """Loads the case's script, runs its request in a new adapter, and shuts the adapter down."""
     mock.load(case.data.get("script", []))
     base_url = mock.tls_url(case.data["tls"]) if "tls" in case.data else mock.url
-    env = {**api_env(base_url), **scenario_env(case)}
+    env = {**api_env(base_url), **scenario_env(case), MOCK_URL_VARIABLE: mock.url}
     if "tls" in case.data:
         env["SSL_CERT_FILE"] = str(ROOT_CA)
     adapter = AdapterProcess(service, env)
@@ -404,31 +437,55 @@ def run_case(case: ScenarioCase, mock: MockApi, service: str = "scenario") -> Ou
         initialized = adapter.request("initialize", initialize_params(case))
         assert "result" in initialized, f"initialize failed: {initialized}"
         render_fingerprint = None
-        if case.expect.get("fingerprint") in ("render", "not-render"):
+        if any(e.get("fingerprint") in ("render", "not-render") for e in each_expect(case.expect)):
             rendered = adapter.request("render", trial_params(case))
             render_fingerprint = rendered.get("result", {}).get("fingerprint")
-        request = case.data.get("request", "generate")
-        request_id = adapter.send(request, trial_params(case))
-        if "cancel" in case.data:
-            wait_to_cancel(case.data["cancel"], mock)
-            adapter.notify("cancel", {"id": request_id})
-        response = adapter.wait(request_id)
+        responses = send_trials(case, adapter, mock)
+        if "shutdownAfterRequests" in case.data:
+            wait_for_requests(int(case.data["shutdownAfterRequests"]), mock)
         adapter.request("shutdown")
     finally:
         adapter.close()
-    return Outcome(response, adapter.exchange, mock.log(), render_fingerprint)
+    return Outcome(responses[0], adapter.exchange, mock.log(), render_fingerprint, responses)
 
 
-def wait_to_cancel(cancel: JsonObject, mock: MockApi, timeout: float = DEFAULT_TIMEOUT_S) -> None:
+def send_trials(case: ScenarioCase, adapter: AdapterProcess, mock: MockApi) -> list[JsonObject]:
+    """Sends the case's request. With `trials` N, that many `generate`s with caseIds `case-1`
+    to `case-N`, all before waiting for any response; with `trialsInARow` N, each after the
+    previous response arrived."""
+    request = case.data.get("request", "generate")
+    together = int(case.data.get("trials", 1))
+    in_a_row = int(case.data.get("trialsInARow", 1))
+    total = max(together, in_a_row)
+    if total > 1 and (
+        request != "generate" or "cancel" in case.data or min(together, in_a_row) > 1
+    ):
+        raise ValueError("`trials` and `trialsInARow` take one generate request without `cancel`")
+    params = [trial_params(case)]
+    if total > 1:
+        params = [{**params[0], "caseId": f"case-{n}"} for n in range(1, total + 1)]
+    if in_a_row > 1:
+        return [adapter.request(request, trial) for trial in params]
+    request_ids = [adapter.send(request, trial) for trial in params]
+    if "cancel" in case.data:
+        wait_to_cancel(case.data["cancel"], mock)
+        adapter.notify("cancel", {"id": request_ids[0]})
+    return [adapter.wait(request_id) for request_id in request_ids]
+
+
+def wait_to_cancel(cancel: JsonObject, mock: MockApi) -> None:
     if "afterMs" in cancel:
         time.sleep(cancel["afterMs"] / 1000)
         return
+    wait_for_requests(int(cancel["afterRequests"]), mock)
+
+
+def wait_for_requests(count: int, mock: MockApi, timeout: float = DEFAULT_TIMEOUT_S) -> None:
+    """Waits until the mock server's log holds `count` requests."""
     deadline = time.monotonic() + timeout
-    while len(mock.log()) < cancel["afterRequests"]:
+    while len(mock.log()) < count:
         if time.monotonic() > deadline:
-            raise AssertionError(
-                f"the mock server never received {cancel['afterRequests']} requests"
-            )
+            raise AssertionError(f"the mock server never received {count} requests")
         time.sleep(0.01)
 
 
@@ -482,9 +539,11 @@ def comparable(value: Any) -> str:
 ABSENT = object()
 
 
-def compare(path: str, expected: Any, actual: Any, mismatches: list[str]) -> None:
-    """Expected null means the field is absent."""
-    if expected is None:
+def compare(
+    path: str, expected: Any, actual: Any, mismatches: list[str], null_is_absent: bool = True
+) -> None:
+    """Expected null means the field is absent, or with `null_is_absent` false the JSON null."""
+    if expected is None and null_is_absent:
         if actual is not ABSENT:
             mismatches.append(f"{path}: expected absent, got {json.dumps(actual)}")
     elif actual is ABSENT or not same(expected, actual):
@@ -495,7 +554,11 @@ def compare(path: str, expected: Any, actual: Any, mismatches: list[str]) -> Non
 
 
 def compare_records(
-    path: str, expected: list[JsonObject], actual: Any, mismatches: list[str]
+    path: str,
+    expected: list[JsonObject],
+    actual: Any,
+    mismatches: list[str],
+    null_is_absent: bool = True,
 ) -> None:
     """Records in order; only the fields each expected record lists are compared."""
     records = actual if isinstance(actual, list) else []
@@ -504,7 +567,9 @@ def compare_records(
         return
     for index, (wanted, record) in enumerate(zip(expected, records, strict=True)):
         for name, value in wanted.items():
-            compare(f"{path}[{index}].{name}", value, record.get(name, ABSENT), mismatches)
+            field_path = f"{path}[{index}].{name}"
+            actual_value = record.get(name, ABSENT)
+            compare(field_path, value, actual_value, mismatches, null_is_absent)
 
 
 def compare_messages(
@@ -572,7 +637,8 @@ def check_expect(expect: JsonObject, outcome: Outcome) -> list[str]:
             stderr = "".join(outcome.exchange.stderr)
             mismatches.extend(f"stderr lacks {text!r}" for text in value if text not in stderr)
         elif name == "requests":
-            compare_records(name, value, outcome.requests, mismatches)
+            # Request records always carry their fields, so null there is the JSON null.
+            compare_records(name, value, outcome.requests, mismatches, null_is_absent=False)
         else:
             compare(name, value, result_field(response, name), mismatches)
     return mismatches
@@ -612,6 +678,20 @@ def check_fingerprint(
         compare("fingerprint", expected, actual, mismatches)
 
 
-def assert_expect(expect: JsonObject, outcome: Outcome) -> None:
-    mismatches = check_expect(expect, outcome)
+def each_expect(expect: Expectation) -> list[JsonObject]:
+    return expect if isinstance(expect, list) else [expect]
+
+
+def assert_expect(expect: Expectation, outcome: Outcome) -> None:
+    """Every trial's response is held to `expect`, or with a list (`expectPerTrial`) to the
+    entry of its place in send order; one mismatch in any trial fails."""
+    responses = outcome.trial_responses()
+    expected = expect if isinstance(expect, list) else [expect] * len(responses)
+    if len(expected) != len(responses):
+        raise AssertionError(f"{len(expected)} expectations for {len(responses)} trials")
+    mismatches = []
+    for number, (wanted, response) in enumerate(zip(expected, responses, strict=True), start=1):
+        found = check_expect(wanted, replace(outcome, response=response))
+        prefix = f"trial {number}: " if len(responses) > 1 else ""
+        mismatches.extend(prefix + mismatch for mismatch in found)
     assert not mismatches, "\n".join(mismatches)

@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 from protocol_client import PYTHON_DIR, ROOT_CA, MockApi
 
-from mock_api.server import CERTIFICATES
+from mock_api.server import CERTIFICATES, MockServer
 
 SERVER = PYTHON_DIR / "mock_api" / "server.py"
 CHAT = "/v1/chat/completions"
@@ -280,19 +280,73 @@ def test_003_SC_002_entries_answer_in_send_order_with_times_and_match(mock_api: 
     assert answers == [b"first", b"first", b"model-a", b"last", b"messages"]
 
 
+NO_ENTRY = ("mock_script_error", "mock server: no script entry for this request")
+
+
+def script_error(response: http.client.HTTPResponse) -> tuple[str, str]:
+    assert response.status == 500
+    error = json.loads(response.read())["error"]
+    return error["type"], error["message"]
+
+
 def test_003_SC_002_a_request_no_entry_matches_gets_500(mock_api: MockApi) -> None:
-    unloaded = send(mock_api)
-    assert unloaded.status == 500
-    assert json.loads(unloaded.read())["error"]["type"] == "mock_script_error"
     mock_api.load([{"match": {"model": "model-a"}, "text": "{}"}])
-    unmatched = send(mock_api, MESSAGES)
-    assert unmatched.status == 500
-    error = json.loads(unmatched.read())["error"]
-    assert (error["type"], error["message"]) == (
-        "mock_script_error",
-        "mock server: no script entry for this request",
-    )
-    assert [record["scripted"] for record in mock_api.log()] == [False]
+    assert script_error(send(mock_api)) == NO_ENTRY
+    assert script_error(send(mock_api, MESSAGES)) == NO_ENTRY
+    assert [record["scripted"] for record in mock_api.log()] == [False, False]
+
+
+def test_003_SC_002_an_exhausted_or_empty_script_gets_500(mock_api: MockApi) -> None:
+    mock_api.load([{"text": "first"}])
+    assert send(mock_api).read() == b"first"
+    assert script_error(send(mock_api)) == NO_ENTRY
+    assert [record["scripted"] for record in mock_api.log()] == [True, False]
+    mock_api.load([])
+    assert script_error(send(mock_api)) == NO_ENTRY
+
+
+# The example mode's fixed replies, per model and script of the last user message (T037).
+EXAMPLE_QUESTIONS = [
+    ("model-a", "오늘 비 와", "응, 그랬구나. 더 얘기해 줘."),
+    ("model-a", "It's raining again.", "Oh, I see. Tell me more."),
+    ("model-b", "また雨が降ってる。", "へえ、本当？何があったの？"),
+    ("model-b", "I had ramen for lunch.", "Really? What happened?"),
+]
+
+
+def example_replies(mock: MockApi) -> list[tuple[int, str, bool]]:
+    """Status, reply text and whether usage came, for each of EXAMPLE_QUESTIONS."""
+    answers = []
+    for model, question, _ in EXAMPLE_QUESTIONS:
+        messages = [
+            {"role": "system", "content": "Be brief."},
+            {"role": "user", "content": question},
+        ]
+        response = send(mock, body={"model": model, "messages": messages})
+        body = json.loads(response.read())
+        text = body["choices"][0]["message"]["content"] if response.status == 200 else ""
+        usage = body.get("usage", {})
+        answers.append((response.status, text, usage.get("completion_tokens", 0) > 0))
+    return answers
+
+
+def test_003_SC_004_with_no_script_chat_completions_get_the_example_reply() -> None:
+    expected = [(200, reply, True) for _, _, reply in EXAMPLE_QUESTIONS]
+    server = MockServer().start()
+    try:
+        mock = MockApi(server.url)
+        assert example_replies(mock) == expected
+        assert script_error(send(mock, MESSAGES)) == (
+            "mock_script_error",
+            "mock server: no script loaded",
+        )
+        mock.load([{"text": "scripted"}])
+        assert send(mock).read() == b"scripted"
+        mock.reset()
+        assert example_replies(mock) == expected
+        assert [record["scripted"] for record in mock.log()] == [False] * len(expected)
+    finally:
+        server.stop()
 
 
 def test_003_SC_002_loading_a_script_clears_the_log_and_control_requests_are_not_logged(

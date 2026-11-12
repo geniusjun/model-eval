@@ -1,0 +1,1554 @@
+{
+  "S-STAT-01": [
+    {
+      "name": "429 closed by the SDK and resent with success: a recovered failure, normal",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 1
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello.",
+        "final": "Hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "stop",
+        "requests": [
+          {
+            "method": "POST",
+            "model": "model-b"
+          },
+          {
+            "method": "POST",
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-02": [
+    {
+      "name": "429 after the SDK's two resends, the service raises: transient (acceptance scenario 6)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 2
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "retryAfterMs": 20
+      }
+    },
+    {
+      "name": "429 swallowed and a fixed message shipped: still the call failure (Outcome row 6)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, please try again later."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-03": [
+    {
+      "name": "tool-loop step ends in 429 after the SDK's resends, fixed message: Outcome row 6, transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "lookup",
+                "tools": [
+                  "lookup"
+                ]
+              }
+            },
+            {
+              "call": {
+                "after": "lookup",
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, please try again later."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "retryAfterMs": 20
+      }
+    }
+  ],
+  "S-STAT-04": [
+    {
+      "name": "429 with OpenAI type insufficient_quota: config",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "type": "insufficient_quota"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "429 with OpenAI code insufficient_quota: config",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "insufficient_quota"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "429 with OpenAI code credit_balance_exhausted: config",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "credit_balance_exhausted"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "429 with OpenAI code organization_spend_limit_exceeded: config",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "organization_spend_limit_exceeded"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "429 with OpenAI code project_spend_limit_exceeded: config",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "project_spend_limit_exceeded"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "429 with OpenAI code organization_usage_limit_exceeded: config",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "organization_usage_limit_exceeded"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "429 with OpenAI code usage_limit_exceeded: config",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "usage_limit_exceeded"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "429 with OpenAI code billing_not_active: config",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "billing_not_active"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "429 insufficient_quota swallowed and a value returned: still config (Outcome row 1)",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Fine."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "insufficient_quota"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "failed 200 Responses response with code insufficient_quota and usage: config, failed",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "failure": {
+              "code": "insufficient_quota",
+              "message": "You exceeded your quota."
+            },
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config",
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-05": [
+    {
+      "name": "Anthropic enforced_spend_limit_reached in a 429: config",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "enforced_spend_limit_reached"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Anthropic organization_on_hold in a 400: config",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 400,
+            "code": "organization_on_hold"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Anthropic claude_code_key_creator_not_member in a 400: config",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 400,
+            "code": "claude_code_key_creator_not_member"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Anthropic claude_code_version_too_old in a 400: config",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 400,
+            "code": "claude_code_version_too_old"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Anthropic skill_read_blocked_undecryptable in a 409: config",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 409,
+            "code": "skill_read_blocked_undecryptable"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-06": [
+    {
+      "name": "Anthropic ramp_limit_exceeded in a 429: transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "ramp_limit_exceeded"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-07": [
+    {
+      "name": "Anthropic thread_not_found in a 404: permanent",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 404,
+            "code": "thread_not_found"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "permanent"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-08": [
+    {
+      "name": "thread_not_found, the whole conversation resent, reply_call true for both: normal",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "thread",
+                "user": "Continue.",
+                "kwargs": {
+                  "extra_body": {
+                    "thread": {
+                      "id": "thread_mock_1"
+                    }
+                  }
+                },
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "whole",
+                "user": "Continue.",
+                "kwargs": {
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": "Earlier question."
+                    },
+                    {
+                      "role": "assistant",
+                      "content": "Earlier answer."
+                    },
+                    {
+                      "role": "user",
+                      "content": "Continue."
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 404,
+            "code": "thread_not_found"
+          }
+        },
+        {
+          "reply": {
+            "text": "Continued."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Continued.",
+        "final": "Continued.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "permanent"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same without reply_call: two variant model branches, Outcome row 5 (A3)",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "thread",
+                "user": "Continue.",
+                "kwargs": {
+                  "extra_body": {
+                    "thread": {
+                      "id": "thread_mock_1"
+                    }
+                  }
+                },
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "whole",
+                "user": "Continue.",
+                "kwargs": {
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": "Earlier question."
+                    },
+                    {
+                      "role": "assistant",
+                      "content": "Earlier answer."
+                    },
+                    {
+                      "role": "user",
+                      "content": "Continue."
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 404,
+            "code": "thread_not_found"
+          }
+        },
+        {
+          "reply": {
+            "text": "Continued."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "permanent"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-09": [
+    {
+      "name": "401: config, the run stops (acceptance scenario 7)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "402: config",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 402
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "400 with Anthropic type billing_error: config",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 400,
+            "type": "billing_error"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "400 whose message names the credit balance, any case: config",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 400,
+            "message": "Your Credit Balance is too low to access the API."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "400 whose message names a usage limit: config",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 400,
+            "message": "You have reached your specified API usage limits."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-10": [
+    {
+      "name": "400: permanent",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 400
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "permanent"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-11": [
+    {
+      "name": "408 after the SDK's two resends: transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 2
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 408
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-12": [
+    {
+      "name": "409: permanent",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 409
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "permanent"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-13": [
+    {
+      "name": "529: transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 529
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STAT-14": [
+    {
+      "name": "Responses failed with server_error and usage: transient, failed and priced at that usage",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "failure": {
+              "code": "server_error",
+              "message": "The response failed."
+            },
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Responses failed with server_error without usage: transient, unanswered",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "failure": {
+              "code": "server_error",
+              "message": "The response failed."
+            },
+            "usage": null
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient",
+            "usage": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "Responses failed with invalid_prompt and usage: permanent, failed and priced at that usage",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "failure": {
+              "code": "invalid_prompt",
+              "message": "The response failed."
+            },
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "permanent",
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Responses failed with invalid_prompt without usage: permanent, unanswered",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "failure": {
+              "code": "invalid_prompt",
+              "message": "The response failed."
+            },
+            "usage": null
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "permanent",
+            "usage": null
+          }
+        ]
+      }
+    }
+  ]
+}

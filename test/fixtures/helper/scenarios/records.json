@@ -1,0 +1,2411 @@
+{
+  "S-RESP-01": [
+    {
+      "name": "chat-completions: per-call fields in send order, a side call before the answer",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a",
+                "user": "Classify."
+              }
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "model": "model-a-2026-01-01",
+            "text": "Side.",
+            "usage": {
+              "input": 3,
+              "output": 1
+            }
+          }
+        },
+        {
+          "reply": {
+            "model": "model-b-2026-02-01",
+            "text": "Answer.",
+            "usage": {
+              "input": 12,
+              "output": 6
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Answer.",
+        "modelSnapshot": "model-b-2026-02-01",
+        "usage": {
+          "input": 15,
+          "output": 7
+        },
+        "calls": [
+          {
+            "model": "model-a",
+            "responseModel": "model-a-2026-01-01",
+            "outcome": "ok",
+            "branch": "side",
+            "usage": {
+              "input": 3,
+              "output": 1
+            },
+            "finishReason": "stop",
+            "errorKind": null
+          },
+          {
+            "model": "model-b",
+            "responseModel": "model-b-2026-02-01",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 12,
+              "output": 6
+            },
+            "finishReason": "stop",
+            "errorKind": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "responses: per-call fields in send order, a side call before the answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a",
+                "user": "Classify."
+              }
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "model": "model-a-2026-01-01",
+            "text": "Side.",
+            "usage": {
+              "input": 3,
+              "output": 1
+            }
+          }
+        },
+        {
+          "reply": {
+            "model": "model-b-2026-02-01",
+            "text": "Answer.",
+            "usage": {
+              "input": 12,
+              "output": 6
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Answer.",
+        "modelSnapshot": "model-b-2026-02-01",
+        "usage": {
+          "input": 15,
+          "output": 7
+        },
+        "calls": [
+          {
+            "model": "model-a",
+            "responseModel": "model-a-2026-01-01",
+            "outcome": "ok",
+            "branch": "side",
+            "usage": {
+              "input": 3,
+              "output": 1
+            },
+            "finishReason": "completed",
+            "errorKind": null
+          },
+          {
+            "model": "model-b",
+            "responseModel": "model-b-2026-02-01",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 12,
+              "output": 6
+            },
+            "finishReason": "completed",
+            "errorKind": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "messages: per-call fields in send order, a side call before the answer",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a",
+                "user": "Classify."
+              }
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "model": "model-a-2026-01-01",
+            "text": "Side.",
+            "usage": {
+              "input": 3,
+              "output": 1
+            }
+          }
+        },
+        {
+          "reply": {
+            "model": "model-b-2026-02-01",
+            "text": "Answer.",
+            "usage": {
+              "input": 12,
+              "output": 6
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Answer.",
+        "modelSnapshot": "model-b-2026-02-01",
+        "usage": {
+          "input": 15,
+          "output": 7
+        },
+        "calls": [
+          {
+            "model": "model-a",
+            "responseModel": "model-a-2026-01-01",
+            "outcome": "ok",
+            "branch": "side",
+            "usage": {
+              "input": 3,
+              "output": 1
+            },
+            "finishReason": "end_turn",
+            "errorKind": null
+          },
+          {
+            "model": "model-b",
+            "responseModel": "model-b-2026-02-01",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 12,
+              "output": 6
+            },
+            "finishReason": "end_turn",
+            "errorKind": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "chat-completions: every usage bucket",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello.",
+            "usage": {
+              "input": 100,
+              "cachedInput": 30,
+              "cacheWrite": 20,
+              "output": 40,
+              "reasoning": 10
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "usage": {
+          "input": 100,
+          "cachedInput": 30,
+          "cacheWrite": 20,
+          "output": 40,
+          "reasoning": 10
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "usage": {
+              "input": 100,
+              "cachedInput": 30,
+              "cacheWrite": 20,
+              "output": 40,
+              "reasoning": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "responses: every usage bucket",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello.",
+            "usage": {
+              "input": 100,
+              "cachedInput": 30,
+              "cacheWrite": 20,
+              "output": 40,
+              "reasoning": 10
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "usage": {
+          "input": 100,
+          "cachedInput": 30,
+          "cacheWrite": 20,
+          "output": 40,
+          "reasoning": 10
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "usage": {
+              "input": 100,
+              "cachedInput": 30,
+              "cacheWrite": 20,
+              "output": 40,
+              "reasoning": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "messages: every usage bucket",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello.",
+            "usage": {
+              "input": 100,
+              "cachedInput": 30,
+              "cacheWrite": 20,
+              "output": 40,
+              "reasoning": 10
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "usage": {
+          "input": 100,
+          "cachedInput": 30,
+          "cacheWrite": 20,
+          "output": 40,
+          "reasoning": 10
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "usage": {
+              "input": 100,
+              "cachedInput": 30,
+              "cacheWrite": 20,
+              "output": 40,
+              "reasoning": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a bucket whose field is absent is omitted",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello.",
+            "usage": {
+              "input": 9,
+              "output": 4
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "usage": {
+          "input": 9,
+          "output": 4
+        },
+        "calls": [
+          {
+            "usage": {
+              "input": 9,
+              "output": 4
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a response without usage: the call has no usage",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello.",
+            "usage": null
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "usage": null,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: stop is stop",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial answer",
+            "finishReason": "stop"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Partial answer",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "finish reason: the output limit is length",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial answer",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Partial answer",
+        "finishReason": "length"
+      }
+    },
+    {
+      "name": "finish reason: a filter is content_filter",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial answer",
+            "finishReason": "content_filter"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Partial answer",
+        "finishReason": "content_filter"
+      }
+    },
+    {
+      "name": "finish reason: Anthropic stop_sequence is stop",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial answer",
+            "finishReason": "stop_sequence"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Partial answer",
+        "finishReason": "stop",
+        "calls": [
+          {
+            "finishReason": "stop_sequence"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: Anthropic model_context_window_exceeded is length",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial answer",
+            "finishReason": "model_context_window_exceeded"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Partial answer",
+        "finishReason": "length",
+        "calls": [
+          {
+            "finishReason": "model_context_window_exceeded"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: a Responses incomplete response records incomplete_details.reason max_output_tokens",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial answer",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Partial answer",
+        "answers": 1,
+        "finishReason": "length",
+        "calls": [
+          {
+            "outcome": "ok",
+            "finishReason": "max_output_tokens"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: a Responses incomplete response records incomplete_details.reason content_filter",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial answer",
+            "finishReason": "content_filter"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Partial answer",
+        "answers": 1,
+        "finishReason": "content_filter",
+        "calls": [
+          {
+            "outcome": "ok",
+            "finishReason": "content_filter"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: a Chat Completions text response ending with function_call is an answer with finish reason other",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Some text",
+            "finishReason": "function_call"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Some text",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "outcome": "ok",
+            "finishReason": "function_call"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: a Chat Completions text response ending with tool_calls is an answer with finish reason other",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Some text",
+            "finishReason": "tool_calls"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Some text",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "outcome": "ok",
+            "finishReason": "tool_calls"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: a Chat Completions text response ending with unknown_reason is an answer with finish reason other",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Some text",
+            "finishReason": "unknown_reason"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Some text",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "outcome": "ok",
+            "finishReason": "unknown_reason"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: pause_turn continues a tool loop, so a text response with it is no answer: A4 (Raw Cannot Be Determined row 1, Outcome row 7)",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Some text",
+            "finishReason": "pause_turn"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        },
+        "calls": [
+          {
+            "outcome": "ok",
+            "finishReason": "pause_turn"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: an Anthropic text response ending with unknown_reason is an answer with finish reason other",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Some text",
+            "finishReason": "unknown_reason"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Some text",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "outcome": "ok",
+            "finishReason": "unknown_reason"
+          }
+        ]
+      }
+    },
+    {
+      "name": "finish reason: Chat Completions tool_calls content with finish_reason stop ended in a tool call",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-fixture-1",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": null,
+                  "refusal": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_fixture_1",
+                      "type": "function",
+                      "function": {
+                        "name": "lookup",
+                        "arguments": "{\"text\":\"a\"}"
+                      }
+                    }
+                  ]
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 10,
+              "completion_tokens": 5
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "finish reason: an Anthropic tool_use block with end_turn ended in a tool call",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_fixture_1",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "toolu_fixture_1",
+                "name": "lookup",
+                "input": {
+                  "text": "a"
+                }
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "finish reason: the output limit with a tool call is length",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-fixture-1",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Partial",
+                  "refusal": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_fixture_1",
+                      "type": "function",
+                      "function": {
+                        "name": "lookup",
+                        "arguments": "{\"text\":\"a\"}"
+                      }
+                    }
+                  ]
+                },
+                "logprobs": null,
+                "finish_reason": "length"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 10,
+              "completion_tokens": 5
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Partial",
+        "finishReason": "length"
+      }
+    },
+    {
+      "name": "call outcome: a failure with usage is failed at that usage",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "failure": {
+              "code": "server_error",
+              "message": "mock failure"
+            },
+            "usage": {
+              "input": 7,
+              "output": 2
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "outcome": "failed",
+            "errorKind": "transient",
+            "usage": {
+              "input": 7,
+              "output": 2
+            },
+            "finishReason": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "call outcome: a failed 200 response without usage is unanswered",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "failure": {
+              "code": "server_error",
+              "message": "mock failure"
+            },
+            "usage": null
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "outcome": "unanswered",
+            "errorKind": "transient",
+            "usage": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "call outcome: a drop mid-body is unanswered",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "This body is cut."
+          },
+          "drop": {
+            "chunks": 0,
+            "bytes": 5
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "call outcome: a time-out after the request was sent is unanswered",
+      "service": {
+        "behaviour": "reply",
+        "params": {
+          "timeoutS": 0.5
+        }
+      },
+      "script": [
+        {
+          "delayMs": 3000,
+          "reply": {
+            "text": "Too late."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    },
+    {
+      "name": "call outcome: a non-200 error status is failed",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "status": 400,
+          "error": {
+            "message": "bad request"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "outcome": "failed",
+            "errorKind": "permanent",
+            "usage": null,
+            "retryAfterMs": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "call outcome: a certificate failure is failed and config",
+      "service": {
+        "behaviour": "reply"
+      },
+      "tls": "self-signed",
+      "script": [
+        {
+          "reply": {
+            "text": "Never read."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "outcome": "failed",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "retryAfterMs: retry-after-ms on a failed call",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after-ms": "1500"
+          },
+          "error": {
+            "message": "slow down"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": 1500,
+        "calls": [
+          {
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 1500
+          }
+        ]
+      }
+    },
+    {
+      "name": "retryAfterMs: retry-after in seconds on a failed call",
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "status": 503,
+          "headers": {
+            "retry-after": "2"
+          },
+          "error": {
+            "message": "unavailable"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": 2000,
+        "calls": [
+          {
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 2000
+          }
+        ]
+      }
+    }
+  ],
+  "S-RESP-05": [
+    {
+      "name": "a function_call item in a completed response ended in a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "function_call",
+                "id": "fc_1",
+                "call_id": "call_1",
+                "name": "lookup",
+                "arguments": "{}",
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "a custom_tool_call item in a completed response ended in a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "custom_tool_call",
+                "id": "ctc_1",
+                "call_id": "call_1",
+                "name": "grammar",
+                "input": "x"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "a computer_call item in a completed response ended in a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "computer_call",
+                "id": "cu_1",
+                "call_id": "call_1",
+                "action": {
+                  "type": "screenshot"
+                },
+                "pending_safety_checks": [],
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "a local_shell_call item in a completed response ended in a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "local_shell_call",
+                "id": "lsh_1",
+                "call_id": "call_1",
+                "action": {
+                  "type": "exec",
+                  "command": [
+                    "ls"
+                  ],
+                  "env": {}
+                },
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "a shell_call item in a completed response ended in a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "shell_call",
+                "id": "sh_1",
+                "call_id": "call_1",
+                "action": {
+                  "commands": [
+                    "ls"
+                  ]
+                },
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "a apply_patch_call item in a completed response ended in a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "apply_patch_call",
+                "id": "ap_1",
+                "call_id": "call_1",
+                "operation": {
+                  "type": "update_file",
+                  "path": "a.txt",
+                  "diff": ""
+                },
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "a mcp_approval_request item in a completed response ended in a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "mcp_approval_request",
+                "id": "mcpr_1",
+                "server_label": "tools",
+                "name": "lookup",
+                "arguments": "{}"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "a tool_search_call item in a completed response ended in a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "tool_search_call",
+                "id": "ts_1",
+                "call_id": "",
+                "execution": "client",
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    },
+    {
+      "name": "a shell_call item a result item of the same response points to is not a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "shell_call",
+                "id": "sh_1",
+                "call_id": "call_1",
+                "action": {
+                  "commands": [
+                    "ls"
+                  ]
+                },
+                "status": "completed"
+              },
+              {
+                "type": "shell_call_output",
+                "id": "sho_1",
+                "call_id": "call_1",
+                "output": []
+              },
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Done.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Done.",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "a local_shell_call item a result item of the same response points to is not a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "local_shell_call",
+                "id": "lsh_1",
+                "call_id": "call_1",
+                "action": {
+                  "type": "exec",
+                  "command": [
+                    "ls"
+                  ],
+                  "env": {}
+                },
+                "status": "completed"
+              },
+              {
+                "type": "local_shell_call_output",
+                "id": "call_1",
+                "output": "ok"
+              },
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Done.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Done.",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "a mcp_approval_request item a result item of the same response points to is not a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "mcp_approval_request",
+                "id": "mcpr_1",
+                "server_label": "tools",
+                "name": "lookup",
+                "arguments": "{}"
+              },
+              {
+                "type": "mcp_approval_response",
+                "id": "mcpa_1",
+                "approval_request_id": "mcpr_1",
+                "approve": true
+              },
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Done.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Done.",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "a tool_search_call run by the server is not a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "tool_search_call",
+                "id": "ts_1",
+                "call_id": "",
+                "execution": "server",
+                "status": "completed"
+              },
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Found.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Found.",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "a web_search_call is not a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "web_search_call",
+                "id": "ws_1",
+                "status": "completed",
+                "action": {
+                  "type": "search",
+                  "query": "q"
+                }
+              },
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Found.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Found.",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "a file_search_call is not a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "file_search_call",
+                "id": "fs_1",
+                "queries": [
+                  "q"
+                ],
+                "status": "completed"
+              },
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Found.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Found.",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "a code_interpreter_call is not a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "code_interpreter_call",
+                "id": "ci_1",
+                "code": "1",
+                "container_id": "c",
+                "outputs": [],
+                "status": "completed"
+              },
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Found.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Found.",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "an mcp_call is not a tool call",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "mcp_call",
+                "id": "mcp_1",
+                "server_label": "tools",
+                "name": "lookup",
+                "arguments": "{}",
+                "output": "x"
+              },
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Found.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 5,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 15
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Found.",
+        "finishReason": "stop"
+      }
+    }
+  ],
+  "S-PAR-08": [
+    {
+      "name": "Chat Completions: input set to 0 with W9",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-fixture-1",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 5,
+              "completion_tokens": 3,
+              "total_tokens": 8,
+              "prompt_tokens_details": {
+                "cached_tokens": 4,
+                "cache_write_tokens": 3
+              }
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "usage": {
+          "input": 0,
+          "cachedInput": 4,
+          "cacheWrite": 3,
+          "output": 3
+        },
+        "warnings": [
+          {
+            "message": "W9"
+          }
+        ],
+        "calls": [
+          {
+            "usage": {
+              "input": 0,
+              "cachedInput": 4,
+              "cacheWrite": 3,
+              "output": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Responses: input set to 0 with W9",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_fixture_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_fixture_1",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "usage": {
+              "input_tokens": 5,
+              "input_tokens_details": {
+                "cached_tokens": 4,
+                "cache_write_tokens": 3
+              },
+              "output_tokens": 3,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 8
+            },
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "text": {
+              "format": {
+                "type": "text"
+              }
+            },
+            "metadata": {}
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "usage": {
+          "input": 0,
+          "cachedInput": 4,
+          "cacheWrite": 3,
+          "output": 3,
+          "reasoning": 0
+        },
+        "warnings": [
+          {
+            "message": "W9"
+          }
+        ],
+        "calls": [
+          {
+            "usage": {
+              "input": 0,
+              "cachedInput": 4,
+              "cacheWrite": 3,
+              "output": 3,
+              "reasoning": 0
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-RESP-08": [
+    {
+      "name": "every request to another model: A2, calls without branch",
+      "service": {
+        "behaviour": "reply",
+        "params": {
+          "model": "model-a"
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-a`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-a",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-01": [
+    {
+      "name": "two variant model branches without reply_call: A3, calls without branch",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "user": "Answer."
+              }
+            },
+            {
+              "call": {
+                "user": "Remember this."
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "times": 2,
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ]
+}

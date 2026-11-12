@@ -1,0 +1,28 @@
+# The example Python service against the mock API server (quickstart.md of 003). Keys left out
+# take the defaults that examples/pogo/model-eval.config.yaml lists.
+
+version: 1
+
+adapter:
+  command: [.venv/bin/python, adapter.py] # The example's own environment, from requirements.txt.
+  env:
+    PYTHONPATH: ../../adapters/python # Where model_eval_adapter.py is; init copies it instead.
+
+# The rules and cases of examples/pogo, so both examples check the same thing.
+files:
+  rules: ../pogo/rules/**/*.yaml
+  cases: ../pogo/cases/**/*.yaml
+
+variants:
+  - id: current
+    model: model-a
+  - id: next
+    model: model-b
+
+# USD per 1M tokens.
+pricing:
+  model-a: { input: 0.10, cachedInput: 0.01, cacheWrite: 0.125, output: 0.50 }
+  model-b: { input: 0.20, cachedInput: 0.02, cacheWrite: 0.25, output: 1.20 }
+
+gate:
+  severities: [blocking]

@@ -27,6 +27,8 @@ import {
 import { type MockApi, type ReceivedRequest, ROOT } from './mock-api.js';
 
 const HELPER_FIXTURES = path.join(ROOT, 'test/fixtures/helper');
+/** The mock server's plain HTTP address, also in a TLS case, for services that call it directly. */
+export const MOCK_URL_VARIABLE = 'MODEL_EVAL_MOCK_URL';
 const SCENARIOS = path.join(HELPER_FIXTURES, 'scenarios');
 
 /** The SDK aliases of package.json, the Node SDK releases the contract tests run against. */
@@ -92,14 +94,21 @@ const caseSchema = z
       .optional(),
     request: z.enum(['generate', 'render']).optional(),
     params: jsonObjectSchema.optional(),
+    trials: z.int().min(1).optional(),
+    trialsInARow: z.int().min(2).optional(),
+    shutdownAfterRequests: z.int().min(1).optional(),
     cancel: z
       .union([z.object({ afterRequests: z.int() }), z.object({ afterMs: z.int() })])
       .optional(),
     tls: z.string().optional(),
     script: z.array(jsonValueSchema).optional(),
-    expect: jsonObjectSchema,
+    expect: jsonObjectSchema.optional(),
+    expectPerTrial: z.array(jsonObjectSchema).min(2).optional(),
   })
-  .loose();
+  .loose()
+  .refine((data) => (data.expect === undefined) !== (data.expectPerTrial === undefined), {
+    message: 'a case gives exactly one of expect and expectPerTrial',
+  });
 export type CaseData = z.infer<typeof caseSchema>;
 const fixtureSchema = z.record(z.string(), z.array(caseSchema));
 
@@ -154,7 +163,10 @@ export function caseTitle(scenarioCase: ScenarioCase): string {
 const DEFAULT_VARIANT = { id: 'next', model: 'model-b' };
 
 export interface Outcome {
+  /** The response of the first trial. */
   readonly response: RpcResponse<JsonValue>;
+  /** The response of every trial of a case with `trials` or `trialsInARow`, in send order. */
+  readonly responses: readonly RpcResponse<JsonValue>[];
   readonly exchange: Exchange;
   readonly requests: ReceivedRequest[];
   readonly renderFingerprint: string | undefined;
@@ -184,13 +196,17 @@ function initializeParams(data: CaseData): JsonObject {
 }
 
 function trialParams(data: CaseData): JsonObject {
-  return { target: 'chat', input: {}, caseId: 'case-1', repeat: 0, seed: 1, ...data.params };
+  const defaults = { target: 'chat', input: {}, caseId: 'case-1', lang: 'en', repeat: 0, seed: 1 };
+  return { ...defaults, ...data.params };
 }
+
+/** The parts of the mock API server a case run uses. */
+export type MockControl = Pick<MockApi, 'url' | 'load' | 'log' | 'tlsUrl'>;
 
 /** Loads the case's script, runs its request in a new adapter, and shuts the adapter down. */
 export async function runCase(
   scenarioCase: ScenarioCase,
-  mock: MockApi,
+  mock: MockControl,
   service = 'scenario',
 ): Promise<Outcome> {
   const { data } = scenarioCase;
@@ -199,6 +215,7 @@ export async function runCase(
   const env = {
     ...apiEnv(baseUrl),
     ...scenarioEnv(scenarioCase),
+    [MOCK_URL_VARIABLE]: mock.url,
     ...(data.tls === undefined ? {} : { SSL_CERT_FILE: ROOT_CA, NODE_EXTRA_CA_CERTS: ROOT_CA }),
   };
   const driver = AdapterDriver.start({
@@ -213,34 +230,80 @@ export async function runCase(
     if (initialized.kind === 'error') {
       throw new Error(`initialize failed: ${initialized.error.message}`);
     }
-    const fingerprint = data.expect.fingerprint;
     let renderFingerprint: string | undefined;
-    if (fingerprint === 'render' || fingerprint === 'not-render') {
+    const fingerprints = eachExpect(expectationOf(data)).map((expected) => expected.fingerprint);
+    if (fingerprints.some((value) => value === 'render' || value === 'not-render')) {
       const rendered = await driver.render(trialParams(data));
       renderFingerprint = rendered.kind === 'result' ? rendered.result.fingerprint : undefined;
     }
-    const response = await sendRequest(driver, data, mock);
+    const responses = await sendTrials(driver, data, mock);
+    const [response] = responses;
+    if (response === undefined) {
+      throw new Error('the case sent no request');
+    }
+    if (data.shutdownAfterRequests !== undefined) {
+      await waitForRequests(data.shutdownAfterRequests, mock);
+    }
     await driver.shutdown();
-    return { response, exchange: driver.exchange, requests: await mock.log(), renderFingerprint };
+    return {
+      response,
+      responses,
+      exchange: driver.exchange,
+      requests: await mock.log(),
+      renderFingerprint,
+    };
   } finally {
     await driver.close();
   }
 }
 
-async function sendRequest(
+/**
+ * Sends the case's request. With `trials` N, that many `generate`s with caseIds `case-1` to
+ * `case-N`, all before waiting for any response; with `trialsInARow` N, each after the previous
+ * response arrived.
+ */
+async function sendTrials(
   driver: AdapterDriver,
   data: CaseData,
-  mock: MockApi,
-): Promise<RpcResponse<JsonValue>> {
+  mock: MockControl,
+): Promise<RpcResponse<JsonValue>[]> {
+  const together = data.trials ?? 1;
+  const inARow = data.trialsInARow ?? 1;
+  const total = Math.max(together, inARow);
+  if (
+    total > 1 &&
+    (data.request === 'render' || data.cancel !== undefined || Math.min(together, inARow) > 1)
+  ) {
+    throw new Error('`trials` and `trialsInARow` take one generate request without `cancel`');
+  }
   if (data.request === 'render') {
-    return asJson(await driver.render(trialParams(data)));
+    return [asJson(await driver.render(trialParams(data)))];
   }
-  const { id, done } = driver.generate(trialParams(data));
-  if (data.cancel !== undefined) {
+  const params =
+    total > 1
+      ? Array.from({ length: total }, (_, index) => ({
+          ...trialParams(data),
+          caseId: `case-${String(index + 1)}`,
+        }))
+      : [trialParams(data)];
+  if (inARow > 1) {
+    const responses: RpcResponse<JsonValue>[] = [];
+    for (const trial of params) {
+      responses.push(asJson(await driver.generate(trial).done));
+    }
+    return responses;
+  }
+  const sent = params.map((trial) => driver.generate(trial));
+  const [first] = sent;
+  if (data.cancel !== undefined && first !== undefined) {
     await waitToCancel(data.cancel, mock);
-    driver.cancel(id);
+    driver.cancel(first.id);
   }
-  return asJson(await done);
+  const responses: RpcResponse<JsonValue>[] = [];
+  for (const { done } of sent) {
+    responses.push(asJson(await done));
+  }
+  return responses;
 }
 
 /** The result as the adapter sent it, for comparing with `expect`. */
@@ -252,16 +315,21 @@ function asJson(response: RpcResponse<unknown>): RpcResponse<JsonValue> {
 
 async function waitToCancel(
   cancel: { afterRequests: number } | { afterMs: number },
-  mock: MockApi,
+  mock: MockControl,
 ): Promise<void> {
   if ('afterMs' in cancel) {
     await sleep(cancel.afterMs);
     return;
   }
+  await waitForRequests(cancel.afterRequests, mock);
+}
+
+/** Waits until the mock server's log holds `count` requests. */
+async function waitForRequests(count: number, mock: MockControl): Promise<void> {
   const deadline = Date.now() + 30_000;
-  while ((await mock.log()).length < cancel.afterRequests) {
+  while ((await mock.log()).length < count) {
     if (Date.now() > deadline) {
-      throw new Error(`the mock server never received ${String(cancel.afterRequests)} requests`);
+      throw new Error(`the mock server never received ${String(count)} requests`);
     }
     await sleep(10);
   }
@@ -307,14 +375,15 @@ function sentence(ref: MessageRef): string {
   return fillMessage(messageText(ref.message), ref.placeholders ?? {});
 }
 
-/** Expected null means the field is absent. */
+/** Expected null means the field is absent, or with `nullIsAbsent` false the JSON null. */
 function compare(
   name: string,
   expected: JsonValue,
   actual: JsonValue | undefined,
   mismatches: string[],
+  nullIsAbsent = true,
 ): void {
-  if (expected === null) {
+  if (expected === null && nullIsAbsent) {
     if (actual !== undefined) {
       mismatches.push(`${name}: expected absent, got ${JSON.stringify(actual)}`);
     }
@@ -330,6 +399,7 @@ function compareRecords(
   expected: JsonValue,
   actual: JsonValue | undefined,
   mismatches: string[],
+  nullIsAbsent = true,
 ): void {
   const wanted = isJsonArray(expected) ? expected : [];
   const records = isJsonArray(actual) ? actual : [];
@@ -347,6 +417,7 @@ function compareRecords(
         value,
         isJsonObject(record) ? record[key] : undefined,
         mismatches,
+        nullIsAbsent,
       );
     }
   });
@@ -393,8 +464,45 @@ function stringList(value: JsonValue | undefined): string[] {
   return isJsonArray(value) ? value.filter((item) => typeof item === 'string') : [];
 }
 
-/** Mismatches between `expect` and what the adapter and the mock server did. */
-export function checkExpect(expect: JsonObject, outcome: Outcome): string[] {
+/** A case's `expect`, or its `expectPerTrial`: one per trial in send order. */
+export type Expectation = JsonObject | readonly JsonObject[];
+
+/** `expectPerTrial` when the case gives one, else `expect`. */
+export function expectationOf(data: CaseData): Expectation {
+  const expectation = data.expectPerTrial ?? data.expect;
+  if (expectation === undefined) {
+    throw new Error(`the case ${data.name} gives neither expect nor expectPerTrial`);
+  }
+  return expectation;
+}
+
+function eachExpect(expect: Expectation): readonly JsonObject[] {
+  return isExpectList(expect) ? expect : [expect];
+}
+
+function isExpectList(expect: Expectation): expect is readonly JsonObject[] {
+  return Array.isArray(expect);
+}
+
+/**
+ * Mismatches between `expect` and what the adapter and the mock server did. Every trial's
+ * response is held to `expect`, or with a list (`expectPerTrial`) to the entry of its place in
+ * send order, so one mismatch in any trial fails the case.
+ */
+export function checkExpect(expect: Expectation, outcome: Outcome): string[] {
+  const { responses } = outcome;
+  const expected = isExpectList(expect) ? expect : responses.map(() => expect);
+  if (expected.length !== responses.length) {
+    return [`${String(expected.length)} expectations for ${String(responses.length)} trials`];
+  }
+  return responses.flatMap((response, index) => {
+    const prefix = responses.length > 1 ? `trial ${String(index + 1)}: ` : '';
+    const wanted = expected[index] ?? {};
+    return checkResponse(wanted, { ...outcome, response }).map((mismatch) => prefix + mismatch);
+  });
+}
+
+function checkResponse(expect: JsonObject, outcome: Outcome): string[] {
   const mismatches: string[] = [];
   const { response } = outcome;
   const result = response.kind === 'result' && isJsonObject(response.result) ? response.result : {};
@@ -456,7 +564,8 @@ export function checkExpect(expect: JsonObject, outcome: Outcome): string[] {
         break;
       }
       case 'requests':
-        compareRecords(name, value, jsonValueSchema.parse(outcome.requests), mismatches);
+        // Request records always carry their fields, so null there is the JSON null.
+        compareRecords(name, value, jsonValueSchema.parse(outcome.requests), mismatches, false);
         break;
       default:
         compare(name, value, resultField(response, name), mismatches);

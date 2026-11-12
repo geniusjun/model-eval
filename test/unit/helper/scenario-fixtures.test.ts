@@ -44,16 +44,20 @@ const messageRef = z.object({
   message: z.string(),
   placeholders: z.record(z.string(), z.string()).optional(),
 });
+const namingExpect = z.object({
+  adapterError: messageRef.optional(),
+  warnings: z.array(messageRef).optional(),
+  log: z.array(messageRef).optional(),
+});
 const namingCases = z.record(
   z.string(),
   z.array(
     z.object({
       apis: z.array(z.string()).optional(),
-      expect: z.object({
-        adapterError: messageRef.optional(),
-        warnings: z.array(messageRef).optional(),
-        log: z.array(messageRef).optional(),
-      }),
+      trials: z.int().optional(),
+      trialsInARow: z.int().optional(),
+      expect: namingExpect.optional(),
+      expectPerTrial: z.array(namingExpect).optional(),
     }),
   ),
 );
@@ -86,7 +90,8 @@ describe('scenario fixtures', () => {
     const { messages } = messagesFile.parse(readJson(path.join(HELPER_FIXTURES, 'messages.json')));
     const refs = fixtureFiles
       .flatMap((name) => Object.values(readFixture(name)).flat())
-      .flatMap(({ expect: expected }) => [
+      .flatMap((data) => data.expectPerTrial ?? (data.expect === undefined ? [] : [data.expect]))
+      .flatMap((expected) => [
         ...(expected.adapterError === undefined ? [] : [expected.adapterError]),
         ...(expected.warnings ?? []),
         ...(expected.log ?? []),
@@ -151,6 +156,36 @@ describe('scenario fixtures', () => {
     expect(errorsOf({ 'S-RESP-01': [{ ...CASE, extra: true }] })).not.toEqual([]);
     expect(errorsOf({ 'RESP-1': [CASE] })).not.toEqual([]);
     expect(errorsOf({ 'S-RESP-01': [{ ...CASE, expect: { rawText: 'Hi.' } }] })).not.toEqual([]);
+  });
+
+  it('003 SC-002 takes trials or trialsInARow, not both, and expectPerTrial only with them', () => {
+    const perTrial = [{ status: 'ok' }, { status: 'ok' }];
+    expect(errorsOf({ 'S-RESP-10': [{ ...CASE, trials: 2 }] })).toEqual([]);
+    expect(errorsOf({ 'S-CTX-02': [{ ...CASE, trialsInARow: 2 }] })).toEqual([]);
+    const { expect: _expect, ...withoutExpect } = CASE;
+    expect(
+      errorsOf({ 'S-CTX-02': [{ ...withoutExpect, trialsInARow: 2, expectPerTrial: perTrial }] }),
+    ).toEqual([]);
+    expect(errorsOf({ 'S-CTX-02': [{ ...CASE, trials: 2, trialsInARow: 2 }] })).not.toEqual([]);
+    expect(errorsOf({ 'S-CTX-02': [{ ...withoutExpect, expectPerTrial: perTrial }] })).not.toEqual(
+      [],
+    );
+    expect(
+      errorsOf({ 'S-CTX-02': [{ ...CASE, trialsInARow: 2, expectPerTrial: perTrial }] }),
+    ).not.toEqual([]);
+    expect(errorsOf({ 'S-CTX-02': [withoutExpect] })).not.toEqual([]);
+  });
+
+  it('003 SC-002 every expectPerTrial has one entry per trial', () => {
+    const wrong = fixtureFiles.flatMap((name) =>
+      Object.entries(readFixture(name)).flatMap(([scenario, cases]) =>
+        cases
+          .filter((data) => data.expectPerTrial !== undefined)
+          .filter((data) => data.expectPerTrial?.length !== (data.trials ?? data.trialsInARow ?? 1))
+          .map(() => `${name} ${scenario}`),
+      ),
+    );
+    expect(wrong).toEqual([]);
   });
 
   it('003 SC-002 rejects a message reference that is not a message ID', () => {

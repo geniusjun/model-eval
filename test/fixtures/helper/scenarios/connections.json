@@ -1,0 +1,1896 @@
+{
+  "S-CONN-01": [
+    {
+      "name": "TLS with a valid certificate trusted through SSL_CERT_FILE: ok (the control of the failures below)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "tls": "valid",
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there.",
+        "final": "Hello there.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TLS certificate self-signed: config, failed",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "tls": "self-signed",
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ],
+        "requests": []
+      }
+    },
+    {
+      "name": "TLS certificate missing-intermediate: config, failed",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "tls": "missing-intermediate",
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ],
+        "requests": []
+      }
+    },
+    {
+      "name": "TLS certificate expired: config, failed",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "tls": "expired",
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ],
+        "requests": []
+      }
+    },
+    {
+      "name": "TLS certificate other-host: config, failed",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "tls": "other-host",
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ],
+        "requests": []
+      }
+    }
+  ],
+  "S-CONN-02": [
+    {
+      "name": "connection refused: transient, failed",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "baseUrl": "http://127.0.0.1:1"
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "connect time-out: transient, failed",
+      "backends": [
+        "async"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "connectTimeoutMs": 0.001
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "connection-pool wait time-out while another call holds the only connection: transient, failed",
+      "backends": [
+        "async"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {
+                  "model": "model-x",
+                  "user": "Hold the connection."
+                },
+                {
+                  "poolTimeoutMs": 200,
+                  "startAfterMs": 300
+                }
+              ]
+            }
+          ],
+          "sharedClient": {
+            "maxConnections": 1
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "delayMs": 1500,
+          "reply": {
+            "text": "Held."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "request body write failure: the server closes without reading a large body; the transport reports it as a drop before the headers, so transient, unanswered (Known Limit)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "userBytes": 16000000
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "connection": "close-unread"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-03": [
+    {
+      "name": "server closes after the request without a response: transient, unanswered",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-04": [
+    {
+      "name": "drop while receiving a non-stream body: transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "drop": {
+            "chunks": 0,
+            "bytes": 20
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "read time-out while receiving a non-stream body: transient",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "timeoutMs": 500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "{\"id\":\"chatcmpl-slow\",\"object\":\"chat.completion\","
+              },
+              {
+                "delayMs": 3000,
+                "text": "\"created\":0,\"model\":\"model-b\",\"choices\":[]}"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-05": [
+    {
+      "name": "read time-out between stream events: timeout",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "timeoutMs": 500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-06": [
+    {
+      "name": "read time-out before the response headers: timeout",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "timeoutMs": 500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "delayMs": 5000,
+          "reply": {
+            "text": "Late."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service cancels the request before the response: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "limitMs": 1500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "delayMs": 5000,
+          "reply": {
+            "text": "Late."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service cancels the request during the response: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "limitMs": 1500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-07": [
+    {
+      "name": "connection refused raised while the service handles another HTTPS request's certificate error: transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "afterCertificateError": {
+                "baseUrl": "http://127.0.0.1:1"
+              }
+            }
+          ]
+        }
+      },
+      "tls": "self-signed",
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a drop before the headers raised while the service handles another HTTPS request's certificate error: transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "afterCertificateError": {
+                "plainMock": true
+              }
+            }
+          ]
+        }
+      },
+      "tls": "self-signed",
+      "script": [
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-08": [
+    {
+      "name": "after [DONE] the SDK closes the stream: an unread response, so A5 without raw",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-09": [
+    {
+      "name": "the final chunk arrives 0.5 s late: an unread response, so A5 without raw",
+      "apis": [
+        "chat-completions"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              500
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-10": [
+    {
+      "name": "the service breaks from the SDK stream iterator: an unread response, so A5 without raw",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "events": 2
+                }
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-11": [
+    {
+      "name": "the service cancels the remaining read after the generation-end marker: an unread response (A5)",
+      "apis": [
+        "chat-completions"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "limitMs": 1500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hello there."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service cancels the remaining read after the generation-end marker: an unread response (A5)",
+      "apis": [
+        "messages"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "limitMs": 1500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hello there."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-12": [
+    {
+      "name": "a drop after the generation-end marker and before the end event: transient",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "drop": {
+            "chunks": 4
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a drop after the generation-end marker and before the end event: transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "drop": {
+            "chunks": 7
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-13": [
+    {
+      "name": "a drop after a Responses error event: the call failed by the event, the drop is no failure",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "events": [
+                  {
+                    "event": "response.created",
+                    "data": {
+                      "type": "response.created",
+                      "sequence_number": 0,
+                      "response": {
+                        "id": "resp_drop",
+                        "object": "response",
+                        "created_at": 0,
+                        "status": "in_progress",
+                        "model": "model-b",
+                        "output": []
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "events": [
+                  {
+                    "event": "error",
+                    "data": {
+                      "type": "error",
+                      "sequence_number": 1,
+                      "code": "server_error",
+                      "message": "The server had an error.",
+                      "param": null
+                    }
+                  }
+                ]
+              },
+              {
+                "text": "event: response.output_text.delta\n"
+              }
+            ]
+          },
+          "drop": {
+            "chunks": 2,
+            "bytes": 10
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-14": [
+    {
+      "name": "SSE whose body ended without an end event: transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "ending": "text-only"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-15": [
+    {
+      "name": "SSE ending with an end event and no final empty line: the end event is received, the call is ok (A5 without raw)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "lastLine": "line-end"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SSE ending with an end event and no final line end: the end event is received, the call is ok (A5 without raw)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "lastLine": "none"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-16": [
+    {
+      "name": "SSE ending with a failure end event and no final empty line: a failed call",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there.",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure",
+            "lastLine": "line-end"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SSE ending with a failure end event and no final empty line: a failed call",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there.",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure",
+            "lastLine": "line-end"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-17": [
+    {
+      "name": "SSE dropped in the middle of its last event: a mid-body drop, transient",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "drop": {
+            "chunks": 4,
+            "bytes": 8
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SSE dropped in the middle of its last event: a mid-body drop, transient",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "drop": {
+            "chunks": 9,
+            "bytes": 8
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SSE dropped in the middle of its last event: a mid-body drop, transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "drop": {
+            "chunks": 7,
+            "bytes": 8
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SSE whose last data is cut when the body ends: a mid-body drop, transient",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "events": [
+                  {
+                    "data": {
+                      "id": "chatcmpl-cut",
+                      "object": "chat.completion.chunk",
+                      "created": 0,
+                      "model": "model-b",
+                      "choices": [
+                        {
+                          "index": 0,
+                          "delta": {
+                            "role": "assistant",
+                            "content": "Hel"
+                          },
+                          "finish_reason": null
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "text": "data: {\"id\":\"chatcmpl-cut\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"lo"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SSE whose last data is cut when the body ends: a mid-body drop, transient",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "events": [
+                  {
+                    "event": "response.created",
+                    "data": {
+                      "type": "response.created",
+                      "sequence_number": 0,
+                      "response": {
+                        "id": "resp_cut",
+                        "object": "response",
+                        "created_at": 0,
+                        "status": "in_progress",
+                        "model": "model-b",
+                        "output": []
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "text": "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"sequence_number\":1,\"item_id\":\"msg_cut\",\"output_index\":0,\"content_index\":0,\"delta\":\"Hel"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SSE whose last data is cut when the body ends: a mid-body drop, transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "events": [
+                  {
+                    "event": "message_start",
+                    "data": {
+                      "type": "message_start",
+                      "message": {
+                        "id": "msg_cut",
+                        "type": "message",
+                        "role": "assistant",
+                        "model": "model-b",
+                        "content": [],
+                        "stop_reason": null,
+                        "stop_sequence": null,
+                        "usage": {
+                          "input_tokens": 10,
+                          "output_tokens": 1
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "text": "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"te"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-18": [
+    {
+      "name": "cancelled by the service's time limit while waiting for the next chunk: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "limitMs": 1500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-19": [
+    {
+      "name": "other work closes the body during an awaited read (aclose()): a cancel, timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "closeAfterMs": 1500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-21": [
+    {
+      "name": "aiohttp backend, request never arrived: transient, failed",
+      "backends": [
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "baseUrl": "http://127.0.0.1:1"
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "aiohttp backend, drop before the response headers: transient, unanswered",
+      "backends": [
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "aiohttp backend, drop in the middle of a non-stream body: transient, unanswered",
+      "backends": [
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "drop": {
+            "chunks": 0,
+            "bytes": 20
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-23": [
+    {
+      "name": "with_streaming_response read up to the headers and the function returns: not waited for, an unread response (A5)",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "headers"
+              }
+            }
+          ],
+          "result": {
+            "text": "Done."
+          }
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "{\"id\":\"chatcmpl-slow\",\"object\":\"chat.completion\","
+              },
+              {
+                "delayMs": 1000,
+                "text": "\"created\":0,\"model\":\"model-b\",\"choices\":[]}"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "with_streaming_response read up to one chunk and the function returns: not waited for, an unread response (A5)",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "chunk"
+              }
+            }
+          ],
+          "result": {
+            "text": "Done."
+          }
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "{\"id\":\"chatcmpl-slow\",\"object\":\"chat.completion\","
+              },
+              {
+                "delayMs": 1000,
+                "text": "\"created\":0,\"model\":\"model-b\",\"choices\":[]}"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ]
+}

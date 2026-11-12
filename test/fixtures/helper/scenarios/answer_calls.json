@@ -1,0 +1,5277 @@
+{
+  "S-ANS-01": [
+    {
+      "name": "a same-model side call after the answer without reply_call: Outcome row 5, A3 cause (c) (acceptance scenario 10)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "system": "Write a short memory note about the user.",
+                "user": "The user said hello."
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Note."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same with reply_call: the answer call's output is raw (acceptance scenario 11)",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "memory"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "system": "Write a short memory note about the user.",
+                "user": "The user said hello."
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Note."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-02": [
+    {
+      "name": "a validation call that continues the conversation after the answer: a new branch, Outcome row 5",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "after": "answer",
+                "user": "Is the answer polite? Reply yes or no."
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "yes"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-03": [
+    {
+      "name": "a re-draw with the same request: one branch, the first answer is raw, answers 2",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first"
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "Second answer.",
+        "answers": 2,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "stop"
+      }
+    }
+  ],
+  "S-ANS-04": [
+    {
+      "name": "a regeneration with a modified request, reply_call true for both: first answer raw, answers 2, render fingerprint",
+      "target": {
+        "replyCall": true,
+        "render": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter."
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "Second answer.",
+        "answers": 2,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "fingerprint": "render"
+      }
+    }
+  ],
+  "S-ANS-05": [
+    {
+      "name": "without raw, the re-drawn stream cut by the service's time limit: A5",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "limitMs": 1500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without raw, the service only stopped waiting for the re-drawn stream: A5",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "waitMs": 1500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-06": [
+    {
+      "name": "without raw, the re-drawn stream cut after its generation-end marker, before the end event: A5",
+      "apis": [
+        "chat-completions"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "limitMs": 1500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without raw, the re-drawn stream cut after its generation-end marker, before the end event: A5",
+      "apis": [
+        "messages"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "limitMs": 1500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-07": [
+    {
+      "name": "without raw, the re-draw had no response headers when the function returned and answered later with SSE: Outcome row 7",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "waitMs": 300,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          },
+          "delayMs": 1500
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-08": [
+    {
+      "name": "without raw, a full first stream, a re-draw ends in 429 after the SDK's retries, the first answer shipped: A5, not transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-09": [
+    {
+      "name": "reply_call true for both: a failure event ends the first stream, the same request fetched again without streaming: normal",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": false
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Second answer.",
+        "final": "Second answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without reply_call: a failure event ends the first stream, the same request fetched again without streaming: normal",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": false
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Second answer.",
+        "final": "Second answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reply_call true for both: a failure event ends the first stream, the same request fetched again without streaming: normal",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": false
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Second answer.",
+        "final": "Second answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without reply_call: a failure event ends the first stream, the same request fetched again without streaming: normal",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": false
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Second answer.",
+        "final": "Second answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-10": [
+    {
+      "name": "reply_call true for a classification with another system and for the answer: Outcome row 5, A3 cause (d)",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            },
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-d"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same when only a leading developer message in the Responses input makes the systems differ",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "kwargs": {
+                  "input": [
+                    {
+                      "role": "developer",
+                      "content": "Classify the request."
+                    },
+                    {
+                      "role": "user",
+                      "content": "Say hello."
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-d"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-11": [
+    {
+      "name": "Anthropic thinking and redacted_thinking blocks sent back with the tool result: one branch",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": "Look it up."
+                    },
+                    {
+                      "role": "assistant",
+                      "content": [
+                        {
+                          "type": "thinking",
+                          "thinking": "I should look it up.",
+                          "signature": "sig-1"
+                        },
+                        {
+                          "type": "redacted_thinking",
+                          "data": "redacted-1"
+                        },
+                        {
+                          "type": "tool_use",
+                          "id": "toolu_loop_1",
+                          "name": "lookup",
+                          "input": {
+                            "text": "weather"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "role": "user",
+                      "content": [
+                        {
+                          "type": "tool_result",
+                          "tool_use_id": "toolu_loop_1",
+                          "content": "tool result"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_loop",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "thinking",
+                "thinking": "I should look it up.",
+                "signature": "sig-1"
+              },
+              {
+                "type": "redacted_thinking",
+                "data": "redacted-1"
+              },
+              {
+                "type": "tool_use",
+                "id": "toolu_loop_1",
+                "name": "lookup",
+                "input": {
+                  "text": "weather"
+                }
+              }
+            ],
+            "stop_reason": "tool_use",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a request continuing after Anthropic pause_turn: one branch",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": "Look it up."
+                    },
+                    {
+                      "role": "assistant",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Searching."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_loop",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Searching."
+              }
+            ],
+            "stop_reason": "pause_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a Responses loop resending reasoning items without previous_response_id: one branch",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "input": [
+                    {
+                      "role": "user",
+                      "content": "Look it up."
+                    },
+                    {
+                      "type": "reasoning",
+                      "id": "rs_loop_1",
+                      "summary": [],
+                      "encrypted_content": "encrypted-1"
+                    },
+                    {
+                      "type": "function_call",
+                      "id": "fc_loop_1",
+                      "call_id": "call_loop_1",
+                      "name": "lookup",
+                      "arguments": "{\"text\":\"weather\"}",
+                      "status": "completed"
+                    },
+                    {
+                      "type": "function_call_output",
+                      "call_id": "call_loop_1",
+                      "output": "tool result"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "reasoning",
+                "id": "rs_loop_1",
+                "summary": [],
+                "encrypted_content": "encrypted-1"
+              },
+              {
+                "type": "function_call",
+                "id": "fc_loop_1",
+                "call_id": "call_loop_1",
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}",
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a Responses loop chained by conversation: one branch",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up.",
+                "kwargs": {
+                  "extra_body": {
+                    "conversation": "conv_loop_1"
+                  }
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "input": [
+                    {
+                      "type": "function_call_output",
+                      "call_id": "call_loop_1",
+                      "output": "tool result"
+                    }
+                  ],
+                  "extra_body": {
+                    "conversation": "conv_loop_1"
+                  }
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "function_call",
+                "id": "fc_loop_1",
+                "call_id": "call_loop_1",
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}",
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-12": [
+    {
+      "name": "a Responses loop over custom_tool_call: one branch, the earlier response is not an answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "input": [
+                    {
+                      "role": "user",
+                      "content": "Look it up."
+                    },
+                    {
+                      "type": "custom_tool_call",
+                      "id": "ctc_1",
+                      "call_id": "call_custom_1",
+                      "name": "run_query",
+                      "input": "count rows"
+                    },
+                    {
+                      "type": "custom_tool_call_output",
+                      "call_id": "call_custom_1",
+                      "output": "3"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "custom_tool_call",
+                "id": "ctc_1",
+                "call_id": "call_custom_1",
+                "name": "run_query",
+                "input": "count rows"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a Responses loop over computer_call: one branch, the earlier response is not an answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "input": [
+                    {
+                      "role": "user",
+                      "content": "Look it up."
+                    },
+                    {
+                      "type": "computer_call",
+                      "id": "cu_1",
+                      "call_id": "call_computer_1",
+                      "action": {
+                        "type": "screenshot"
+                      },
+                      "pending_safety_checks": [],
+                      "status": "completed"
+                    },
+                    {
+                      "type": "computer_call_output",
+                      "call_id": "call_computer_1",
+                      "output": {
+                        "type": "computer_screenshot",
+                        "image_url": "data:image/png;base64,iVBORw0KGgo="
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "computer_call",
+                "id": "cu_1",
+                "call_id": "call_computer_1",
+                "action": {
+                  "type": "screenshot"
+                },
+                "pending_safety_checks": [],
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a Responses loop over a local shell_call: one branch, the earlier response is not an answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "input": [
+                    {
+                      "role": "user",
+                      "content": "Look it up."
+                    },
+                    {
+                      "type": "shell_call",
+                      "id": "sh_1",
+                      "call_id": "call_shell_1",
+                      "action": {
+                        "commands": [
+                          "ls"
+                        ]
+                      },
+                      "status": "completed"
+                    },
+                    {
+                      "type": "shell_call_output",
+                      "call_id": "call_shell_1",
+                      "output": [
+                        {
+                          "stdout": "notes.txt\n",
+                          "stderr": "",
+                          "outcome": {
+                            "type": "exit",
+                            "exit_code": 0
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "shell_call",
+                "id": "sh_1",
+                "call_id": "call_shell_1",
+                "action": {
+                  "commands": [
+                    "ls"
+                  ]
+                },
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a Responses loop over mcp_approval_request: one branch, the earlier response is not an answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "input": [
+                    {
+                      "role": "user",
+                      "content": "Look it up."
+                    },
+                    {
+                      "type": "mcp_approval_request",
+                      "id": "mcpr_1",
+                      "name": "delete_note",
+                      "arguments": "{}",
+                      "server_label": "notes"
+                    },
+                    {
+                      "type": "mcp_approval_response",
+                      "approval_request_id": "mcpr_1",
+                      "approve": true
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "mcp_approval_request",
+                "id": "mcpr_1",
+                "name": "delete_note",
+                "arguments": "{}",
+                "server_label": "notes"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a Responses loop over tool_search_call with execution client: one branch, the earlier response is not an answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "tools": [
+                  "lookup"
+                ],
+                "kwargs": {
+                  "input": [
+                    {
+                      "role": "user",
+                      "content": "Look it up."
+                    },
+                    {
+                      "type": "tool_search_call",
+                      "id": "ts_1",
+                      "call_id": "call_search_1",
+                      "execution": "client",
+                      "arguments": {
+                        "query": "weather"
+                      },
+                      "status": "completed"
+                    },
+                    {
+                      "type": "tool_search_output",
+                      "call_id": "call_search_1",
+                      "execution": "client",
+                      "tools": []
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "tool_search_call",
+                "id": "ts_1",
+                "call_id": "call_search_1",
+                "execution": "client",
+                "arguments": {
+                  "query": "weather"
+                },
+                "status": "completed"
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Found it."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Found it.",
+        "final": "Found it.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-13": [
+    {
+      "name": "the same loop as streams, the last call ends in response.failed, the service ships what it received: transient",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "after": "first",
+                "stream": true
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "code": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-14": [
+    {
+      "name": "a response with a container shell call and its output and a message: an answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "shell_call",
+                "id": "sh_2",
+                "call_id": "call_shell_2",
+                "action": {
+                  "commands": [
+                    "ls"
+                  ]
+                },
+                "status": "completed"
+              },
+              {
+                "type": "shell_call_output",
+                "id": "sho_2",
+                "call_id": "call_shell_2",
+                "output": [
+                  {
+                    "stdout": "notes.txt\n",
+                    "stderr": "",
+                    "outcome": {
+                      "type": "exit",
+                      "exit_code": 0
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "message",
+                "id": "msg_final",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "The folder has one note.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "The folder has one note.",
+        "final": "The folder has one note.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "a response with a provider-run tool search and a message: an answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "tool_search_call",
+                "id": "ts_2",
+                "call_id": "call_search_2",
+                "execution": "server",
+                "arguments": {
+                  "query": "weather"
+                },
+                "status": "completed"
+              },
+              {
+                "type": "tool_search_output",
+                "id": "tso_2",
+                "call_id": "call_search_2",
+                "execution": "server",
+                "tools": []
+              },
+              {
+                "type": "message",
+                "id": "msg_final",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "The folder has one note.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "The folder has one note.",
+        "final": "The folder has one note.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "a response with a provider-run tool search whose result has an empty call_id and a message: an answer",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_loop",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "tool_search_call",
+                "id": "ts_2",
+                "call_id": "",
+                "execution": "server",
+                "arguments": {
+                  "query": "weather"
+                },
+                "status": "completed"
+              },
+              {
+                "type": "tool_search_output",
+                "id": "tso_2",
+                "call_id": "",
+                "execution": "server",
+                "tools": []
+              },
+              {
+                "type": "message",
+                "id": "msg_final",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "The folder has one note.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "metadata": {},
+            "usage": {
+              "input_tokens": 10,
+              "output_tokens": 5,
+              "total_tokens": 15
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "The folder has one note.",
+        "final": "The folder has one note.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "stop"
+      }
+    }
+  ],
+  "S-ANS-15": [
+    {
+      "name": "the same request sent in parallel, the first answer used and the rest cancelled: normal, answers 1",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {},
+                {
+                  "startAfterMs": 50
+                }
+              ],
+              "wait": "first"
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "delayMs": 300
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          },
+          "delayMs": 3000
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-16": [
+    {
+      "name": "the same request sent in parallel, both succeed: the first sent is raw, answers 2",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {
+                  "name": "early"
+                },
+                {
+                  "name": "late",
+                  "startAfterMs": 200
+                }
+              ]
+            }
+          ],
+          "result": {
+            "callText": "early"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "delayMs": 600
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 2,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-18": [
+    {
+      "name": "n = 3: the first choices item is raw, answers 3, finish reason of the last item",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "n": 3
+              }
+            }
+          ],
+          "result": {
+            "text": "One."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "choices": [
+              {
+                "text": "One.",
+                "finishReason": "stop"
+              },
+              {
+                "text": "Two.",
+                "finishReason": "stop"
+              },
+              {
+                "text": "Three.",
+                "finishReason": "stop"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "One.",
+        "answers": 3,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "stop",
+        "warnings": []
+      }
+    },
+    {
+      "name": "n = 3, the last item cut and an earlier one stop, no Result(finish_reason=): W3",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "n": 3
+              }
+            }
+          ],
+          "result": {
+            "text": "One."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "choices": [
+              {
+                "text": "One.",
+                "finishReason": "stop"
+              },
+              {
+                "text": "Two.",
+                "finishReason": "stop"
+              },
+              {
+                "text": "Thr",
+                "finishReason": "length"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "One.",
+        "answers": 3,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "length",
+        "warnings": [
+          {
+            "message": "W3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a regeneration with a modified request that was cut: no warning",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "after": "first",
+                "user": "Make it longer."
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second ans",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "length",
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-19": [
+    {
+      "name": "a forced reply tool with answer_tool: raw is the argument, finish reason stop",
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hi there."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hi there.\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hi there.",
+        "final": "Hi there.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "called again after validation: answers 2",
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            },
+            {
+              "call": {
+                "same": "first"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hi there."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hi.\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hi there.\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hi.",
+        "final": "Hi there.",
+        "answers": 2,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "the argument cut at the output limit: empty raw, length",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hi th"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hi th"
+              }
+            ],
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "finishReason": "length"
+      }
+    },
+    {
+      "name": "the service sends a tool result and continues the branch: answers 1",
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "after": "first"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hi there."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hi there.\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Sent."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hi there.",
+        "final": "Hi there.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-21": [
+    {
+      "name": "the same request to two models at once, the candidate loses: Outcome row 6, timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {},
+                {
+                  "model": "model-x",
+                  "startAfterMs": 100
+                }
+              ],
+              "wait": "first"
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "delayMs": 5000,
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-22": [
+    {
+      "name": "the tool loop limit reached, a fixed message shipped: a fallback with an empty raw answer",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ]
+              }
+            },
+            {
+              "call": {
+                "after": "first"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "I could not finish that."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "I could not finish that.",
+        "answers": 0,
+        "finishReason": "other"
+      }
+    }
+  ],
+  "S-ANS-23": [
+    {
+      "name": "another model's answer after the first answer, shipped unwrapped: W2",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "better",
+                "model": "model-x",
+                "after": "first",
+                "user": "Improve the answer."
+              }
+            }
+          ],
+          "result": {
+            "callText": "better"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "A better answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "A better answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W2",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same request to two models, both succeed, the other model's answer shipped: W2",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {
+                  "name": "mine"
+                },
+                {
+                  "name": "other",
+                  "model": "model-x",
+                  "startAfterMs": 100
+                }
+              ]
+            }
+          ],
+          "result": {
+            "callText": "other"
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "reply": {
+            "text": "A better answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "A better answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W2",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "another model regenerates with a changed prompt and its text is shipped unchanged: W2",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "better",
+                "model": "model-x",
+                "system": "Rewrite the answer in plain words.",
+                "user": "First answer."
+              }
+            }
+          ],
+          "result": {
+            "callText": "better"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "A better answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "A better answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W2",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "another model answers through answer_tool: W2",
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "better",
+                "model": "model-x",
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            }
+          ],
+          "result": {
+            "text": "A better answer."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"A better answer.\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "A better answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W2",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-24": [
+    {
+      "name": "another model's memory summary with another system and other text: no warning",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Summarise the talk for memory.",
+                "user": "The user said hello."
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Summary."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-25": [
+    {
+      "name": "a same-model classification before the answer without reply_call: Outcome row 5 in a run",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            },
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-26": [
+    {
+      "name": "the classification refuses, a fixed message without the answer request, reply_call and fallback: answers 0",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "result": {
+            "fallback": "I cannot help with that."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "I cannot help with that.",
+        "answers": 0,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "finishReason": "other"
+      }
+    },
+    {
+      "name": "the same unwrapped: Outcome row 5, A3 cause (b)",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "result": {
+            "text": "I cannot help with that."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-b"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-27": [
+    {
+      "name": "another model's language detection fails and is swallowed, then the classification refuses: a fallback",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Detect the language.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "result": {
+            "fallback": "I cannot help with that."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "I cannot help with that.",
+        "answers": 0,
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "finishReason": "other"
+      }
+    },
+    {
+      "name": "both sent together: transient (K1)",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {
+                  "model": "model-x",
+                  "system": "Detect the language.",
+                  "onError": "swallow"
+                },
+                {
+                  "system": "Classify the request: answer or refuse.",
+                  "startAfterMs": 100
+                }
+              ]
+            }
+          ],
+          "result": {
+            "fallback": "I cannot help with that."
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "delayMs": 500,
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-28": [
+    {
+      "name": "the excluded classification refuses, then another model's memory write ends in 429 and is swallowed: transient (K2)",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            },
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Write the memory.",
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "I cannot help with that."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-30": [
+    {
+      "name": "reply_call true only for calls to another model: Outcome row 5, A3 cause (a)",
+      "target": {
+        "replyCall": {
+          "model": "model-x"
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Draft the answer."
+              }
+            },
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Draft."
+          }
+        },
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-a",
+          "placeholders": {
+            "models": "`model-x`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-31": [
+    {
+      "name": "a variant model call fails and another model answers, unwrapped: Outcome row 6",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "other",
+                "model": "model-x"
+              }
+            }
+          ],
+          "result": {
+            "callText": "other"
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          }
+        },
+        {
+          "reply": {
+            "text": "A better answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a variant model call fails and another model answers, wrapped: Outcome row 6",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "other",
+                "model": "model-x"
+              }
+            }
+          ],
+          "result": {
+            "fallbackCallText": "other"
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          }
+        },
+        {
+          "reply": {
+            "text": "A better answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-32": [
+    {
+      "name": "a regeneration fails and the service ships the first answer: Outcome row 7, no warning",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter.",
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-33": [
+    {
+      "name": "a failed answer regenerated with another model, 429 after the SDK's retries, a message shipped: Outcome row 7",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "model": "model-x",
+                "after": "first",
+                "user": "Make it shorter.",
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "Sorry, I cannot answer right now.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same wrapped: a fallback with W1 naming the other model",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "model": "model-x",
+                "after": "first",
+                "user": "Make it shorter.",
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "Sorry, I cannot answer right now.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W1",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-34": [
+    {
+      "name": "regenerating with the same model ends in 429, a larger model answers, shipped unwrapped: Outcome row 7 (W2 for the other model's text)",
+      "target": {
+        "replyCall": {
+          "model": "model-b"
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "larger",
+                "model": "model-x",
+                "after": "first",
+                "user": "Make it shorter."
+              }
+            }
+          ],
+          "result": {
+            "callText": "larger"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "reply": {
+            "text": "A better answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "A better answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W2",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same wrapped: a fallback; the larger model's call came after the failure, so no W1",
+      "target": {
+        "replyCall": {
+          "model": "model-b"
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "larger",
+                "model": "model-x",
+                "after": "first",
+                "user": "Make it shorter."
+              }
+            }
+          ],
+          "result": {
+            "fallbackCallText": "larger"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "reply": {
+            "text": "A better answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "A better answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-35": [
+    {
+      "name": "the regeneration ends in 429 and the service raises the SDK exception: Outcome row 3, transient",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter."
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-36": [
+    {
+      "name": "the regeneration ends in 429 and the service raises a discard_on exception: a discard with W1 naming the variant model",
+      "target": {
+        "replyCall": true,
+        "discardOn": [
+          "EmptyReply"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter.",
+                "onError": {
+                  "raise": {
+                    "class": "EmptyReply",
+                    "message": "no better answer"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ],
+        "discardReason": "EmptyReply: no better answer",
+        "warnings": [
+          {
+            "message": "W1-variant"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-37": [
+    {
+      "name": "a check sent with the answer fails with 429 after the first answer ended, a message shipped and only wrapped: W1",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {
+                  "name": "answer"
+                },
+                {
+                  "name": "check",
+                  "model": "model-x",
+                  "system": "Safety check: answer allow or block.",
+                  "onError": "swallow",
+                  "startAfterMs": 50
+                }
+              ]
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "delayMs": 500,
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "Sorry, I cannot answer right now.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W1",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-42": [
+    {
+      "name": "the same check fails with 429 before the first answer arrived: a fallback with W1",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {
+                  "name": "answer"
+                },
+                {
+                  "name": "check",
+                  "model": "model-x",
+                  "system": "Safety check: answer allow or block.",
+                  "onError": "swallow",
+                  "startAfterMs": 100
+                }
+              ]
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "delayMs": 800,
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "Sorry, I cannot answer right now.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W1",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-43": [
+    {
+      "name": "the regeneration ends in 429, another model's regenerated answer shipped wrapped: a fallback, no warning (K28)",
+      "target": {
+        "replyCall": {
+          "model": "model-b"
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "larger",
+                "model": "model-x",
+                "after": "first",
+                "user": "Make it shorter."
+              }
+            }
+          ],
+          "result": {
+            "fallbackCallText": "larger"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "reply": {
+            "text": "A better answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "A better answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-44": [
+    {
+      "name": "the regeneration ends in 403 and the service ships the first answer: Outcome row 1, config",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter.",
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "first"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "error": {
+            "status": 403
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-45": [
+    {
+      "name": "a name that only shares the variant's prefix is not the variant model: Outcome row 4",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-b-mini"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-b-mini`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b-mini",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-46": [
+    {
+      "name": "a dated snapshot name model-b-2026-10-01 is the variant model",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-b-2026-10-01"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b-2026-10-01",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a dated snapshot name model-b-20261001 is the variant model",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-b-20261001"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b-20261001",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-RESP-03": [
+    {
+      "name": "a tool loop of two calls: one branch",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ]
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "after": "first"
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "First answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-RESP-04": [
+    {
+      "name": "the final answer as a tool call without text, kind model: A4",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hi there."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hi there.\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same wrapped with fallback: empty raw",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Hi there."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hi there.\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "Hi there.",
+        "finishReason": "other"
+      }
+    },
+    {
+      "name": "the same discarded: empty raw",
+      "target": {
+        "discardOn": [
+          "EmptyReply"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            },
+            {
+              "raise": {
+                "class": "EmptyReply",
+                "message": "tool answer rejected"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hi there.\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "",
+        "finishReason": "other",
+        "discardReason": "EmptyReply: tool answer rejected"
+      }
+    }
+  ],
+  "S-RESP-06": [
+    {
+      "name": "a stream response without raw: A5",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-RESP-12": [
+    {
+      "name": "background mode: the first response is queued and the target returns text without raw: A6",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "kwargs": {
+                  "background": true
+                }
+              }
+            }
+          ],
+          "result": {
+            "text": "The final output."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "status": "queued"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A6"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ]
+}

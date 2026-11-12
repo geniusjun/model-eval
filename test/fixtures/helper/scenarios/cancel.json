@@ -1,0 +1,146 @@
+{
+  "S-RESP-11": [
+    {
+      "name": "an asynchronous target: the call in flight is cut, unanswered and not classified",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "script": [
+        {
+          "delayMs": 5000,
+          "reply": {
+            "text": "Too late."
+          }
+        }
+      ],
+      "cancel": {
+        "afterRequests": 1
+      },
+      "expect": {
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": null
+          }
+        ],
+        "notifications": [],
+        "requests": [
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a synchronous target: the request in flight completes and is recorded as it ended; the later request is not sent and not recorded",
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "user": "A request after the cancel."
+              },
+              "swallow": true
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "In flight.",
+            "usage": {
+              "input": 12,
+              "output": 6
+            }
+          }
+        },
+        {
+          "reply": {
+            "text": "Never sent."
+          }
+        }
+      ],
+      "cancel": {
+        "afterRequests": 1
+      },
+      "expect": {
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "errorKind": null,
+            "usage": {
+              "input": 12,
+              "output": 6
+            }
+          }
+        ],
+        "notifications": [],
+        "requests": [
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-COST-09": [
+    {
+      "name": "a request the SDK resends after waiting is not sent and not recorded",
+      "service": {
+        "behaviour": "reply",
+        "params": {
+          "maxRetries": 1
+        }
+      },
+      "script": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after-ms": "1500"
+          },
+          "error": {
+            "message": "slow down"
+          }
+        },
+        {
+          "reply": {
+            "text": "Never sent."
+          }
+        }
+      ],
+      "cancel": {
+        "afterRequests": 1
+      },
+      "expect": {
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ],
+        "notifications": [],
+        "requests": [
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ]
+}

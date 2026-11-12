@@ -1,0 +1,1641 @@
+{
+  "S-RESP-07": [
+    {
+      "name": "Outcome row 8: a discard_on exception class, with the captured raw answer and reason (acceptance scenario 2)",
+      "target": {
+        "discardOn": [
+          "EmptyReply"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "EmptyReply",
+              "message": "The reply was empty after filtering."
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "discardReason": "EmptyReply: The reply was empty after filtering.",
+        "finishReason": "stop"
+      }
+    },
+    {
+      "name": "Outcome row 8: discard_on as a function that returns true for the exception",
+      "target": {
+        "discardOn": {
+          "when": {
+            "class": "ServiceError",
+            "messageIncludes": "discard"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "ServiceError",
+              "message": "discard: off-topic"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "discardReason": "ServiceError: discard: off-topic"
+      }
+    },
+    {
+      "name": "Outcome row 9: discard_on as a function that returns false, the raw answer kept as capturedRaw",
+      "target": {
+        "discardOn": {
+          "when": {
+            "class": "ServiceError",
+            "messageIncludes": "discard"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "ServiceError",
+              "message": "database down"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "ServiceError: database down"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Here is the answer."
+      }
+    },
+    {
+      "name": "Outcome row 8: an exception with an empty message gives the class name alone as the reason",
+      "target": {
+        "discardOn": [
+          "EmptyReply"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "EmptyReply",
+              "message": ""
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "discardReason": "EmptyReply"
+      }
+    },
+    {
+      "name": "Outcome row 8: the reason is the first 200 code points of the class name, ': ' and the message",
+      "target": {
+        "discardOn": [
+          "EmptyReply"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "EmptyReply",
+              "message": "The reply was discarded because it repeated the question The reply was discarded because it repeated the question The reply was discarded because it repeated the question 😀😀 and then went on 😀😀 and then went on 😀😀 and then went on 😀😀 and then went on "
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "discardReason": "EmptyReply: The reply was discarded because it repeated the question The reply was discarded because it repeated the question The reply was discarded because it repeated the question 😀😀 and then went "
+      }
+    },
+    {
+      "name": "Outcome row 9: an undeclared exception is an adapter error that keeps the first answer (acceptance scenario 3)",
+      "target": {
+        "discardOn": [
+          "EmptyReply"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "StorageError",
+              "message": "Storage rejected the query.\n"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "StorageError: Storage rejected the query."
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Here is the answer."
+      }
+    },
+    {
+      "name": "Outcome row 9: no period is added after a message that ends with '!'",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "StorageError",
+              "message": "Storage is read-only!"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "StorageError: Storage is read-only!"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Here is the answer."
+      }
+    },
+    {
+      "name": "Outcome row 9: an empty message gives the class name alone",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "StorageError",
+              "message": ""
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "StorageError"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Here is the answer."
+      }
+    },
+    {
+      "name": "Outcome row 9: a message of whitespace only gives the class name alone",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "StorageError",
+              "message": "  \n "
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "StorageError"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Here is the answer."
+      }
+    },
+    {
+      "name": "Outcome row 9: the message is trimmed before the class name and ': ' go in front of it",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "StorageError",
+              "message": "   no such table: profiles.  "
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "StorageError: no such table: profiles."
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Here is the answer."
+      }
+    },
+    {
+      "name": "Outcome row 9 after two answers: capturedRaw is the first answer",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first"
+              }
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "StorageError",
+              "message": "no such table: profiles"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Another answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "StorageError: no such table: profiles"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Here is the answer."
+      }
+    },
+    {
+      "name": "Outcome row 9 without an answer: capturedRaw is the text of the last successful response",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "tools": [
+                  "lookup"
+                ]
+              }
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "StorageError",
+              "message": "no such table: profiles"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Let me check.",
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"profile\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "StorageError: no such table: profiles"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Let me check."
+      }
+    },
+    {
+      "name": "Outcome row 5 with an undeclared exception: A3 names the exception",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "after": "first",
+                "user": "Summarise our talk for memory."
+              }
+            }
+          ],
+          "result": {
+            "raise": {
+              "class": "StorageError",
+              "message": "no such table: memories"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Summary."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c-raised",
+          "placeholders": {
+            "exception": "StorageError: no such table: memories"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-RESP-08": [
+    {
+      "name": "Outcome row 4: every request goes to another model (run part of acceptance scenario 8)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-a`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-a",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-EXC-01": [
+    {
+      "name": "Outcome row 2: fake storage rejects a query during assembly, before any model call",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "raise": {
+                "class": "StorageError",
+                "message": "no such table: profiles"
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1-raised",
+          "placeholders": {
+            "exception": "StorageError: no such table: profiles"
+          }
+        },
+        "calls": null
+      }
+    },
+    {
+      "name": "Outcome row 2 without an exception: a fixed message and no model call",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [],
+          "result": {
+            "text": "Fixed reply."
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1"
+        },
+        "calls": null
+      }
+    }
+  ],
+  "S-EXC-02": [
+    {
+      "name": "Outcome row 4 with the exception: the rejection after another model's call succeeded",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Detect the language."
+              }
+            },
+            {
+              "raise": {
+                "class": "StorageError",
+                "message": "no such table: profiles"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "en"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2-raised",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-x`",
+            "exception": "StorageError: no such table: profiles"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-SIDE-01": [
+    {
+      "name": "a side call fails, the service swallows it and returns a value: the result is unchanged",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Retrieve memories.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-SIDE-02": [
+    {
+      "name": "Outcome row 3 (a): a side call after the answer fails and the service raises",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Write the memory."
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Outcome row 3 (a): a side call before the answer fails and the service raises",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Retrieve memories."
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-SIDE-03": [
+    {
+      "name": "Outcome row 1: a side call gets 401, the service swallows it and answers: config",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Retrieve memories.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        },
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "config"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Outcome row 1: the answer call gets 401, swallowed, a value returned: config",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    }
+  ],
+  "S-SIDE-04": [
+    {
+      "name": "another model's safety check ends in 429 after the SDK's retries, fixed message: Outcome row 3 (b), transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Safety check: answer allow or block.",
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "retryAfterMs": 20
+      }
+    },
+    {
+      "name": "the same with a same-model check excluded by reply_call: Outcome row 3 (b), transient",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Safety check"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Safety check: answer allow or block.",
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "retryAfterMs": 20
+      }
+    }
+  ],
+  "S-SIDE-09": [
+    {
+      "name": "after the answer, the safety check ends in 429 and a fixed message is shipped as a fallback: W1",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Safety check: answer allow or block.",
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Here is the answer.",
+        "final": "Sorry, I cannot answer right now.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W1",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-SIDE-37": [
+    {
+      "name": "the safety check fails, another model writes an apology that is shipped: not Outcome row 3, Outcome row 4",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Safety check: answer allow or block.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "model": "model-y",
+                "system": "Write a short apology."
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "reply": {
+            "text": "We are sorry."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-x`, `model-y`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-y",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "Outcome row 3 when only (b) holds: a call sent after the function returned does not leave the failure out",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Safety check: answer allow or block.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "background": {
+                "model": "model-y",
+                "system": "Write the analytics event."
+              },
+              "delayMs": 300
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "shutdownAfterRequests": 2,
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "reply": {
+            "text": "Logged."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient"
+          }
+        ],
+        "notifications": [
+          {
+            "calls": [
+              {
+                "model": "model-y",
+                "outcome": "ok"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "S-SIDE-38": [
+    {
+      "name": "the same, then the service raises after the apology: the failure is not left out, Outcome row 3, transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Safety check: answer allow or block.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "model": "model-y",
+                "system": "Write a short apology."
+              }
+            },
+            {
+              "raise": {
+                "class": "StorageError",
+                "message": "no such table: apologies"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "reply": {
+            "text": "We are sorry."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-y",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-SIDE-39": [
+    {
+      "name": "a check after the answer fails with 429, a message is shipped and only wrapped: a fallback with W1",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Check the answer: allow or block.",
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Here is the answer.",
+        "final": "Sorry, I cannot answer right now.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W1",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-SIDE-40": [
+    {
+      "name": "a memory write ends in 429 after the SDK's retries, swallowed, the service answers: unchanged, no warning",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Write the memory.",
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "branch": "side",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-26": [
+    {
+      "name": "Outcome row 5 exception: no call is true for reply_call and the function raises a discard_on exception",
+      "target": {
+        "discardOn": [
+          "EmptyReply"
+        ],
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            },
+            {
+              "raise": {
+                "class": "EmptyReply",
+                "message": "refused"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "",
+        "answers": 0,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "finishReason": "other",
+        "discardReason": "EmptyReply: refused"
+      }
+    }
+  ],
+  "S-STAT-02": [
+    {
+      "name": "Outcome row 6: no answer, the answer call failed, the function raises a discard_on exception",
+      "target": {
+        "discardOn": [
+          "EmptyReply"
+        ]
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            },
+            {
+              "raise": {
+                "class": "EmptyReply",
+                "message": "no reply"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -15,7 +15,7 @@
     "case": {
       "description": "One run of a scenario row, or of the part of the row its name says.",
       "type": "object",
-      "required": ["name", "service", "expect"],
+      "required": ["name", "service"],
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string", "minLength": 1, "description": "The part of the row this case checks." },
@@ -56,9 +56,19 @@
           "enum": ["generate", "render"]
         },
         "params": { "$ref": "#/$defs/trialParams" },
+        "trials": {
+          "description": "Number of `generate` requests sent at once, with caseIds `case-1` to `case-N`, all before any response is awaited; `expect` applies to every result, or `expectPerTrial` gives one per trial. One when absent. Not combined with `trialsInARow`, `request` `render` or `cancel`.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "trialsInARow": {
+          "description": "Number of `generate` requests sent one after another, each once the previous result arrived, with caseIds `case-1` to `case-N`; `expect` applies to every result, or `expectPerTrial` gives one per trial. Not combined with `trials`, `request` `render` or `cancel`.",
+          "type": "integer",
+          "minimum": 2
+        },
         "cancel": { "$ref": "#/$defs/cancel" },
         "tls": {
-          "description": "The certificate of test/fixtures/helper/tls/ the mock server presents; plain HTTP when absent.",
+          "description": "The certificate of test/fixtures/helper/tls/ the mock server presents; plain HTTP when absent. The base URLs then point at the TLS listener, and `MODEL_EVAL_MOCK_URL` still holds the plain address, for a service that also calls the mock server directly.",
           "enum": ["valid", "self-signed", "other-host", "expired", "missing-intermediate"]
         },
         "script": {
@@ -66,7 +76,23 @@
           "type": "array",
           "items": { "$ref": "#/$defs/scriptEntry" }
         },
-        "expect": { "$ref": "#/$defs/expect" }
+        "expect": { "$ref": "#/$defs/expect" },
+        "shutdownAfterRequests": {
+          "description": "The harness sends `shutdown` only once the mock server has received this many requests, so background requests the service starts after returning are sent before the adapter is asked to shut down.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "expectPerTrial": {
+          "description": "With `trials` or `trialsInARow` N: N expect objects, one per trial in send order, used instead of `expect`. The schema cannot tie the length to N; test/unit/helper/scenario-fixtures.test.ts checks it.",
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "oneOf": [{ "required": ["expect"] }, { "required": ["expectPerTrial"] }],
+      "not": { "required": ["trials", "trialsInARow"] },
+      "dependentSchemas": {
+        "expectPerTrial": { "anyOf": [{ "required": ["trials"] }, { "required": ["trialsInARow"] }] }
       }
     },
     "api": { "enum": ["chat-completions", "responses", "messages"] },
@@ -502,7 +528,7 @@
         "errorKind": { "enum": ["config", "transient", "permanent", "timeout", null] },
         "retryAfterMs": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
         "usage": { "oneOf": [{ "$ref": "#/$defs/usage" }, { "type": "null" }] },
-        "finishReason": { "type": "string" }
+        "finishReason": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
       }
     },
     "expect": {
@@ -582,7 +608,7 @@
         },
         "stderrIncludes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "requests": {
-          "description": "Every request the mock server received, in order; fields not listed are not compared.",
+          "description": "Every request the mock server received, in order; fields not listed are not compared. Each request record carries every field, so null here is the JSON null, not an absent field.",
           "type": "array",
           "items": {
             "type": "object",

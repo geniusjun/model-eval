@@ -13,6 +13,11 @@ format of test/fixtures/helper/scenario.schema.json (`scriptEntry`). The control
     POST /__mock__/tls      {"certificate": name}       a TLS listener presenting that certificate
                                                         of test/fixtures/helper/tls/: {"port": n}
 
+With no script loaded (at start and after a reset) the server runs in example mode: it answers
+every Chat Completions request with a short fixed reply per model, in the script of the last user
+message, with usage (examples/python-service, quickstart.md of 003). Other paths get a 500 then.
+Once a script is loaded, a request no remaining entry matches gets a 500 naming the problem.
+
 The first line on stdout names the address it listens on. With --log every received request is
 also printed to stdout as one JSON line.
 """
@@ -22,6 +27,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import math
 import socket
 import ssl
 import sys
@@ -810,6 +816,75 @@ def unscripted(api: str, message: str) -> Response:
     return Response(500, {}, [(0, body.encode("utf-8"))], False)
 
 
+# --- Example mode ----------------------------------------------------------------------------
+
+# The fixed reply per model and per script of the last user message. Other models answer as
+# EXAMPLE_DEFAULT_MODEL, so every Chat Completions request gets an answer.
+EXAMPLE_REPLIES: dict[str, dict[str, str]] = {
+    "model-a": {
+        "ko": "응, 그랬구나. 더 얘기해 줘.",
+        "en": "Oh, I see. Tell me more.",
+        "ja": "そうなんだ。もっと聞かせて。",
+    },
+    "model-b": {
+        "ko": "아, 그래? 무슨 일 있었어?",
+        "en": "Really? What happened?",
+        "ja": "へえ、本当？何があったの？",
+    },
+}
+EXAMPLE_DEFAULT_MODEL = "model-a"
+HANGUL_RANGES = (("\uac00", "\ud7a3"), ("\u1100", "\u11ff"), ("\u3130", "\u318f"))
+KANA_HAN_RANGES = (("\u3040", "\u30ff"), ("\u4e00", "\u9fff"))
+
+
+def content_text(content: Any) -> str:
+    """The text of a Chat Completions message content, a string or a list of parts."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(
+            str(part.get("text", "")) for part in content if isinstance(part, dict)
+        )
+    return ""
+
+
+def is_hangul(char: str) -> bool:
+    """Hangul syllables, jamo and compatibility jamo."""
+    return any(low <= char <= high for low, high in HANGUL_RANGES)
+
+
+def is_kana_or_han(char: str) -> bool:
+    """Hiragana, katakana and the unified Han ideographs."""
+    return any(low <= char <= high for low, high in KANA_HAN_RANGES)
+
+
+def script_of(text: str) -> str:
+    """ko for text with Hangul, ja for text with kana or Han, en otherwise."""
+    if any(is_hangul(char) for char in text):
+        return "ko"
+    if any(is_kana_or_han(char) for char in text):
+        return "ja"
+    return "en"
+
+
+def rough_tokens(text: str) -> int:
+    """Hangul, kana and Han count 1 each, every other character 0.3, as examples/pogo counts."""
+    wide = sum(1 for char in text if is_hangul(char) or is_kana_or_han(char))
+    return math.ceil(wide + 0.3 * (len(text) - wide))
+
+
+def example_entry(request: JsonObject) -> JsonObject:
+    """The script entry example mode answers a Chat Completions request with."""
+    messages = [m for m in request.get("messages") or [] if isinstance(m, dict)]
+    users = [content_text(m.get("content")) for m in messages if m.get("role") == "user"]
+    model = request.get("model")
+    replies = EXAMPLE_REPLIES.get(str(model), EXAMPLE_REPLIES[EXAMPLE_DEFAULT_MODEL])
+    text = replies[script_of(users[-1] if users else "")]
+    prompt = "\n".join(content_text(m.get("content")) for m in messages)
+    usage = {"input": rough_tokens(prompt), "output": rough_tokens(text)}
+    return {"reply": {"text": text, "usage": usage}}
+
+
 # --- HTTP handling ---------------------------------------------------------------------------
 
 
@@ -921,8 +996,12 @@ class Handler(BaseHTTPRequestHandler):
             stream=request.get("stream") is True,
             body=body if body is not None else raw_body.decode("utf-8", "replace"),
         )
-        entry = book.take(method, path, body) if book.loaded else None
-        record["scripted"] = entry is not None
+        entry: JsonObject | None = None
+        if book.loaded:
+            entry = book.take(method, path, body)
+            record["scripted"] = entry is not None
+        elif record["api"] == "chat-completions":
+            entry = example_entry(request)
         book.record(record)
         self.respond(entry, record, request)
 

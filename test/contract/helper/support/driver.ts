@@ -190,16 +190,23 @@ export class AdapterDriver {
   private readonly pending = new Map<number, Pending>();
   private nextId = 0;
   private readonly exited: Promise<number | null>;
+  /** Why requests fail once the adapter has exited and its output has been read. */
+  private exitReason: string | undefined;
 
   private constructor(private readonly child: ChildProcessWithoutNullStreams) {
     child.stderr.on('data', (chunk: Buffer) => this.exchange.stderr.push(chunk.toString('utf8')));
     createInterface({ input: child.stdout }).on('line', (line) => {
       this.receive(line);
     });
+    // Writing to an adapter that has exited fails with EPIPE; the request is rejected below.
+    child.stdin.on('error', () => undefined);
     this.exited = new Promise((resolve) => {
-      child.on('exit', (code) => {
+      // `close` comes after stdout and stderr ended, so responses written before the exit are
+      // delivered first.
+      child.on('close', (code) => {
+        this.exitReason = `the adapter exited with ${String(code)}:\n${this.stderr()}`;
         for (const pending of this.pending.values()) {
-          pending.reject(new Error(`the adapter exited with ${String(code)}:\n${this.stderr()}`));
+          pending.reject(new Error(this.exitReason));
         }
         this.pending.clear();
         resolve(code);
@@ -283,6 +290,10 @@ export class AdapterDriver {
   ): { readonly id: number; readonly done: Promise<RpcResponse<T>> } {
     this.nextId += 1;
     const id = this.nextId;
+    const exitReason = this.exitReason;
+    if (exitReason !== undefined) {
+      return { id, done: Promise.reject(new Error(exitReason)) };
+    }
     const done = new Promise<RpcResponse<T>>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
