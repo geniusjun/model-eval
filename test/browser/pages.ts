@@ -216,3 +216,62 @@ export async function tabTo(page: Page, text: string, tabKey: string): Promise<v
   }
   throw new Error(`${tabKey} never reached ${text}`);
 }
+
+function sideRegion(page: Page): Locator {
+  return page.getByRole('region', { name: en['side.heading'], exact: true });
+}
+
+/** The side-by-side move button that `key` names, at the open position. */
+function sideMove(page: Page, key: 'side.nextCase' | 'side.nextRepeat'): Locator {
+  return sideRegion(page).getByRole('button', { name: en[key], exact: true });
+}
+
+async function canMove(page: Page, key: 'side.nextCase' | 'side.nextRepeat'): Promise<boolean> {
+  return (await sideMove(page, key).getAttribute('aria-disabled')) !== 'true';
+}
+
+/** Presses a move and waits until the heading names the new position. */
+async function move(page: Page, key: 'side.nextCase' | 'side.nextRepeat'): Promise<void> {
+  const heading = sideRegion(page).locator('section h3');
+  const before = (await heading.textContent()) ?? '';
+  await sideMove(page, key).click();
+  await expect(heading).not.toHaveText(before);
+}
+
+/**
+ * Opens every cell detail, then every position of every rule in the side-by-side view, by
+ * clicking, and calls `visit` on each view the page shows.
+ */
+export async function visitEveryView(page: Page, visit: () => Promise<void>): Promise<void> {
+  await visit();
+  const cells = cellButtons(page, SURFACE_CAPTION);
+  const cellCount = await cells.count();
+  expect(cellCount, 'cell buttons').toBeGreaterThan(0);
+  for (let index = 0; index < cellCount; index += 1) {
+    await cells.nth(index).click();
+    await expect(page.locator('h3:focus')).toHaveCount(1);
+    await visit();
+  }
+  const rules = sideRegion(page)
+    .getByRole('list', { name: en['side.rules'], exact: true })
+    .getByRole('button');
+  const ruleCount = await rules.count();
+  expect(ruleCount, 'side-by-side rules').toBeGreaterThan(0);
+  for (let index = 0; index < ruleCount; index += 1) {
+    const rule = rules.nth(index);
+    await rule.click();
+    await expect(sideRegion(page).locator('section h3')).toContainText(
+      (await rule.textContent()) ?? '',
+    );
+    for (;;) {
+      await visit();
+      if (await canMove(page, 'side.nextRepeat')) {
+        await move(page, 'side.nextRepeat');
+      } else if (await canMove(page, 'side.nextCase')) {
+        await move(page, 'side.nextCase');
+      } else {
+        break;
+      }
+    }
+  }
+}
