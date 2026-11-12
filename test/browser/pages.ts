@@ -3,8 +3,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import type { Browser, BrowserContext, Page } from '@playwright/test';
+import {
+  expect,
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 
+import en from '../../viewer/src/i18n/en.json' with { type: 'json' };
 import { DATA_PLACEHOLDER, fillTemplate } from '../../src/report/page-data.js';
 import {
   comparisonPageSchema,
@@ -132,4 +139,67 @@ export function examplePagePath(): string {
     );
   }
   return file;
+}
+
+/** The caption of a grid table, one per output surface. */
+export const SURFACE_CAPTION = new RegExp(`^${en['grid.caption'].replace('{surface}', '.+')}$`);
+
+/** WebKit moves focus to buttons with Tab only when Option is held, as Safari does. */
+export function tabKey(browserName: string): string {
+  return browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+}
+
+/** The cell buttons of the grid: the buttons of the tables captioned with a surface. */
+export function cellButtons(page: Page, surfaceCaption: RegExp): Locator {
+  return page.getByRole('table', { name: surfaceCaption }).getByRole('button');
+}
+
+/** The text of the focused element when it is a cell button, else null. */
+function focusedCellText(page: Page, surfaceCaption: RegExp): Promise<string | null> {
+  return page.evaluate((caption) => {
+    const focused = document.activeElement;
+    const table = focused?.closest('table');
+    const tableCaption = table?.querySelector('caption')?.textContent ?? '';
+    const isCell = focused instanceof HTMLButtonElement && new RegExp(caption).test(tableCaption);
+    return isCell ? focused.textContent : null;
+  }, surfaceCaption.source);
+}
+
+/**
+ * Moves through the page with Tab only. On each cell button it presses Enter, expects the cell's
+ * detail heading to take focus, presses Escape and expects the detail closed and focus back on
+ * the button. Returns the texts of the cell buttons it opened, in Tab order.
+ */
+export async function openEveryCellByKeyboard(
+  page: Page,
+  surfaceCaption: RegExp,
+  tabKey: string,
+): Promise<string[]> {
+  const cells = await cellButtons(page, surfaceCaption).allTextContents();
+  // Each focusable element is reached once; the extra presses cover the browser's own stops.
+  const limit = (await page.locator('button, select, a[href]').count()) + 10;
+  const opened: string[] = [];
+  for (let press = 0; press < limit && opened.length < cells.length; press += 1) {
+    await page.keyboard.press(tabKey);
+    const cellText = await focusedCellText(page, surfaceCaption);
+    if (cellText === null || opened.includes(cellText)) {
+      continue;
+    }
+    const handle = await page.locator(':focus').elementHandle();
+    await page.keyboard.press('Enter');
+    const heading = page.locator('h3:focus');
+    await expect(heading).toHaveCount(1);
+    const label = (await heading.textContent()) ?? '';
+    expect(label, cellText).not.toBe('');
+    expect(cellText.startsWith(label), cellText).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('heading', { level: 3, name: label, exact: true })).toHaveCount(0);
+    await expect
+      .poll(() => handle.evaluate((element) => element === document.activeElement), {
+        message: `focus back on ${cellText}`,
+      })
+      .toBe(true);
+    opened.push(cellText);
+  }
+  return opened;
 }

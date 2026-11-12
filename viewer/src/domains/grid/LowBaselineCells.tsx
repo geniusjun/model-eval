@@ -1,0 +1,71 @@
+import { useId } from 'react';
+
+import type { Lang } from '../../../../src/config/schema.js';
+import { percent } from '../../../../src/report/format.js';
+import { isLowBaseline } from '../../../../src/report/low-baseline.js';
+import type { Cell } from '../../../../src/report/schema.js';
+import { VerdictBadge } from '../../components/VerdictBadge.js';
+import { pageMessages } from '../../i18n/useMessages.js';
+import { ROLES, type VariantIds } from '../../report/variants.js';
+import { cellId, rateText } from '../../utils/cell.js';
+import tableStyles from './table.module.css';
+
+interface LowBaselineCellsProps {
+  readonly cells: readonly Cell[];
+  /** `config.report.lowBaseline` of the comparison. */
+  readonly lowBaseline: number;
+  readonly variants: VariantIds;
+  readonly lang: Lang;
+}
+
+/** The cells whose baseline compliance is below the configured level, as `report.md` lists them. */
+export function LowBaselineCells({ cells, lowBaseline, variants, lang }: LowBaselineCellsProps) {
+  const messages = pageMessages(lang);
+  const headingId = useId();
+  const level = percent(lowBaseline);
+  const lowCells = cells.filter((cell) => isLowBaseline(cell, lowBaseline));
+  return (
+    <section aria-labelledby={headingId}>
+      <h3 id={headingId}>{messages.text('grid.lowBaseline.heading')}</h3>
+      {lowCells.length === 0 ? (
+        <p>{messages.text('grid.lowBaseline.none', { level })}</p>
+      ) : (
+        <>
+          <p>{messages.text('grid.lowBaseline.intro', { level })}</p>
+          <table className={tableStyles.table} aria-labelledby={headingId}>
+            <thead>
+              <tr>
+                <th scope="col">{messages.text('grid.column.rule')}</th>
+                <th scope="col">{messages.text('grid.column.lang')}</th>
+                <th scope="col">{messages.text('grid.column.surface')}</th>
+                {ROLES.map((role) => (
+                  <th key={role} scope="col">
+                    {messages.text(`role.${role}`, { variant: variants[role] })}
+                  </th>
+                ))}
+                <th scope="col">{messages.text('grid.column.verdict')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lowCells.map((cell) => (
+                <tr key={cellId(cell)}>
+                  <th scope="row">{cell.ruleId}</th>
+                  <td>{cell.lang}</td>
+                  <td>{cell.surface}</td>
+                  {ROLES.map((role) => (
+                    <td key={role} className={tableStyles.number}>
+                      {rateText(cell[role])}
+                    </td>
+                  ))}
+                  <td>
+                    <VerdictBadge verdict={cell.verdict} lang={lang} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </section>
+  );
+}

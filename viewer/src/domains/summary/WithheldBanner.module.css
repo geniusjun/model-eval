@@ -1,0 +1,17 @@
+.banner {
+  background: var(--verdict-inconclusive-background);
+  border: 1px solid var(--verdict-inconclusive-text);
+  border-radius: var(--radius);
+  color: var(--verdict-inconclusive-text);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+
+.title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.reason {
+  margin: var(--space-1) 0 0;
+}

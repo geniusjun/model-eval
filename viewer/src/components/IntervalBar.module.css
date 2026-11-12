@@ -16,3 +16,8 @@
 .mark {
   fill: var(--color-chart-mark);
 }
+
+.zero {
+  stroke: var(--color-text-muted);
+  stroke-width: 0.5;
+}

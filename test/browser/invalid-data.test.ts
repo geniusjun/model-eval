@@ -13,8 +13,8 @@ import {
 
 const BLOCK = 'page-comparison-block.json';
 
-/** The heading of the report that a valid comparison page shows. */
-const REPORT_HEADING = en['report.heading'];
+/** The heading of the report that the block fixture page shows: the title of report.md. */
+const REPORT_HEADING = 'model-eval report: current (model-a) → next (model-b)';
 
 /**
  * The page shows the error screen and nothing of the report: one heading, the language switch
