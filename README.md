@@ -122,6 +122,7 @@ Guides:
 - [Writing an adapter](docs/guide/adapter.md)
 - [Writing rules and cases](docs/guide/rules.md)
 - [Reading the results](docs/guide/statistics.md)
+- [The result page](docs/guide/result-page.md)
 - [Running in CI](docs/guide/ci.md)
 
 Reference:
