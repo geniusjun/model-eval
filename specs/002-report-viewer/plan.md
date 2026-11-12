@@ -131,7 +131,7 @@ Tests use a fixture whose texts contain `</script>`, `<!--`, `$&` and HTML tags 
 
 ### D6. Two hand-drawn SVG charts
 
-Interval bars for rates and differences, and a latency distribution. Each SVG has `role="img"` and a `<title>`. A chart library would grow the bundle for two shapes.
+Interval bars for rates and differences, and a latency distribution. The latency distribution has 20 equal-width bins from 0 to the larger of the two variants' largest latency; a bin's height is the share of that variant's values in it, on a height scale shared by both variants, and only non-empty bins get a mark. Each SVG has `role="img"` and a `<title>`. A chart library would grow the bundle for two shapes.
 
 ### D7. Accessible by structure
 
