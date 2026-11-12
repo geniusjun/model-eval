@@ -1,0 +1,297 @@
+{
+  "description": "Helper messages of specs/003-adapter-helpers/contracts/helper-api.md §Messages, each variant as one full sentence. Placeholders are written <name>; fill them as `placeholders` says. Both helpers' tests read this file; the helpers embed the same sentences.",
+  "placeholders": {
+    "model": {
+      "rule": "In A2 and A7, the variant model; in W1, W2 and W8, the model of the call's request."
+    },
+    "models": {
+      "rule": "For A3, the models reply_call is true for; for A2 with Result(model=), that model alone; otherwise the models of the trial's captured calls. Distinct names in the order they were first sent, each in backticks, joined with ', '.",
+      "whenEmpty": "none"
+    },
+    "exception": {
+      "rule": "The exception's class name, ': ' and its message, or the class name alone when the message is empty; leading and trailing whitespace removed; not cut.",
+      "periodAfter": "A '.' right after the placeholder is left out when the value already ends with '.', '!' or '?'."
+    },
+    "reason": {
+      "rule": "git <subcommand>, or the file operation (lstat, read) and its path relative to service_dir, then ': ' and git's last non-empty stderr line ('exit code N' when it is empty) or the OS error code; whitespace removed as for <exception>.",
+      "periodAfter": "A '.' right after the placeholder is left out when the value already ends with '.', '!' or '?'."
+    }
+  },
+  "messages": {
+    "A1": {
+      "id": "A1",
+      "text": "No model request was captured. Import the helper before the service (in Node, before any SDK client is created), and let the SDK send through httpx or httpx2 (Python) or the global `fetch` (Node). If the service calls the model through another transport (Bedrock, Vertex AI, a child process such as the Claude Agent SDK), give the answer as `Result(raw=, final=, finish_reason=, usage=, model=)` and throw failures as `ModelCallError`. If the case takes a path that calls no model (an input block, a fixed message), remove the case or change its input.",
+      "placeholders": []
+    },
+    "A1-raised": {
+      "id": "A1",
+      "text": "The target function raised <exception>. No model request was captured. Import the helper before the service (in Node, before any SDK client is created), and let the SDK send through httpx or httpx2 (Python) or the global `fetch` (Node). If the service calls the model through another transport (Bedrock, Vertex AI, a child process such as the Claude Agent SDK), give the answer as `Result(raw=, final=, finish_reason=, usage=, model=)` and throw failures as `ModelCallError`. If the case takes a path that calls no model (an input block, a fixed message), remove the case or change its input.",
+      "placeholders": [
+        "exception"
+      ]
+    },
+    "A2": {
+      "id": "A2",
+      "text": "No request went to the variant model `<model>` (captured: <models>). Check that the adapter passes the variant model to the service. If the answer came through an uncaptured transport (Bedrock and similar), give `Result(raw=, final=, finish_reason=, usage=, model=)`. If a call before the answer failed or timed out and the service never requested the answer, throw that failure as `ModelCallError` with that call's `model`; if it refused, remove the case or change its input.",
+      "placeholders": [
+        "model",
+        "models"
+      ]
+    },
+    "A2-raised": {
+      "id": "A2",
+      "text": "No request went to the variant model `<model>` (captured: <models>). Check that the adapter passes the variant model to the service. If the answer came through an uncaptured transport (Bedrock and similar), give `Result(raw=, final=, finish_reason=, usage=, model=)`. If a call before the answer failed or timed out and the service never requested the answer, throw that failure as `ModelCallError` with that call's `model`; if it refused, remove the case or change its input. The target function raised <exception>.",
+      "placeholders": [
+        "model",
+        "models",
+        "exception"
+      ]
+    },
+    "A2-result-model": {
+      "id": "A2",
+      "text": "`Result(model=)` gives <models>, not the variant model `<model>`. Give the model the service called; if the service did not call the variant model, check that the adapter passes it to the service.",
+      "placeholders": [
+        "model",
+        "models"
+      ]
+    },
+    "A3-a": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (`reply_call` is true only for calls to <models>). Make `reply_call` true for the variant model's answer calls.",
+      "placeholders": [
+        "models"
+      ]
+    },
+    "A3-a-raised": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (`reply_call` is true only for calls to <models>). Make `reply_call` true for the variant model's answer calls. The target function raised <exception>.",
+      "placeholders": [
+        "models",
+        "exception"
+      ]
+    },
+    "A3-b": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (no call is true for `reply_call`). Make `reply_call` true for the answer calls; if the service shipped a fixed message without requesting the answer, wrap it with `fallback`.",
+      "placeholders": []
+    },
+    "A3-b-raised": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (no call is true for `reply_call`). Make `reply_call` true for the answer calls; if the service shipped a fixed message without requesting the answer, wrap it with `fallback`. The target function raised <exception>.",
+      "placeholders": [
+        "exception"
+      ]
+    },
+    "A3-c": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (the variant model got requests that are neither resends nor tool-loop steps of one another, such as a classification or a memory write besides the answer). Set `reply_call` to select the answer calls.",
+      "placeholders": []
+    },
+    "A3-c-raised": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (the variant model got requests that are neither resends nor tool-loop steps of one another, such as a classification or a memory write besides the answer). Set `reply_call` to select the answer calls. The target function raised <exception>.",
+      "placeholders": [
+        "exception"
+      ]
+    },
+    "A3-d": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (the answers came from requests with different system prompts). If the service regenerates with a changed system prompt, give the first answer as `Result(raw=)`; otherwise make `reply_call` false for side calls.",
+      "placeholders": []
+    },
+    "A3-d-raised": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (the answers came from requests with different system prompts). If the service regenerates with a changed system prompt, give the first answer as `Result(raw=)`; otherwise make `reply_call` false for side calls. The target function raised <exception>.",
+      "placeholders": [
+        "exception"
+      ]
+    },
+    "A3-raw-unread-systems": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (unread responses have different system prompts). Set `reply_call`.",
+      "placeholders": []
+    },
+    "A3-raw-other-answer": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (another variant model request, not a resend or tool-loop step of the raw answer's request, also got an answer). If it is a side call, exclude it with `reply_call`; if it is a regenerated answer, give `Result(finish_reason=, answers=)`.",
+      "placeholders": []
+    },
+    "A3-raw-unread-follows": {
+      "id": "A3",
+      "text": "Cannot choose the answer call (an unread response follows the raw answer). If it is a side call, exclude it with `reply_call`; if it is a regenerated answer, give `Result(finish_reason=, answers=)`.",
+      "placeholders": []
+    },
+    "A4": {
+      "id": "A4",
+      "text": "Every answer call ended in a tool call. If the service takes its final answer as a tool call, set `answer_tool`.",
+      "placeholders": []
+    },
+    "A5": {
+      "id": "A5",
+      "text": "Streaming responses are not parsed yet. Give the raw answer and finish reason the service received as `Result(raw=, finish_reason=)`.",
+      "placeholders": []
+    },
+    "A6": {
+      "id": "A6",
+      "text": "Responses background mode is not parsed. Give the final output and finish reason the service received later as `Result(raw=, finish_reason=)`.",
+      "placeholders": []
+    },
+    "A7": {
+      "id": "A7",
+      "text": "Cannot find the call that produced the raw answer: no answer of the variant model `<model>` has its text (captured: <models>). If you changed a captured answer, give it unchanged. If the answer came through an uncaptured transport, give `Result(model=)` with `finish_reason=` and `usage=`. If a same-model call before the answer refused and the answer was never requested, give `Result(raw=\"\", kind=\"fallback\", finish_reason=\"other\")`; exclude that call with `reply_call` when it was captured, and add `model=` and `answers=0` when it was not. If the captured calls went only to other models, check that the adapter passes the variant model to the service, or remove cases where another model's call before the answer keeps the service from calling it.",
+      "placeholders": [
+        "model",
+        "models"
+      ]
+    },
+    "A8": {
+      "id": "A8",
+      "text": "`answers=0` was given but a fully received answer exists. If the answer was fully received before the check blocked, give the first answer as `Result(raw=, kind=\"fallback\")`, adding `finish_reason=\"other\"` when an answer came as a stream, two or more answers were received or a stream was cut after it, and in the last two cases the received count as `answers=`, not counting the stream the check cut (`kind=\"discarded\"` for a discard). If it is the answer of a same-model check, exclude that call with `reply_call`. For a streaming tool loop with `answer_tool`, do not give `answers=0`.",
+      "placeholders": []
+    },
+    "A9": {
+      "id": "A9",
+      "text": "`Result(finish_reason=)` is required: the answer that decides the finish reason is an unread response or an uncaptured call.",
+      "placeholders": []
+    },
+    "A10": {
+      "id": "A10",
+      "text": "A model request was made outside any trial context (run with `--concurrency 1`, or have the service pass the context).",
+      "placeholders": []
+    },
+    "A11": {
+      "id": "A11",
+      "text": "Could not reach the render target request.",
+      "placeholders": []
+    },
+    "A12": {
+      "id": "A12",
+      "text": "`ModelCallError` takes exactly one of `status`, `kind` and `call`.",
+      "placeholders": []
+    },
+    "A13": {
+      "id": "A13",
+      "text": "`call` takes only a failure the service received, and with `reply_call` only a failure of an answer call.",
+      "placeholders": []
+    },
+    "row9": {
+      "id": "Outcome row 9",
+      "text": "The target function raised <exception>. If the service raises it when it discards an answer, add it to `discard_on` (a target function that gives raw catches it and returns `Result(raw=, kind=\"discarded\", discard_reason=)`); if the service's time limit raised it, catch it and throw `ModelCallError(kind=\"timeout\")`.",
+      "placeholders": [
+        "exception"
+      ]
+    },
+    "W1": {
+      "id": "W1",
+      "text": "In a trial that received an answer, a call to `<model>` failed transiently and the trial ended in a fallback or discard. If it was the regeneration request, this is correct. If the service shipped a message or discarded the answer because of that failure, throw the failure. If it was an unrelated call the service swallows and moves past (memory writes and similar), leave it.",
+      "placeholders": [
+        "model"
+      ]
+    },
+    "W1-variant": {
+      "id": "W1",
+      "text": "In a trial that received an answer, a call to the variant model failed transiently and the trial ended in a fallback or discard. If it was the regeneration request, this is correct. If the service shipped a message or discarded the answer because of that failure, throw the failure. If it was an unrelated call the service swallows and moves past (memory writes and similar), leave it.",
+      "placeholders": []
+    },
+    "W2": {
+      "id": "W2",
+      "text": "The shipped text may be another model's answer (`<model>`). If the service shipped it, wrap it with `fallback`.",
+      "placeholders": [
+        "model"
+      ]
+    },
+    "W3": {
+      "id": "W3",
+      "text": "The last answer did not end with `stop`, but an earlier answer of the same request did. If the service picked an answer, give its finish reason as `Result(finish_reason=)`.",
+      "placeholders": []
+    },
+    "W4": {
+      "id": "W4",
+      "text": "No captured answer has the raw answer's text, so it was added as an uncaptured call and its cost may be counted twice. Give a captured answer unchanged; if the captured answer belongs to a side call, exclude it with `reply_call`.",
+      "placeholders": []
+    },
+    "W5": {
+      "id": "W5",
+      "text": "Decided by a captured call's failure instead of the given raw answer. If the answer request failed (a provider error, a rate limit, a dropped connection, also mid-stream after some text arrived), this is correct. If the failed call is a same-model side call, exclude it with `reply_call`.",
+      "placeholders": []
+    },
+    "W5-cut-last-answer": {
+      "id": "W5",
+      "text": "Decided by a captured call's failure instead of the given raw answer. If the service cut a regeneration after it fully received an earlier answer, give `answers=` (counting the cut answer) and `finish_reason=`, with `kind=\"fallback\"` if it shipped the cut text, a fixed message or another model's answer (`kind=\"discarded\"` for a discard). If the answer request failed (a provider error, a rate limit, a dropped connection, also mid-stream after some text arrived), this is correct. If the failed call is a same-model side call, exclude it with `reply_call`.",
+      "placeholders": []
+    },
+    "W6": {
+      "id": "W6",
+      "text": "Decided as a time-out instead of the given raw answer (the service stopped receiving before the model's answer was complete). If the service's time limit cut it, this is correct. Otherwise, by cause: a content cut, give `kind=\"fallback\"` and `finish_reason=\"other\"` (`kind=\"discarded\"` for a discard); an input check sent with the answer that blocked it, `Result(raw=\"\", kind=\"fallback\", answers=0)`; a configured stop string, `stopped_early=True`; a cut same-model side call, exclude it with `reply_call`; another call's failure that left the service no answer to ship, throw that failure; returning on an event saying the text ended, read the stream to its end event.",
+      "placeholders": []
+    },
+    "W6-cut-last-answer": {
+      "id": "W6",
+      "text": "Decided as a time-out instead of the given raw answer (the service stopped receiving before the model's answer was complete). If the service cut a regeneration after it fully received an earlier answer, give `answers=` (counting the cut answer) and `finish_reason=`, with `kind=\"fallback\"` if it shipped the cut text, a fixed message or another model's answer (`kind=\"discarded\"` for a discard). If it sent a modified request alongside and shipped the answer that came first, select both requests with `reply_call` and give `Result(finish_reason=, answers=1)`. If the service's time limit cut it, this is correct. Otherwise, by cause: a content cut, give `kind=\"fallback\"` and `finish_reason=\"other\"` (`kind=\"discarded\"` for a discard); an input check sent with the answer that blocked it, `Result(raw=\"\", kind=\"fallback\", answers=0)`; a configured stop string, `stopped_early=True`; a cut same-model side call, exclude it with `reply_call`; another call's failure that left the service no answer to ship, throw that failure; returning on an event saying the text ended, read the stream to its end event.",
+      "placeholders": []
+    },
+    "W6-stopped-early-ignored": {
+      "id": "W6",
+      "text": "Decided as a time-out instead of the given raw answer (the service stopped receiving before the model's answer was complete). If the service's time limit cut it, this is correct. Otherwise, by cause: a content cut, give `kind=\"fallback\"` and `finish_reason=\"other\"` (`kind=\"discarded\"` for a discard); an input check sent with the answer that blocked it, `Result(raw=\"\", kind=\"fallback\", answers=0)`; a cut same-model side call, exclude it with `reply_call`; another call's failure that left the service no answer to ship, throw that failure; returning on an event saying the text ended, read the stream to its end event.",
+      "placeholders": []
+    },
+    "W6-stopped-early-honoured": {
+      "id": "W6",
+      "text": "Decided as a time-out instead of the given raw answer (the service stopped receiving before the model's answer was complete). If the service's time limit cut it, this is correct. Otherwise, by cause: a content cut, give `kind=\"fallback\"` and `finish_reason=\"other\"` (`kind=\"discarded\"` for a discard); an input check sent with the answer that blocked it, `Result(raw=\"\", kind=\"fallback\", answers=0)`; a cut same-model side call, exclude it with `reply_call`; another call's failure that left the service no answer to ship, throw that failure; returning on an event saying the text ended, read the stream to its end event. `stopped_early` was given, but the stream was cut during an awaited read or was still being read when the function returned, which looks like a time limit; stop with `break` from the SDK's plain stream iterator, or call `abort()` in a Node stream helper's event handler before any `await`.",
+      "placeholders": []
+    },
+    "W6-cut-last-answer-stopped-early-ignored": {
+      "id": "W6",
+      "text": "Decided as a time-out instead of the given raw answer (the service stopped receiving before the model's answer was complete). If the service cut a regeneration after it fully received an earlier answer, give `answers=` (counting the cut answer) and `finish_reason=`, with `kind=\"fallback\"` if it shipped the cut text, a fixed message or another model's answer (`kind=\"discarded\"` for a discard). If it sent a modified request alongside and shipped the answer that came first, select both requests with `reply_call` and give `Result(finish_reason=, answers=1)`. If the service's time limit cut it, this is correct. Otherwise, by cause: a content cut, give `kind=\"fallback\"` and `finish_reason=\"other\"` (`kind=\"discarded\"` for a discard); an input check sent with the answer that blocked it, `Result(raw=\"\", kind=\"fallback\", answers=0)`; a cut same-model side call, exclude it with `reply_call`; another call's failure that left the service no answer to ship, throw that failure; returning on an event saying the text ended, read the stream to its end event.",
+      "placeholders": []
+    },
+    "W6-cut-last-answer-stopped-early-honoured": {
+      "id": "W6",
+      "text": "Decided as a time-out instead of the given raw answer (the service stopped receiving before the model's answer was complete). If the service cut a regeneration after it fully received an earlier answer, give `answers=` (counting the cut answer) and `finish_reason=`, with `kind=\"fallback\"` if it shipped the cut text, a fixed message or another model's answer (`kind=\"discarded\"` for a discard). If it sent a modified request alongside and shipped the answer that came first, select both requests with `reply_call` and give `Result(finish_reason=, answers=1)`. If the service's time limit cut it, this is correct. Otherwise, by cause: a content cut, give `kind=\"fallback\"` and `finish_reason=\"other\"` (`kind=\"discarded\"` for a discard); an input check sent with the answer that blocked it, `Result(raw=\"\", kind=\"fallback\", answers=0)`; a cut same-model side call, exclude it with `reply_call`; another call's failure that left the service no answer to ship, throw that failure; returning on an event saying the text ended, read the stream to its end event. `stopped_early` was given, but the stream was cut during an awaited read or was still being read when the function returned, which looks like a time limit; stop with `break` from the SDK's plain stream iterator, or call `abort()` in a Node stream helper's event handler before any `await`.",
+      "placeholders": []
+    },
+    "W7": {
+      "id": "W7",
+      "text": "`stopped_early` is honoured only with a non-empty raw answer and kind `model`.",
+      "placeholders": []
+    },
+    "W8": {
+      "id": "W8",
+      "text": "The raw answer may come from a response of `<model>`, not the variant model. Check that the adapter passes the variant model to the service.",
+      "placeholders": [
+        "model"
+      ]
+    },
+    "W9": {
+      "id": "W9",
+      "text": "Input tokens minus cache hits and cache writes was negative and was set to 0. The provider may have changed what the usage fields mean.",
+      "placeholders": []
+    },
+    "W10": {
+      "id": "W10",
+      "text": "The thrown failure may belong to an earlier attempt that was resent. Throw the failure the service received.",
+      "placeholders": []
+    },
+    "L1": {
+      "id": "L1",
+      "text": "Service version not reported: <reason>.",
+      "placeholders": [
+        "reason"
+      ]
+    },
+    "L2": {
+      "id": "L2",
+      "text": "Unhandled exception in background work: <exception>.",
+      "placeholders": [
+        "exception"
+      ]
+    },
+    "L3": {
+      "id": "L3",
+      "text": "Blocked a request of an abandoned trial: <exception>.",
+      "placeholders": [
+        "exception"
+      ]
+    }
+  }
+}

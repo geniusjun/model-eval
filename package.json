@@ -19,18 +19,26 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./adapter": {
+      "types": "./dist/helper/index.d.ts",
+      "default": "./dist/helper/index.js"
     }
   },
   "files": [
     "dist",
-    "schemas"
+    "schemas",
+    "adapters/python/model_eval_adapter.py"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build --config viewer/vite.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p viewer/tsconfig.json && tsc -p viewer/tsconfig.node.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "pnpm build && vitest run",
+    "test": "pnpm build && vitest run --project unit --project contract --project e2e --project viewer",
+    "test:contract": "pnpm build && sh -c '[ \"$1\" = -- ] && shift; exec vitest run --project contract \"$@\"' test:contract",
+    "test:parity": "pnpm build && vitest run --project contract test/contract/helper/parity.test.ts",
+    "test:example": "pnpm build && vitest run --project example",
     "test:browser": "playwright test",
     "schemas": "tsx scripts/generate-schemas.ts",
     "format:check": "prettier --check .",
@@ -55,12 +63,19 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "anthropic-sdk-0": "npm:@anthropic-ai/sdk@0.137.0",
+    "anthropic-sdk-0-first": "npm:@anthropic-ai/sdk@0.50.1",
+    "anthropic-sdk-1": "npm:@anthropic-ai/sdk@1.8.0",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y-x": "^0.2.0",
     "eslint-plugin-react-dom": "^5.30.2",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^31.0.0",
+    "openai-5": "npm:openai@5.23.2",
+    "openai-5-first": "npm:openai@5.0.0",
+    "openai-6": "npm:openai@6.49.0",
+    "openai-7": "npm:openai@7.55.0",
     "prettier": "^3.9.10",
     "publint": "^0.3.25",
     "react": "^19.3.1",

@@ -1,0 +1,606 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://model-eval.local/test/fixtures/helper/scenario.schema.json",
+  "title": "Helper scenario fixture",
+  "description": "Expected results of the helper contract scenarios (specs/003-adapter-helpers/contracts/helper-scenarios.md), shared by the Python and TypeScript helper tests. A file maps scenario IDs to the cases that check them.",
+  "type": "object",
+  "minProperties": 1,
+  "propertyNames": { "pattern": "^S-[A-Z]+-[0-9]{2}$" },
+  "additionalProperties": {
+    "type": "array",
+    "minItems": 1,
+    "items": { "$ref": "#/$defs/case" }
+  },
+  "$defs": {
+    "case": {
+      "description": "One run of a scenario row, or of the part of the row its name says.",
+      "type": "object",
+      "required": ["name", "service", "expect"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "The part of the row this case checks." },
+        "languages": {
+          "description": "Helper languages the case runs in; all when absent.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["python", "typescript"] }
+        },
+        "apis": {
+          "description": "APIs the case runs against; all three when absent.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/api" }
+        },
+        "backends": {
+          "description": "Python backends the case runs under; all three when absent. Ignored in TypeScript.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["sync", "async", "aiohttp"] }
+        },
+        "sdks": {
+          "description": "SDK aliases of package.json (Node) or file names of adapters/python/tests/requirements/ without `.txt` (Python) the case runs with; all when absent.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]*$" }
+        },
+        "adapter": { "$ref": "#/$defs/adapterOptions" },
+        "initialize": { "$ref": "#/$defs/initialize" },
+        "service": { "$ref": "#/$defs/service" },
+        "target": { "$ref": "#/$defs/targetOptions" },
+        "request": {
+          "description": "The protocol request the case sends; `generate` when absent.",
+          "enum": ["generate", "render"]
+        },
+        "params": { "$ref": "#/$defs/trialParams" },
+        "cancel": { "$ref": "#/$defs/cancel" },
+        "tls": {
+          "description": "The certificate of test/fixtures/helper/tls/ the mock server presents; plain HTTP when absent.",
+          "enum": ["valid", "self-signed", "other-host", "expired", "missing-intermediate"]
+        },
+        "script": {
+          "description": "What the mock server answers to each request, in send order.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/scriptEntry" }
+        },
+        "expect": { "$ref": "#/$defs/expect" }
+      }
+    },
+    "api": { "enum": ["chat-completions", "responses", "messages"] },
+    "adapterOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxConcurrency": { "type": "integer", "minimum": 1 },
+        "serviceDir": { "type": "string", "minLength": 1 }
+      }
+    },
+    "initialize": {
+      "description": "Fields of the `initialize` params; the harness fills the rest.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "variant": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "model": { "type": "string", "minLength": 1 },
+            "params": { "type": "object" }
+          }
+        },
+        "timeoutMs": { "type": "integer", "minimum": 1 },
+        "toolPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "service": {
+      "description": "The service behaviour a scenario service runs, named the same in Python and Node, and its parameters.",
+      "type": "object",
+      "required": ["behaviour"],
+      "additionalProperties": false,
+      "properties": {
+        "behaviour": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "params": { "type": "object" }
+      }
+    },
+    "targetOptions": {
+      "description": "Target options of helper-api §Target Options as data; the scenario service turns them into the language's values.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "languages": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "inputSchema": { "type": ["boolean", "object"] },
+        "render": {
+          "description": "true for render mode, or the result an adapter-supplied render function returns, given as the `render` option or as the `@adapter.render` decorator.",
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "required": ["result"],
+              "additionalProperties": false,
+              "properties": {
+                "result": { "type": "object" },
+                "form": { "enum": ["option", "decorator"] }
+              }
+            }
+          ]
+        },
+        "discardOn": {
+          "description": "Exception class names the service raises, or the function form as a condition on the exception.",
+          "oneOf": [
+            { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            {
+              "type": "object",
+              "required": ["when"],
+              "additionalProperties": false,
+              "properties": { "when": { "$ref": "#/$defs/exceptionCondition" } }
+            }
+          ]
+        },
+        "replyCall": {
+          "description": "`reply_call` as a constant or a condition on the call's request fields.",
+          "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/callCondition" }]
+        },
+        "answerTool": {
+          "description": "The tool name and the argument key that holds the text.",
+          "type": "array",
+          "prefixItems": [
+            { "type": "string", "minLength": 1 },
+            { "type": "string", "minLength": 1 }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "postprocess": { "type": "boolean" }
+      }
+    },
+    "exceptionCondition": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "class": { "type": "string", "minLength": 1 },
+        "messageIncludes": { "type": "string" }
+      }
+    },
+    "callCondition": {
+      "description": "True when every given condition holds.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+          ]
+        },
+        "systemIncludes": { "type": "string" },
+        "toolName": { "type": "string", "minLength": 1 },
+        "not": { "$ref": "#/$defs/callCondition" }
+      }
+    },
+    "trialParams": {
+      "description": "Fields of the `generate` or `render` params; the harness fills the rest.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": { "type": "string", "minLength": 1 },
+        "lang": { "type": "string", "minLength": 1 },
+        "input": { "type": "object" },
+        "caseId": { "type": "string", "minLength": 1 },
+        "repeat": { "type": "integer", "minimum": 0 },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "cancel": {
+      "description": "When the harness sends `cancel` for the trial.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["afterRequests"],
+          "additionalProperties": false,
+          "properties": { "afterRequests": { "type": "integer", "minimum": 0 } }
+        },
+        {
+          "type": "object",
+          "required": ["afterMs"],
+          "additionalProperties": false,
+          "properties": { "afterMs": { "type": "integer", "minimum": 0 } }
+        }
+      ]
+    },
+    "scriptEntry": {
+      "description": "The mock server's answer to one request. Exactly one of `reply`, `error`, `body`, `text` and `sse` gives the content, except with `connection` `close-before-headers` or `close-unread`, which send nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "times": {
+          "description": "The entry answers this many requests in a row.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "match": { "$ref": "#/$defs/requestMatch" },
+        "delayMs": {
+          "description": "Wait before the response headers.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "connection": {
+          "description": "`respond` (default); `close-before-headers`: read the request, then close without a response; `close-unread`: close without reading the request body. Whether the client then fails while sending the body or while waiting for the response depends on timing and on the body's size against the socket buffers.",
+          "enum": ["respond", "close-before-headers", "close-unread"]
+        },
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "reply": { "$ref": "#/$defs/reply" },
+        "error": { "$ref": "#/$defs/errorObject" },
+        "body": { "description": "A JSON body, written as compact JSON." },
+        "text": {
+          "description": "A body sent byte for byte as this UTF-8 text, with `content-type: application/json` unless `headers` says otherwise.",
+          "type": "string"
+        },
+        "sse": { "$ref": "#/$defs/sse" },
+        "stream": { "$ref": "#/$defs/streamOptions" },
+        "encoding": {
+          "description": "Content-Encoding to send, used only when the request's accept-encoding names it; otherwise the body goes uncompressed.",
+          "enum": ["gzip", "br", "zstd"]
+        },
+        "compressed": {
+          "description": "The body stored pre-compressed per encoding, as base64 of one blob or of the chunks to send one by one. gzip without a stored body is compressed by the server.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "gzip": { "$ref": "#/$defs/compressedBody" },
+            "br": { "$ref": "#/$defs/compressedBody" },
+            "zstd": { "$ref": "#/$defs/compressedBody" }
+          }
+        },
+        "drop": {
+          "description": "Close the connection after this many whole body chunks and this many bytes of the next one.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "chunks": { "type": "integer", "minimum": 0 },
+            "bytes": { "type": "integer", "minimum": 0 }
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["connection"],
+          "properties": { "connection": { "enum": ["close-before-headers", "close-unread"] } },
+          "not": {
+            "anyOf": [
+              { "required": ["reply"] },
+              { "required": ["error"] },
+              { "required": ["body"] },
+              { "required": ["text"] },
+              { "required": ["sse"] }
+            ]
+          }
+        },
+        { "required": ["reply"], "$ref": "#/$defs/notConnectionClose" },
+        { "required": ["error"], "$ref": "#/$defs/notConnectionClose" },
+        { "required": ["body"], "$ref": "#/$defs/notConnectionClose" },
+        { "required": ["text"], "$ref": "#/$defs/notConnectionClose" },
+        { "required": ["sse"], "$ref": "#/$defs/notConnectionClose" }
+      ]
+    },
+    "notConnectionClose": {
+      "type": "object",
+      "properties": { "connection": { "const": "respond" } }
+    },
+    "compressedBody": {
+      "oneOf": [
+        { "type": "string", "contentEncoding": "base64" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "contentEncoding": "base64" }
+        }
+      ]
+    },
+    "requestMatch": {
+      "description": "The entry answers the first request that has every given field; an entry without `match` answers the next request.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string", "pattern": "^[A-Z]+$" },
+        "path": { "description": "A suffix of the request path.", "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "stream": { "type": "boolean" },
+        "bodyIncludes": { "type": "string", "minLength": 1 }
+      }
+    },
+    "reply": {
+      "description": "A successful answer, written in the format of the API the request went to: a JSON body, or SSE when the request asked for a stream.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "description": "The response model; the request's `model` when absent.",
+          "type": "string",
+          "minLength": 1
+        },
+        "text": { "type": "string" },
+        "toolCalls": { "type": "array", "items": { "$ref": "#/$defs/toolCall" } },
+        "finishReason": {
+          "description": "`stop`, `length`, `tool_calls` or `content_filter`, written as each API names it; any other value is written as given.",
+          "type": "string",
+          "minLength": 1
+        },
+        "choices": {
+          "description": "Chat Completions answers for `n` > 1, each with its own text, tool calls and finish reason.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string" },
+              "toolCalls": { "type": "array", "items": { "$ref": "#/$defs/toolCall" } },
+              "finishReason": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "usage": {
+          "description": "Token buckets of the protocol, written as each API's usage fields; null leaves usage out.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "input": { "type": "integer", "minimum": 0 },
+                "cachedInput": { "type": "integer", "minimum": 0 },
+                "cacheWrite": { "type": "integer", "minimum": 0 },
+                "output": { "type": "integer", "minimum": 0 },
+                "reasoning": { "type": "integer", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "status": {
+          "description": "Responses `status`; `queued` and `in_progress` answer with no output (background mode).",
+          "enum": ["completed", "incomplete", "queued", "in_progress"]
+        },
+        "failure": {
+          "description": "The answer ends in failure: a failure end event in a stream, `status: failed` in a Responses body, an `error` object in other bodies.",
+          "$ref": "#/$defs/errorObject"
+        }
+      }
+    },
+    "toolCall": {
+      "type": "object",
+      "required": ["name", "arguments"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "arguments": { "description": "The arguments as JSON text, sent unchanged.", "type": "string" }
+      }
+    },
+    "errorObject": {
+      "description": "An error written in the provider's format: OpenAI `{error: {message, type, param, code}}`, Anthropic `{type: error, error: {type, message, details: {error_code}}}`. `status` is the HTTP status of an error response and is not used for a failure inside a 200 answer.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+        "type": { "type": "string", "minLength": 1 },
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string" }
+      }
+    },
+    "streamOptions": {
+      "description": "How a `reply` is sent as SSE when the request asks for a stream.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deltas": {
+          "description": "Text pieces each answer's text is split into.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "eventsPerChunk": { "type": "integer", "minimum": 1 },
+        "chunkDelaysMs": {
+          "description": "Wait before each body chunk, by chunk index; 0 for chunks beyond the list.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "ending": {
+          "description": "`end-event` (default): the generation-end marker and the normal end event; `no-end-event`: the body ends without the normal end event; `text-only`: the body ends after the text, before any generation-end marker; `failure`: a failure end event built from `reply.failure` after the text.",
+          "enum": ["end-event", "no-end-event", "text-only", "failure"]
+        },
+        "lastLine": { "$ref": "#/$defs/lastLine" }
+      }
+    },
+    "lastLine": {
+      "description": "How the last event ends: `blank-line` (default), `line-end` (no final empty line) or `none` (no final line end either).",
+      "enum": ["blank-line", "line-end", "none"]
+    },
+    "sse": {
+      "description": "An SSE body given event by event.",
+      "type": "object",
+      "required": ["chunks"],
+      "additionalProperties": false,
+      "properties": {
+        "chunks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "delayMs": { "type": "integer", "minimum": 0 },
+              "events": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/sseEvent" } },
+              "text": { "description": "Raw body text sent as this chunk.", "type": "string" }
+            },
+            "oneOf": [
+              { "type": "object", "required": ["events"] },
+              { "type": "object", "required": ["text"] }
+            ]
+          }
+        },
+        "lastLine": { "$ref": "#/$defs/lastLine" }
+      }
+    },
+    "sseEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "event": { "type": "string", "minLength": 1 },
+        "id": { "type": "string" },
+        "comment": { "type": "string" },
+        "data": { "description": "A string is sent as written; any other JSON value as compact JSON." }
+      },
+      "anyOf": [
+        { "type": "object", "required": ["data"] },
+        { "type": "object", "required": ["comment"] }
+      ]
+    },
+    "messageRef": {
+      "description": "A message of test/fixtures/helper/messages.json with the values of its placeholders.",
+      "type": "object",
+      "required": ["message"],
+      "additionalProperties": false,
+      "properties": {
+        "message": { "type": "string", "pattern": "^[AWL][0-9]+(-[a-z0-9-]+)?$|^row9$" },
+        "placeholders": {
+          "type": "object",
+          "propertyNames": { "enum": ["model", "models", "exception", "reason"] },
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input": { "type": "integer", "minimum": 0 },
+        "cachedInput": { "type": "integer", "minimum": 0 },
+        "cacheWrite": { "type": "integer", "minimum": 0 },
+        "output": { "type": "integer", "minimum": 0 },
+        "reasoning": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "callExpect": {
+      "description": "Fields of one call record; fields not listed are not compared.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string", "minLength": 1 },
+        "responseModel": { "type": "string", "minLength": 1 },
+        "outcome": { "enum": ["ok", "failed", "unanswered"] },
+        "branch": { "enum": ["answer", "side", null] },
+        "errorKind": { "enum": ["config", "transient", "permanent", "timeout", null] },
+        "retryAfterMs": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+        "usage": { "oneOf": [{ "$ref": "#/$defs/usage" }, { "type": "null" }] },
+        "finishReason": { "type": "string" }
+      }
+    },
+    "expect": {
+      "description": "The fields of the result the row names. Each listed field equals the actual value as canonical JSON; null means the field is absent. Fields not listed are not compared. `calls` lists every call record in send order.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "description": "`ok`: an answer result; `failed`: a model failure result; `adapter-error`: a JSON-RPC error.",
+          "enum": ["ok", "failed", "adapter-error"]
+        },
+        "errorKind": { "enum": ["config", "transient", "permanent", "timeout"] },
+        "retryAfterMs": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+        "finalKind": { "enum": ["model", "fallback", "discarded"] },
+        "raw": { "type": "string" },
+        "final": { "type": "string" },
+        "answers": { "type": "integer", "minimum": 0 },
+        "finishReason": { "enum": ["stop", "length", "content_filter", "other"] },
+        "discardReason": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+        "modelSnapshot": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+        "usage": { "oneOf": [{ "$ref": "#/$defs/usage" }, { "type": "null" }] },
+        "fingerprint": {
+          "description": "`render`: equal to the render fingerprint of the same case; `not-render`: different from it; otherwise the value itself.",
+          "oneOf": [
+            { "enum": ["render", "not-render", null] },
+            { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+          ]
+        },
+        "capturedRaw": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+        "adapterError": { "$ref": "#/$defs/messageRef" },
+        "warnings": {
+          "description": "Every warning of the result, in order.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/messageRef" }
+        },
+        "calls": {
+          "oneOf": [{ "type": "array", "items": { "$ref": "#/$defs/callExpect" } }, { "type": "null" }]
+        },
+        "render": {
+          "description": "The render result without `fingerprint`.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["role", "content"],
+                "additionalProperties": false,
+                "properties": {
+                  "role": { "type": "string", "minLength": 1 },
+                  "content": { "type": "string" }
+                }
+              }
+            },
+            "tools": { "oneOf": [{ "type": "array" }, { "type": "null" }] },
+            "maxOutputTokens": { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }] }
+          }
+        },
+        "notifications": {
+          "description": "The `calls` notifications in order, each with its call records.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["calls"],
+            "additionalProperties": false,
+            "properties": {
+              "calls": { "type": "array", "items": { "$ref": "#/$defs/callExpect" } }
+            }
+          }
+        },
+        "log": {
+          "description": "The `log` notifications with level `warn`, in order.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/messageRef" }
+        },
+        "stderrIncludes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "requests": {
+          "description": "Every request the mock server received, in order; fields not listed are not compared.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "method": { "type": "string", "pattern": "^[A-Z]+$" },
+              "path": { "description": "The request path as received.", "type": "string", "minLength": 1 },
+              "api": {
+                "description": "The API whose path suffix the request path ends with; null for other paths.",
+                "oneOf": [{ "$ref": "#/$defs/api" }, { "type": "null" }]
+              },
+              "model": { "type": ["string", "null"] },
+              "stream": { "type": "boolean" },
+              "servedEncoding": { "enum": ["identity", "gzip", "br", "zstd"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

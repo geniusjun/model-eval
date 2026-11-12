@@ -9,3 +9,6 @@ coverage/
 .model-eval/
 .omc/
 test-results/
+.venv/
+__pycache__/
+.pytest_cache/

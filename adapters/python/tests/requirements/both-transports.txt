@@ -1,0 +1,4 @@
+# httpx and httpx2 installed together (S-UNC-02)
+openai[aiohttp,httpx2]==2.54.0
+anthropic[aiohttp]==1.17.0
+pytest==9.2.0
