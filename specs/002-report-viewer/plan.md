@@ -38,7 +38,7 @@ A React app in `viewer/` is built with Vite into one HTML template that inlines 
 | II. No Conclusion From a Single Sample | PASS | Every rate is shown with its interval; undecided cells are never shown as passes; partial comparisons carry the withheld banner |
 | III. Deterministic Checks First | PASS | `review` rules are shown as samples for people, not as rates |
 | IV. People Set Policy, the Tool Shows Evidence | PASS | The page shows evidence and the gate outcome; it decides nothing |
-| V. Real User Data Stays Out of the Repository | PASS | Only redacted comparison data is embedded; the public demo uses the synthetic example |
+| V. Real User Data Stays Out of the Repository | PASS | Only redacted comparison data is embedded; the pages CI keeps come from the synthetic example |
 | VI. Same Records, Same Conclusion | PASS | The page is a pure function of the comparison JSON |
 | VII. Know the Cost Before Starting, Stay Under the Cap | PASS | Cost per trial and its ratio are in the summary and the metrics |
 | VIII. Humans and Agents Read the Same Result | PASS | Reads the same comparison JSON that `--json` returns |
@@ -152,9 +152,9 @@ CSS Modules for components and CSS custom properties in `styles/tokens.css` for 
 - Playwright opens the built `report.html` over `file://` for SC-001, SC-002 and SC-004, records network requests and drives the grid by keyboard. This is the only test that proves the single-file build works.
 - `@axe-core/playwright` runs axe on the rendered pages in those browser tests (WCAG 2.1 A and AA and best-practice rules); it is the accessibility guarantee of D7.
 
-### D11. Public demo
+### D11. Example pages in CI
 
-CI on `main` builds a comparison from `examples/pogo` and publishes its page to GitHub Pages. Only synthetic data is used.
+Comparisons are test results; the tool never publishes them to a website, and neither does this repository. CI runs the `examples/pogo` swap on every push and pull request and keeps `index.html` and each `comparisons/<comparisonId>/report.html` as a build artifact of the run for 14 days, so a reviewer can download and open the page of that exact commit. Nothing else from the output directory is kept (constitution V). Fourteen days covers a review cycle, and every run builds the pages again, so older copies have no use.
 
 ## Risks
 

@@ -175,13 +175,13 @@
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-**Purpose**: Language and theme across the page, docs, the parts that wait on 001 T126, the public demo, and validation by people
+**Purpose**: Language and theme across the page, docs, the parts that wait on 001 T126, the example pages in CI, and validation by people
 
 - [ ] T057 [P] Write language and theme browser tests in `test/browser/lang-theme.test.ts`: a page whose payload `lang` is `ko` starts in Korean (`<html lang>`, headings from `ko.json`, verdict texts from `src/messages/ko.json`); switching to English changes every page string, writes `?lang=en` and survives a reload; `?lang=ko` overrides an `en` payload; under the light and the dark scheme the background differs and body text and every verdict badge reach a contrast ratio of at least 4.5:1 (FR-013, FR-014)
 - [ ] T058 [P] Write accessibility browser tests in `test/browser/a11y.test.ts` with `@axe-core/playwright` (the guarantee of plan D7; lint is the first line), with the rule tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `best-practice`: on the block and partial fixture pages with each cell detail open in turn and with the side-by-side view open, on a page with a variant whose `latencyMs.values` is empty, on the invalid-data error screen and on the list page, in English and Korean and under the light and the dark scheme, axe reports no violation (FR-003, FR-011, FR-012, FR-014)
 - [ ] T059 [P] Create `docs/guide/result-page.md`: the regions, cell and side-by-side links with `?lang=`, opening from disk, the CSP and what the page never does; link it from `README.md` (FR-001, FR-010, FR-013)
 - [ ] T060 Once 001 T126 connects the template, switch `test/browser/global-setup.ts` to the `report.html` and `index.html` that `swap` writes in the example's output directory, and make `test/browser/list.test.ts` use two `swap` runs of the example, as the independent test of User Story 4 states (FR-001, FR-008)
-- [ ] T061 Create `.github/workflows/pages.yml`, after 001 T126: on `main`, with `pages: write` and `id-token: write`, build, run the `examples/pogo` swap (exit 1 expected, any other code fails), and publish the output `index.html` and each `comparisons/<comparisonId>/report.html` to GitHub Pages, nothing else from the output directory; the repository's Pages source is set to GitHub Actions by hand once (plan D11, constitution V)
+- [ ] T061 Add example-page steps to the `browser` job of `.github/workflows/ci.yml`, after 001 T126: after the build, run the `examples/pogo` swap on a copy of the example (exit 1 expected, any other code fails), then upload the output `index.html` and each `comparisons/<comparisonId>/report.html` with `actions/upload-artifact` and `retention-days: 14`, nothing else from the output directory (plan D11, constitution V)
 - [ ] T062 (manual, not for agents) Give a person new to the repository only the example page and record in `specs/002-report-viewer/checklists/validation.md` whether they named the rule, the language and the prompt sentence that caused the block (SC-003)
 - [ ] T063 (manual, not for agents) Follow `specs/002-report-viewer/quickstart.md` in Chromium, Firefox and Safari with the network off, including the Korean and dark-mode steps, and record the result in `specs/002-report-viewer/checklists/validation.md` (SC-001, SC-002, FR-013, FR-014)
 
@@ -260,7 +260,7 @@ Task: "Implement ScopePanel, ReproductionPanel and RuleList in viewer/src/domain
 3. User Story 2: the side-by-side view.
 4. User Story 3: untrusted text, network and redaction checks.
 5. User Story 4: the comparison list.
-6. Polish: language and theme, docs, the parts that wait on 001 T126, the demo, then validation by people.
+6. Polish: language and theme, docs, the parts that wait on 001 T126, the example pages in CI, then validation by people.
 
 ### Parallel Team Strategy
 
