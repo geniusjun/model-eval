@@ -70,6 +70,27 @@ describe('spec coverage check', () => {
     }
   });
 
+  it('reads test names from .test.tsx files as well as .test.ts files', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'spec-coverage-'));
+    try {
+      await mkdir(path.join(root, 'specs', '009-example'), { recursive: true });
+      await mkdir(path.join(root, 'test', 'viewer'), { recursive: true });
+      await writeFile(path.join(root, 'specs', '009-example', 'spec.md'), SPEC);
+      await writeFile(
+        path.join(root, 'test', 'viewer', 'page.test.tsx'),
+        'it(\'009 FR-001 renders\', () => { render(<Page title="a" />); });\n',
+      );
+      await writeFile(
+        path.join(root, 'test', 'example.test.ts'),
+        "it('009 FR-002 runs', () => {});\n",
+      );
+      const report = await checkSpecCoverage(root);
+      expect(report.features[0]?.missing.requirements).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('reads the status and the defined FR and SC IDs of a spec, not IDs it only mentions', () => {
     expect(parseFeature('009-example', SPEC)).toEqual({
       id: '009',

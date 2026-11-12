@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import type { ExitName } from '../cli/exit-codes.js';
 import type { GateConfig, Rule, Surface } from '../config/schema.js';
 import { classifyTrial, completedGrade } from '../grade/outcome.js';
+import { isLowBaseline } from '../report/low-baseline.js';
 import type { Cell, Comparison, Gate, GateReason } from '../report/schema.js';
 import { trialKeyId } from '../run/ids.js';
 import type { AttemptLine } from '../run/records.js';
@@ -75,23 +76,6 @@ export function gatesSurface(rule: Rule, surface: Surface): boolean {
     return surface === 'trial';
   }
   return rule.gateOn === 'both' ? surface !== 'trial' : surface === rule.gateOn;
-}
-
-/** What the low-baseline test reads of a cell. */
-export interface BaselineOfCell {
-  readonly surface: Surface;
-  readonly baseline: { readonly rate: number | null };
-}
-
-/**
- * A cell of a rule other than `completed` whose baseline rate is below `report.lowBaseline`.
- * Only `completed` is judged on the `trial` surface, so the surface names its cells; it has its
- * own premise check (row 3).
- */
-export function isLowBaseline(cell: BaselineOfCell, lowBaseline: number): boolean {
-  return (
-    cell.surface !== 'trial' && cell.baseline.rate !== null && cell.baseline.rate < lowBaseline
-  );
 }
 
 /**

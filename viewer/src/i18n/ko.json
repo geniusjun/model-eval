@@ -1,0 +1,12 @@
+{
+  "report.heading": "모델 교체 점검 결과",
+  "list.heading": "비교 목록",
+  "language.label": "언어",
+  "language.en": "English",
+  "language.ko": "한국어",
+  "invalid.heading": "보고서를 표시할 수 없습니다",
+  "invalid.unsupported": "데이터의 스키마 버전은 {found}입니다. 이 페이지는 버전 {supported}만 읽을 수 있습니다.",
+  "invalid.mismatch": "데이터에 적힌 스키마 버전은 {found}이지만 내용이 그 버전과 맞지 않습니다.",
+  "invalid.noVersion": "데이터에서 스키마 버전을 찾지 못했습니다.",
+  "invalid.render": "보고서를 표시하는 중에 문제가 생겼습니다."
+}

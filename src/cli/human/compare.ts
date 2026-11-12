@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 import type { Lang, Variant } from '../../config/schema.js';
-import { isLowBaseline } from '../../compare/gate.js';
+import { isLowBaseline } from '../../report/low-baseline.js';
 import {
   neededText,
   noteText,

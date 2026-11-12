@@ -1,0 +1,12 @@
+{
+  "report.heading": "Swap check result",
+  "list.heading": "Comparisons",
+  "language.label": "Language",
+  "language.en": "English",
+  "language.ko": "한국어",
+  "invalid.heading": "This report can't be shown",
+  "invalid.unsupported": "The data has schema version {found}. This page reads version {supported}.",
+  "invalid.mismatch": "The data says schema version {found} but does not match that version.",
+  "invalid.noVersion": "No schema version was found in the data.",
+  "invalid.render": "Something went wrong while showing this report."
+}

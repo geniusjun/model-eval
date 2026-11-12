@@ -3,8 +3,8 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { isLowBaseline } from '../src/compare/gate.js';
 import { reportConfigSchema, statsConfigSchema } from '../src/config/schema.js';
+import { isLowBaseline } from '../src/report/low-baseline.js';
 import type { Verdict } from '../src/report/schema.js';
 import {
   caseWeightedRate,

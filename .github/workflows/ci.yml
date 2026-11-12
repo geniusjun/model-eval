@@ -27,7 +27,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm build
-      - run: pnpm exec vitest run --project unit --project contract
+      - run: pnpm exec vitest run --project unit --project contract --project viewer
       - name: Example swap check against the mock adapter (SC-001)
         timeout-minutes: 3
         run: pnpm exec vitest run --project e2e test/e2e/example-pogo.test.ts
@@ -39,6 +39,22 @@ jobs:
         run: pnpm bench
       - name: Pack
         run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
+      - name: The package ships the page template
+        run: tar -tzf "$RUNNER_TEMP"/pack/*.tgz | grep -x 'package/dist/viewer/report.html'
       - run: pnpm exec publint run "$RUNNER_TEMP"/pack/*.tgz
       # The package is ESM only, so CommonJS resolution is not checked.
       - run: pnpm exec attw "$RUNNER_TEMP"/pack/*.tgz --profile esm-only
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm build
+      - run: pnpm test:browser --pass-with-no-tests
