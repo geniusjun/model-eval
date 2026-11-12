@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: In Progress
 
 **Input**: User description: "A result page for each swap check where the team sees where the candidate model got better or worse, what stayed undecided and how cost and latency change, and decides on the swap."
 
