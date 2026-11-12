@@ -298,9 +298,10 @@ Transport exceptions are not split by class name, because transport backends con
 1. the response's `retry-after-ms` header in ms when readable; else
 2. the `retry-after` header read as seconds or as an HTTP date (RFC 9110; the difference to now, 0 for a past date).
 
-- A number is read only when, after trimming leading and trailing whitespace, it has the form `[0-9]+(\.[0-9]+)?`. `retry-after: 1.5` is 1500 ms; `-1`, `30s` and `1e3` are not read.
+- Each header value is first trimmed of leading and trailing SP and HTAB only, the optional whitespace of RFC 9110. Other code points stay, because the two runtimes decode header bytes differently (UTF-8 in httpx, Latin-1 in `fetch`), so a wider trim would read the same bytes differently.
+- A number is read only when, after that trim, it has the form `[0-9]+(\.[0-9]+)?`. `retry-after: 1.5` is 1500 ms; `-1`, `30s` and `1e3` are not read.
 - The number is read as a double and converted to ms x (seconds times 1000); the value is floor(x + 0.5), a non-negative integer. When x is not finite, nothing is read.
-- HTTP dates are read in all three RFC 9110 forms as GMT; the standard functions of both languages read the asctime form as local time.
+- HTTP dates are read in all three RFC 9110 forms as GMT; the standard functions of both languages read the asctime form as local time. A date that does not exist (30 February, second 60) is not read, because `Date.UTC` would roll it into the next month. The weekday name is not checked against the date. A two-digit year of the RFC 850 form is the year with those last two digits that lies more than 50 years before now and at most 50 years after it, compared by instant, as RFC 9110 §5.6.7 says; 50 years before or after 29 February is 28 February.
 - When neither header is readable, nothing is recorded. Both helpers follow this rule rather than their SDK's reading ([research R13](../research.md#r13-make-both-helpers-produce-the-same-bytes)).
 
 Call `outcome` for failed calls: [data-model §Call Outcome](../data-model.md#call-outcome).

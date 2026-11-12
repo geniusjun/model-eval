@@ -134,7 +134,7 @@ Text trimming, canonical JSON, `retry-after` parsing, decompression, SSE parsing
 
 ### D10. Contract tests against mock API servers
 
-Local mock servers imitate OpenAI and Anthropic responses and error formats and are selected with `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL`, so no service code changes and no real model is called. The matrix is language × SDK and major version × API × Python sync, async and aiohttp backend, with the scenarios of [contracts/helper-scenarios.md](contracts/helper-scenarios.md). CI runs it for every supported SDK major version, and a weekly scheduled job runs it against each SDK's latest release.
+One mock server, `adapters/python/mock_api/server.py`, answers both the OpenAI and the Anthropic paths; tests start as many instances as they need (plain and TLS). It imitates OpenAI and Anthropic responses and error formats and is selected with `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL`, so no service code changes and no real model is called. The matrix is language × SDK and major version × API × Python sync, async and aiohttp backend, with the scenarios of [contracts/helper-scenarios.md](contracts/helper-scenarios.md). CI runs it for every supported SDK major version, and a weekly scheduled job runs it against each SDK's latest release.
 
 ### D11. Helper messages are English sentences
 
