@@ -1,9 +1,9 @@
-import { isLowBaseline } from '../compare/gate.js';
 import type { Lang } from '../config/schema.js';
 import { countedKey, message, type MessageKey, type MessageParams } from '../messages/index.js';
 import type { Warning } from '../run/warning.js';
 import { neededText, noteText, reasonText, verdictText, warningText } from './code-text.js';
 import { COMPARISON_FILE } from './layout.js';
+import { isLowBaseline } from './low-baseline.js';
 import {
   dollars,
   factor,

@@ -1,0 +1,23 @@
+.chart {
+  display: block;
+  height: 1rem;
+  width: 100%;
+  max-width: 12rem;
+}
+
+.track {
+  fill: var(--color-chart-track);
+}
+
+.interval {
+  fill: var(--color-chart-interval);
+}
+
+.mark {
+  fill: var(--color-chart-mark);
+}
+
+.zero {
+  stroke: var(--color-text-muted);
+  stroke-width: 0.5;
+}

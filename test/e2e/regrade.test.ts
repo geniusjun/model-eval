@@ -19,6 +19,8 @@ import {
   cellKeyOf,
   comparisonOf,
   readComparison,
+  readPage,
+  type WrittenPage,
   readGradeSet,
   readRun,
   resultOf,
@@ -29,7 +31,8 @@ import {
   type ReportEnvelope,
   type SwapEnvelope,
 } from './support/outputs.js';
-import type { Cell, Comparison } from '../../src/report/schema.js';
+import { comparisonPage, listPage } from '../../src/report/page-data.js';
+import type { Cell, Comparison, ListPage } from '../../src/report/schema.js';
 import { greetCases, type Project, type RuleInput } from './support/project.js';
 import { ANSWERED, NO_EMOJI, SCRIPT_JA } from './support/rules.js';
 
@@ -80,6 +83,10 @@ describe('001 US4 re-grading saved runs with an edited rule', () => {
   let redactedAgain: JsonOutcome<CompareEnvelope>;
   let gradedKorean: CliResult;
   let reportedKorean: CliResult;
+  /** report.html and index.html as the Korean report wrote them, with the listing just after. */
+  let koreanPage: WrittenPage;
+  let koreanIndex: WrittenPage;
+  let listingAfterKorean: ListPage;
   let copiedFolder: JsonOutcome<ReportEnvelope>;
   let reportAfterCopy: string;
   let requestsAtEnd: number;
@@ -112,7 +119,13 @@ describe('001 US4 re-grading saved runs with an edited rule', () => {
     rewrittenReport = await readFile(report, 'utf8');
     reportedHuman = await saved.run(['report', comparisonId]);
     gradedKorean = await saved.run(['grade', runIds[1], '--lang', 'ko']);
+    const folder = path.dirname(report);
+    await rm(path.join(folder, 'report.html'));
+    await rm(path.join(saved.outputDir, 'index.html'));
     reportedKorean = await saved.run(['report', comparisonId, '--lang', 'ko']);
+    koreanPage = await readPage(path.join(folder, 'report.html'));
+    koreanIndex = await readPage(path.join(saved.outputDir, 'index.html'));
+    listingAfterKorean = await listPage(saved.outputDir, 'ko');
     // A comparison folder copied under another ID still holds the original comparisonId.
     await cp(path.dirname(report), path.join(saved.outputDir, 'comparisons', COPIED_ID), {
       recursive: true,
@@ -192,6 +205,16 @@ describe('001 US4 re-grading saved runs with an edited rule', () => {
     expect(rewrittenReport).toBe(writtenReport.replace(createdAt, files.comparison.createdAt));
   });
 
+  it('001 FR-031 report writes report.html and the output index.html again, in the language asked', async () => {
+    const { comparisonId } = resultOf(compared.envelope).comparison;
+    const files = await readComparison(saved.outputDir, comparisonId);
+    // Both files were removed just before `report --lang ko`, so these are its writes.
+    expect(koreanPage.data).toEqual(comparisonPage(files.comparison, 'ko'));
+    expect(koreanPage.data.lang).toBe('ko');
+    expect(koreanIndex.data).toEqual(listingAfterKorean);
+    expect(koreanIndex.data.lang).toBe('ko');
+  });
+
   it('001 FR-029 report refuses a folder whose comparison has another comparisonId and writes nothing', () => {
     const { comparisonId } = resultOf(compared.envelope).comparison;
     expect(copiedFolder.cli.code).toBe(4);
@@ -229,17 +252,22 @@ describe('001 US4 re-grading saved runs with an edited rule', () => {
     expect(comparedHuman.stdout).toContain('model-eval compare');
     expect(comparedHuman.stdout).toContain(`${runIds[0]} → ${runIds[1]}`);
     expect(comparedHuman.stdout).toMatch(/Gate, \d+ cells: .*BLOCK/u);
-    expect(comparedHuman.stdout).toContain(`Report  ${reportPath}`);
+    // compare writes the result page too, so the report line aligns under its label.
+    expect(comparedHuman.stdout).toContain(`Result page  ${reportPath.replace(/md$/u, 'html')}`);
+    expect(comparedHuman.stdout).toContain(`Report       ${reportPath}`);
     expect(comparedKorean.code).toBe(1);
     expect(comparedKorean.stdout).toContain('게이트, 게이트 셀');
 
     expect(reportedHuman.code).toBe(0);
     expect(reportedHuman.stdout).toContain(comparisonId);
-    expect(reportedHuman.stdout).toContain(`Report  ${reportPath}`);
+    // report names the result page it wrote above the report, as compare does.
+    expect(reportedHuman.stdout).toContain(`Result page  ${reportPath.replace(/md$/u, 'html')}`);
+    expect(reportedHuman.stdout).toContain(`Report       ${reportPath}`);
     expect(gradedKorean.code).toBe(0);
     expect(gradedKorean.stdout).toContain(`채점 세트 ${graded.gradeSetId} · 재사용`);
     expect(reportedKorean.code).toBe(0);
-    expect(reportedKorean.stdout).toContain(`보고서  ${reportPath}`);
+    expect(reportedKorean.stdout).toContain(`결과 페이지  ${reportPath.replace(/md$/u, 'html')}`);
+    expect(reportedKorean.stdout).toContain(`보고서       ${reportPath}`);
     for (const result of [
       editedAgain,
       comparedHuman,

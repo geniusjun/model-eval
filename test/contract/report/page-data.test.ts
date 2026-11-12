@@ -100,9 +100,10 @@ describe('page payloads', () => {
       mkdirSync(folder, { recursive: true });
       writeFileSync(path.join(folder, 'comparison.json'), JSON.stringify(comparison));
     }
+    // A whole, valid comparison that a writer has not renamed yet: only its name keeps it out.
     const leftover = path.join(comparisons, '.tmp-4242-0a1b2c3d4e5f');
     mkdirSync(leftover);
-    writeFileSync(path.join(leftover, 'comparison.json'), '{"cut');
+    writeFileSync(path.join(leftover, 'comparison.json'), JSON.stringify(loadComparison('block')));
     writeFileSync(path.join(comparisons, '.tmp-4242-ffff-comparison.json'), '{');
     expect(await listPage(output, 'en')).toEqual(
       pageDataSchema.parse(readJsonFixture('page-list.json')),

@@ -70,10 +70,10 @@ Gate, 5 cells: 1 blocked · 0 undecided · 4 held   → BLOCK
   4 more gated cells held
 ```
 
-The output goes on with the ungated cells, operational metrics and the path of the Markdown
-report, `.model-eval/comparisons/cmp-3370d141dbd9/report.md`, which lists failing answers and the
-prompt sentence the rule relies on. The command exits 1. Its `--json` output carries the same
-result for scripts.
+The output goes on with the ungated cells, operational metrics and the paths of the result page,
+`.model-eval/comparisons/cmp-3370d141dbd9/report.html`, and of the Markdown report next to it, which
+list failing answers and the prompt sentence the rule relies on. The command exits 1. Its `--json`
+output carries the same result for scripts.
 
 ## How it works
 
@@ -122,6 +122,7 @@ Guides:
 - [Writing an adapter](docs/guide/adapter.md)
 - [Writing rules and cases](docs/guide/rules.md)
 - [Reading the results](docs/guide/statistics.md)
+- [The result page](docs/guide/result-page.md)
 - [Running in CI](docs/guide/ci.md)
 
 Reference:

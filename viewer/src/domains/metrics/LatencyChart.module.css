@@ -1,0 +1,32 @@
+.block {
+  margin: 0 0 var(--space-6);
+}
+
+.row {
+  align-items: end;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(4rem, max-content) 1fr;
+  margin: 0 0 var(--space-2);
+}
+
+.variant {
+  font-size: var(--font-size-small);
+}
+
+.chart {
+  display: block;
+  height: 3rem;
+  max-width: 32rem;
+  width: 100%;
+}
+
+.bin {
+  fill: var(--color-chart-interval);
+}
+
+.axis {
+  stroke: var(--color-chart-mark);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}

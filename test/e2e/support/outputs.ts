@@ -8,7 +8,13 @@ import type { z } from 'zod';
 import { envelopeSchema, resultSchemas } from '../../../src/cli/results.js';
 import { gradeSchema, gradeSetHeaderSchema, type Grade } from '../../../src/grade/record.js';
 import type { Surface } from '../../../src/config/schema.js';
-import { comparisonSchema, type Cell, type Comparison } from '../../../src/report/schema.js';
+import {
+  comparisonSchema,
+  pageDataSchema,
+  type Cell,
+  type Comparison,
+  type PageData,
+} from '../../../src/report/schema.js';
 import {
   manifestSchema,
   swapRecordSchema,
@@ -336,4 +342,23 @@ export function jsonAt(value: unknown, keys: readonly (string | number)[]): unkn
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const DATA_OPEN_TAG = '<script type="application/json" id="model-eval-data">';
+
+/** A written page as its template and its payload (002 page-data §Embedded Block). */
+export interface WrittenPage {
+  /** The page with its data block emptied: what the template holds around the data. */
+  readonly frame: string;
+  readonly data: PageData;
+}
+
+export async function readPage(file: string): Promise<WrittenPage> {
+  const html = await readFile(file, 'utf8');
+  const start = html.indexOf(DATA_OPEN_TAG) + DATA_OPEN_TAG.length;
+  const end = html.indexOf('</script>', start);
+  return {
+    frame: html.slice(0, start) + html.slice(end),
+    data: pageDataSchema.parse(JSON.parse(html.slice(start, end))),
+  };
 }

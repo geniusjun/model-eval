@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 const CHECKED_STATUSES: ReadonlySet<string> = new Set(['In Progress', 'Implemented']);
-const TEST_FILES = 'test/**/*.test.ts';
+const TEST_FILES = ['test/**/*.test.ts', 'test/**/*.test.tsx'];
 const TEST_FUNCTIONS: ReadonlySet<string> = new Set(['describe', 'it', 'test']);
 /**
  * Modifiers whose body never runs, so neither their name nor the names inside cover anything.

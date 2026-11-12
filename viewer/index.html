@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__'; style-src 'unsafe-inline'; img-src data:"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="data:," />
+    <title>model-eval</title>
+    <script type="module" src="./src/main.tsx"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="application/json" id="model-eval-data">__MODEL_EVAL_DATA__</script>
+  </body>
+</html>

@@ -7,10 +7,10 @@ import { comparisonDir, readSavedComparison } from '../../report/layout.js';
 import { createRedactor } from '../../report/redact.js';
 import { rewriteReport } from '../../report/write.js';
 import type { ExitName } from '../exit-codes.js';
-import { reportLines } from '../human/compare.js';
+import { reportLines, shownComparison } from '../human/compare.js';
 import { diagnosticLines } from '../human/swap.js';
 import type { CommandHandler, CommandInvocation } from '../main.js';
-import { printAll, refuse } from './run-setup.js';
+import { pageTemplateOf, printAll, refuse, warnWithoutPage } from './run-setup.js';
 import { positionalIds, refuseWith } from './saved.js';
 
 // `model-eval report <comparisonId>`: rewrites the outputs of a saved comparison from its
@@ -61,9 +61,18 @@ async function report(invocation: CommandInvocation): Promise<ExitName> {
     }
   }
   const { comparison } = saved;
-  const written = await rewriteReport({ outputDir, comparison, lang });
+  const written = await rewriteReport({
+    outputDir,
+    comparison,
+    lang,
+    ...pageTemplateOf(invocation),
+  });
   output.envelope('report', 'ok', { comparisonId }, []);
-  printAll(invocation, reportLines(lang, { comparison, reportPath: shown(written.report) }));
+  printAll(
+    invocation,
+    reportLines(lang, { comparison, written: shownComparison(written, context.cwd) }),
+  );
+  warnWithoutPage(invocation, lang, written);
   return 'ok';
 }
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: In Progress
 
 **Input**: User description: "A result page for each swap check where the team sees where the candidate model got better or worse, what stayed undecided and how cost and latency change, and decides on the swap."
 
@@ -133,5 +133,5 @@ The output directory has a list page of all comparisons, so people can open an e
 - The page shows one comparison of feature 001 and reads only its data; anything it shows is already in the comparison.
 - The 1 MB budget applies to the example comparison. Real runs can produce larger pages with more cases and rules.
 - Two kinds of charts are enough: interval bars and latency distributions.
-- A public demo built from the synthetic example is published on GitHub Pages; it contains no real data.
+- CI keeps the result pages of the synthetic example as a build artifact of each run, so a reviewer can open them without running the tool; nothing is published to a website.
 - Out of scope for this feature: recording decisions or labels in the page, editing rules, comparing more than two variants, a local server and a hosted dashboard.

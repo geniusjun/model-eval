@@ -1,0 +1,42 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height);
+}
+
+body {
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--font-size-heading);
+  margin: 0 0 var(--space-4);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+main {
+  margin: 0 auto;
+  max-width: 72rem;
+  padding: var(--space-6) var(--space-4);
+}

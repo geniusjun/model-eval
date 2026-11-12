@@ -1,0 +1,37 @@
+.badge {
+  border-radius: var(--radius);
+  display: inline-block;
+  font-size: var(--font-size-small);
+  padding: 0 var(--space-2);
+  white-space: nowrap;
+}
+
+.improved {
+  background: var(--verdict-improved-background);
+  color: var(--verdict-improved-text);
+}
+
+.non-inferior {
+  background: var(--verdict-non-inferior-background);
+  color: var(--verdict-non-inferior-text);
+}
+
+.regressed {
+  background: var(--verdict-regressed-background);
+  color: var(--verdict-regressed-text);
+}
+
+.inconclusive {
+  background: var(--verdict-inconclusive-background);
+  color: var(--verdict-inconclusive-text);
+}
+
+.insufficient {
+  background: var(--verdict-insufficient-background);
+  color: var(--verdict-insufficient-text);
+}
+
+.not-applicable {
+  background: var(--verdict-not-applicable-background);
+  color: var(--verdict-not-applicable-text);
+}
