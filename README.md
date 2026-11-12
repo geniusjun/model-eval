@@ -46,7 +46,7 @@ From a clone, use `node ../../dist/cli.js` in place of `model-eval`.
 English prompt does not contain. Its first and last lines, with the case list shortened:
 
 ```text
-warning: rules/pogo.yaml:38:9: no-emoji (en): The rendered prompt does not contain "Never use emoji". (variants: current, next · cases: greet-en, mood-vague-en, rain-en, …)
+warning: rules/pogo.yaml:40:9: no-emoji (en): The rendered prompt does not contain "Never use emoji". (variants: current, next · cases: greet-en, mood-vague-en, rain-en, …)
 errors 0 · warnings 1 · info 13
 ```
 
