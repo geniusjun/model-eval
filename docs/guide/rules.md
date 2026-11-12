@@ -85,7 +85,7 @@ prompt says "Do not use emoji". Lint reports it once, with the variants and case
 (the case list is shortened here):
 
 ```text
-warning: rules/pogo.yaml:38:9: no-emoji (en): The rendered prompt does not contain "Never use emoji". (variants: current, next · cases: greet-en, mood-vague-en, …)
+warning: rules/pogo.yaml:40:9: no-emoji (en): The rendered prompt does not contain "Never use emoji". (variants: current, next · cases: greet-en, mood-vague-en, …)
 ```
 
 When a prompt edit removes the sentence, the rule loses its basis, and this warning says so before
@@ -117,7 +117,7 @@ up before it grades anything:
 Adding `'고마워요.'` to `pass` gives:
 
 ```text
-error: rules/pogo.yaml:52:45: banmal-ko: The example "고마워요." should pass but does not.
+error: rules/pogo.yaml:54:45: banmal-ko: The example "고마워요." should pass but does not.
 ```
 
 For checks that read case values, `examples.input` and `examples.params` supply them.
