@@ -1,4 +1,4 @@
-import type { Samples } from '../../../src/report/schema.js';
+import type { Samples, SampleText } from '../../../src/report/schema.js';
 
 export type SampleKey = Samples['review'][number]['keys'][number];
 
@@ -12,4 +12,15 @@ export function ruleSampleKeys(samples: Samples, ruleId: string): SampleKey[] {
     ...samples.review.filter((entry) => entry.ruleId === ruleId).flatMap((entry) => entry.keys),
     ...samples.failing.filter((entry) => entry.ruleId === ruleId).flatMap((entry) => entry.keys),
   ];
+}
+
+/** The text stored under a key, or undefined when `samples.texts` holds none. */
+export function findSampleText(
+  texts: readonly SampleText[],
+  key: SampleKey,
+): SampleText | undefined {
+  return texts.find(
+    (text) =>
+      text.variant === key.variant && text.caseId === key.caseId && text.repeat === key.repeat,
+  );
 }

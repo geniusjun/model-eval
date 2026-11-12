@@ -12,11 +12,12 @@ import { PostprocessPanel } from '../domains/metrics/PostprocessPanel.js';
 import { WarningList } from '../domains/metrics/WarningList.js';
 import { ReproductionPanel } from '../domains/scope/ReproductionPanel.js';
 import { ScopePanel } from '../domains/scope/ScopePanel.js';
+import { SideBySide } from '../domains/side-by-side/SideBySide.js';
 import { DecisionSummary } from '../domains/summary/DecisionSummary.js';
 import { WithheldBanner } from '../domains/summary/WithheldBanner.js';
 import { useHashParam } from '../hooks/useHashParam.js';
 import { useMessages } from '../i18n/useMessages.js';
-import { resolveView } from '../utils/hash.js';
+import { formatHash, resolveView, type SideView } from '../utils/hash.js';
 import styles from './ReportPage.module.css';
 
 interface ReportPageProps {
@@ -46,8 +47,8 @@ function variantLabel(run: ComparedRun): string {
 
 /**
  * The result page of one comparison: the withheld banner, the header, then the regions in
- * decision order (research R1): summary, grid with its cell detail, operational metrics, scope
- * and reproduction. The open cell detail is the one the location hash names.
+ * decision order (research R1): summary, grid with its cell detail, side by side, operational
+ * metrics, scope and reproduction. The open cell detail is the one the location hash names.
  */
 export function ReportPage({ page }: ReportPageProps) {
   const messages = useMessages(page.lang);
@@ -57,6 +58,7 @@ export function ReportPage({ page }: ReportPageProps) {
   const [hash] = useHashParam();
   const view = resolveView(hash.view, comparison);
   const variants = { baseline: baseline.variant.id, candidate: candidate.variant.id };
+  const sideHref = (side: SideView) => formatHash({ view: side, lang: hash.lang });
   return (
     <main>
       <WithheldBanner comparison={comparison} lang={lang} />
@@ -78,11 +80,21 @@ export function ReportPage({ page }: ReportPageProps) {
           samples={comparison.samples}
           variants={variants}
           lang={lang}
+          sideHref={sideHref}
         />
         <PooledRates aggregates={comparison.aggregates} variants={variants} lang={lang} />
         <LowBaselineCells
           cells={comparison.cells}
           lowBaseline={comparison.config.report.lowBaseline}
+          variants={variants}
+          lang={lang}
+        />
+      </Region>
+      <Region title={messages.text('side.heading')}>
+        <SideBySide
+          rules={comparison.rules}
+          samples={comparison.samples}
+          view={view.kind === 'side' ? view : undefined}
           variants={variants}
           lang={lang}
         />

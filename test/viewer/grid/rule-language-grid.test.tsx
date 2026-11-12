@@ -6,7 +6,7 @@ import type { Cell, Comparison } from '../../../src/report/schema.js';
 import en from '../../../viewer/src/i18n/en.json';
 import { RuleLanguageGrid } from '../../../viewer/src/domains/grid/RuleLanguageGrid.js';
 import { useHashParam } from '../../../viewer/src/hooks/useHashParam.js';
-import { parseHash, resolveView } from '../../../viewer/src/utils/hash.js';
+import { formatHash, parseHash, resolveView } from '../../../viewer/src/utils/hash.js';
 import { loadComparison } from '../fixtures.js';
 
 afterEach(() => {
@@ -41,6 +41,7 @@ function GridFromHash({ comparison }: GridFromHashProps) {
         candidate: comparison.candidate.variant.id,
       }}
       lang="en"
+      sideHref={(view) => formatHash({ view, lang: null })}
     />
   );
 }

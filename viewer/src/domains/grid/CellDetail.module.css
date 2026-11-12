@@ -88,20 +88,3 @@
 .evidenceItem + .evidenceItem::before {
   content: ', ';
 }
-
-.sample {
-  margin: 0 0 var(--space-2);
-}
-
-.sampleLabel {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-small);
-  margin: 0 0 var(--space-1);
-}
-
-.sampleText {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-3);
-}

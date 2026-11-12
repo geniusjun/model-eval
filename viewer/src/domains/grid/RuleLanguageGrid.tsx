@@ -7,6 +7,7 @@ import { buildGrid, type SurfaceGrid } from './buildGrid.js';
 import { CellDetail } from './CellDetail.js';
 import type { VariantIds } from '../../report/variants.js';
 import { cellId, isSameCell, type CellPlace } from '../../utils/cell.js';
+import type { SideView } from '../../utils/hash.js';
 import { GridCell } from './GridCell.js';
 import tableStyles from './table.module.css';
 import { useSelectedCell } from './useSelectedCell.js';
@@ -19,6 +20,8 @@ interface RuleLanguageGridProps {
   readonly samples: Samples;
   readonly variants: VariantIds;
   readonly lang: Lang;
+  /** The location of a side-by-side position, for the links from failing examples. */
+  readonly sideHref: (view: SideView) => string;
 }
 
 interface SurfaceTableProps {
@@ -82,6 +85,7 @@ export function RuleLanguageGrid({
   samples,
   variants,
   lang,
+  sideHref,
 }: RuleLanguageGridProps) {
   const grids = useMemo(() => buildGrid(cells, rules), [cells, rules]);
   const { open, close, cellRef } = useSelectedCell(selected);
@@ -113,6 +117,7 @@ export function RuleLanguageGrid({
               variants={variants}
               lang={lang}
               onClose={close}
+              sideHref={sideHref}
             />
           )}
         </Fragment>

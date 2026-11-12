@@ -6,6 +6,7 @@ import { neededText, noteText } from '../../../src/report/code-text.js';
 import type { Cell, Comparison } from '../../../src/report/schema.js';
 import en from '../../../viewer/src/i18n/en.json';
 import { CellDetail } from '../../../viewer/src/domains/grid/CellDetail.js';
+import { formatHash } from '../../../viewer/src/utils/hash.js';
 import { loadComparison } from '../fixtures.js';
 
 interface Place {
@@ -43,6 +44,7 @@ function renderDetail(
       }}
       lang="en"
       onClose={onClose}
+      sideHref={(view) => formatHash({ view, lang: null })}
     />,
   );
 }

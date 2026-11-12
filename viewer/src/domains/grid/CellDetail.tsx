@@ -8,15 +8,17 @@ import {
   points,
   pointsInterval,
 } from '../../../../src/report/format.js';
-import type { Cell, RuleSummary, Samples, SampleText } from '../../../../src/report/schema.js';
+import type { Cell, RuleSummary, Samples } from '../../../../src/report/schema.js';
 import { CodeText } from '../../components/CodeText.js';
 import { IntervalBar } from '../../components/IntervalBar.js';
 import { VerdictBadge } from '../../components/VerdictBadge.js';
 import { pageMessages, type Messages } from '../../i18n/useMessages.js';
+import { findSampleText } from '../../report/sampleKeys.js';
 import { ROLES, type Role, type VariantIds } from '../../report/variants.js';
 import { cellLabel, failRatioText, isSameCell, rateText } from '../../utils/cell.js';
+import type { SideView } from '../../utils/hash.js';
 import styles from './CellDetail.module.css';
-import { FailingExample, type FailingKey } from './FailingExample.js';
+import { FailingExample } from './FailingExample.js';
 import tableStyles from './table.module.css';
 
 interface CellDetailProps {
@@ -26,6 +28,8 @@ interface CellDetailProps {
   readonly variants: VariantIds;
   readonly lang: Lang;
   readonly onClose: () => void;
+  /** The location of a side-by-side position, for the links from failing examples. */
+  readonly sideHref: (view: SideView) => string;
 }
 
 function differenceText(cell: Cell): string {
@@ -38,13 +42,6 @@ function casesText(cell: Cell, messages: Messages): string {
   return cell.droppedCases === 0
     ? String(cell.cases)
     : messages.text('grid.detail.casesDropped', { cases: cell.cases, dropped: cell.droppedCases });
-}
-
-function findText(texts: readonly SampleText[], key: FailingKey): SampleText | undefined {
-  return texts.find(
-    (text) =>
-      text.variant === key.variant && text.caseId === key.caseId && text.repeat === key.repeat,
-  );
 }
 
 interface FactProps {
@@ -257,10 +254,11 @@ interface FailingExamplesProps {
   readonly cell: Cell;
   readonly samples: Samples;
   readonly variants: VariantIds;
+  readonly sideHref: (view: SideView) => string;
   readonly messages: Messages;
 }
 
-function FailingExamples({ cell, samples, variants, messages }: FailingExamplesProps) {
+function FailingExamples({ cell, samples, variants, sideHref, messages }: FailingExamplesProps) {
   const headingId = useId();
   const keys = samples.failing.find((entry) => isSameCell(entry, cell))?.keys ?? [];
   return (
@@ -276,7 +274,13 @@ function FailingExamples({ cell, samples, variants, messages }: FailingExamplesP
             <li key={`${key.variant}/${key.caseId}/${String(key.repeat)}`}>
               <FailingExample
                 sampleKey={key}
-                text={findText(samples.texts, key)}
+                text={findSampleText(samples.texts, key)}
+                sideHref={sideHref({
+                  kind: 'side',
+                  ruleId: cell.ruleId,
+                  caseId: key.caseId,
+                  repeat: key.repeat,
+                })}
                 variants={variants}
                 messages={messages}
               />
@@ -292,7 +296,15 @@ function FailingExamples({ cell, samples, variants, messages }: FailingExamplesP
  * The detail of one cell (FR-004, FR-016). Its heading takes focus when it opens, so keyboard and
  * screen reader users land on it; the close button and Escape close it.
  */
-export function CellDetail({ cell, rules, samples, variants, lang, onClose }: CellDetailProps) {
+export function CellDetail({
+  cell,
+  rules,
+  samples,
+  variants,
+  lang,
+  onClose,
+  sideHref,
+}: CellDetailProps) {
   const messages = pageMessages(lang);
   const headingId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -330,7 +342,13 @@ export function CellDetail({ cell, rules, samples, variants, lang, onClose }: Ce
       <CellFacts cell={cell} lang={lang} messages={messages} />
       <VariantFigures cell={cell} variants={variants} messages={messages} />
       <RuleContext cell={cell} rule={rule} messages={messages} />
-      <FailingExamples cell={cell} samples={samples} variants={variants} messages={messages} />
+      <FailingExamples
+        cell={cell}
+        samples={samples}
+        variants={variants}
+        sideHref={sideHref}
+        messages={messages}
+      />
     </section>
   );
 }
