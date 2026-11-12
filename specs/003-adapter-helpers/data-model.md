@@ -59,7 +59,7 @@ The `outcome` of a failed call ([001 data-model §Trial](../001-swap-check/data-
 | Any failure with `usage` | `failed`, priced at that usage |
 | Possibly billed, no `usage`: a failed 200 response, a drop, time-out or cancel after the request was sent | `unanswered`, charged the call reservation |
 | Not billed: a non-200 error status, a request that never arrived, a certificate failure | `failed` |
-| A call the helper cut on the tool's `cancel` | `unanswered`, not classified |
+| A call the helper cut on the tool's `cancel` (asynchronous target functions only; the calls of a synchronous one end as they ended, [helper-api §Cancel](contracts/helper-api.md#cancel)) | `unanswered`, not classified |
 
 Calls the helper corrects or adds from a `ModelCallError` follow §Matching Reported Failures.
 
@@ -106,7 +106,7 @@ Answers, successful calls, unrecovered failures and unread responses are decided
 
 ### Answer
 
-A successful response of an answer candidate call that did not end in a tool call, that is, one whose finish reason maps to `stop`, `length` or `content_filter` (§Finish Reasons). Each `choices` item of a Chat Completions response is one answer (`n` > 1). An unread response cannot be classified because its end was not seen.
+A successful response of an answer candidate call that did not end in a tool call (§Finish Reasons), whatever its finish reason: a text response with no tool call in its content is an answer, and its finish reason maps by §Finish Reasons, so an unknown value is `other`. The exception is an Anthropic response with `pause_turn`, which continues a tool loop (§Call Branches, [helper-api §End Events](contracts/helper-api.md#end-events)) and is not an answer. Each `choices` item of a Chat Completions response is one answer (`n` > 1). An unread response cannot be classified because its end was not seen.
 
 With `answer_tool` (a tool name and the argument key holding the text), a response that calls that tool is also an answer:
 
@@ -144,7 +144,7 @@ When the service function ends, the first matching row decides. When the adapter
 | 5 | The answer candidate calls cannot be determined: no variant model call is true for `reply_call`; or there is no `reply_call` and two or more variant model branches; or the branches the answers came from have different systems | Adapter error A3. When `reply_call` is true only for calls to another model, the message names that model; when the function raised an exception that is not in `discard_on`, the message names it too. Exception below |
 | 6 | No answer, and an unrecovered failure in the answer branch. Or: the function returned a value or raised a `discard_on` exception, there is no answer, and the answer branch has an unfinished call | `timeout` when the answer branch has an unfinished call, else the kind of the unrecovered failure (the latest-ended when several). A service that swallowed the error and shipped a fixed message still counts as the call failure |
 | 7 | The function returned a value | `ok`. `finalKind` is `model` by default and `fallback` when the target function wrapped the text with `fallback(...)` |
-| 8 | The function raised a `discard_on` exception | `ok` · `discarded`. `discardReason` is the first 200 code points of `<exception class name>: <message>`, or the class name alone when the message is empty. Python uses `type(e).__name__` and `str(e)`; TypeScript uses `e.constructor.name` and `e.message`, and only `String(e)` for values that are not `Error` |
+| 8 | The function raised a `discard_on` exception | `ok` · `discarded`. `discardReason` is the exception's text as [helper-api §Adapter Error Messages](contracts/helper-api.md#adapter-error-messages) builds `<exception>` (the message trimmed first; the class name alone when it is then empty, else `Class: message`), cut to its first 200 code points |
 | 9 | Any other exception | Adapter error. When a model response was received, the text of the first answer goes along as `capturedRaw`; with no answer, the text of the last successful response |
 
 Outcome rows 7 and 8 need a raw answer that can be determined (§Raw Cannot Be Determined).
@@ -197,7 +197,7 @@ Outcome rows 7 and 8 need a raw answer. When the adapter gave none:
 
 | Situation | Handling |
 |---|---|
-| 1. No answer, and every answer candidate response ended in a tool call | With `model` (Outcome row 7): adapter error A4. With `fallback` (Outcome row 7) or Outcome row 8: raw is the text of the last answer candidate response, or empty, and the trial is a completion failure |
+| 1. No answer, and every answer candidate response ended in a tool call | With `model` (Outcome row 7): adapter error A4. With `fallback` (Outcome row 7) or Outcome row 8: raw is the text of the last answer candidate response, or empty, `answers` is 0, and the trial is a completion failure |
 | 2. An answer candidate call has a stream response or a body that was not fully read ([helper-api §Reading Response Bodies](contracts/helper-api.md#reading-response-bodies)). This includes SSE responses that failed by time-out or cancel before the generation-end marker, SSE responses that failed after it, and SSE responses unfinished when the function returned. Whether a response is SSE is decided by the headers received by the time the function returned | Adapter error A5 |
 | 3. A Responses `status` of `queued` or `in_progress` | Adapter error A6. Background mode is not parsed; the adapter passes the final output and finish reason the service received later |
 
@@ -368,7 +368,7 @@ When this section decides the trial, the warning carries the regeneration senten
   - A failure that may have been billed for an unknown amount (§Call Outcome) stays `outcome: unanswered`, so the tool charges the call reservation.
   - Stream and background calls have unknown usage and are recorded without `usage`; the tool charges the call reservation ([001 data-model §Cost](../001-swap-check/data-model.md#cost)). `Result(usage=)` becomes the raw call's `usage`. Other stream calls, such as earlier calls of a streaming tool loop, stay at their reservation.
 - **`calls`**: when calls were captured, they go in send order into normal results, model failure results and the `data` of adapter errors alike ([001 adapter-protocol §`generate`](../001-swap-check/contracts/adapter-protocol.md#generate-required)).
-  - Every call has `model` and `outcome`. `branch` is present only when the answer branch was decided, so it is absent with Outcome rows 4 and 5. `retryAfterMs` is present when the failed response said how long to wait ([helper-api §`retryAfterMs`](contracts/helper-api.md#retryafterms)).
+  - Every call has `model` and `outcome`. `branch` is present only when the answer branch was decided, so it is absent with Outcome rows 4 and 5, except in the Outcome row 5 exception, where every call is `side`. When the trial has no variant model call, no call carries `branch`, whichever Outcome row decides. `retryAfterMs` is present when the failed response said how long to wait ([helper-api §`retryAfterMs`](contracts/helper-api.md#retryafterms)).
   - With no captured call (Outcome row 2, or calls made by other means than helper-api §Captured Requests), `calls` is omitted. The tool then prices `usage`, or charges the reservation without it.
 - **`latencyMs`**: the duration of the whole service function.
 - **`fingerprint`**: the first request of the branch that produced the first answer is converted to the render shape (`messages`, `tools`, [helper-api §Render Mode](contracts/helper-api.md#render-mode)) and hashed as the render fingerprint ([001 data-model §Identifiers and Hashing](../001-swap-check/data-model.md#identifiers-and-hashing)). With no answer, the first answer candidate request; with raw given, §Answer Candidate Calls When Raw Is Given. When that request is the render target, the value equals the render fingerprint.
@@ -511,6 +511,8 @@ Provider values map to the protocol scale:
 | `content_filter`, Responses `incomplete` with reason `content_filter`, Anthropic `refusal` | `content_filter` |
 | Tool calls (`tool_calls`, `function_call`, `tool_use`), Anthropic `pause_turn`, any other value | `other` |
 
+The raw finish reason of a Responses call (helper-api `finishReason`) is its `status`, except that an `incomplete` response gives `incomplete_details.reason` when present. A failed call has none.
+
 The response content is checked before the provider value. A response ended by the output limit or a filter is `length` or `content_filter`. Otherwise a response that holds a tool call (Chat Completions `message.tool_calls`, a Responses tool-call item, an Anthropic `tool_use` block) ended in a tool call, even when its Responses `status` is `completed`.
 
 **Responses tool-call items** are output items the service must answer with a result before the response can continue:
@@ -575,3 +577,4 @@ Cases where the fixed rules decide differently from what the service did, becaus
 | K33 | Fake storage rejecting an unexpected query in background work does not surface as an adapter error |
 | K34 | A body read from a thread is not caught by yielding to the event loop, so it becomes an unread response when it is between chunks at that moment |
 | K35 | A client created with `azure_deployment` has the path's deployment fixed and goes to that deployment whatever the body's `model` says; the variant model check reads only the body's `model` and does not catch it |
+| K36 | On the httpx and httpx2 default transports, httpcore swallows a failure while writing the request body, so it cannot be told apart from a connection closed before headers: the call is `unanswered` and the trial `transient`. The aiohttp backend keeps such a call `failed` only when it tells the two apart; its contract test (helper-scenarios S-CONN-02) decides which |

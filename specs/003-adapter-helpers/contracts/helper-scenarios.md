@@ -5,7 +5,7 @@
 Expected results of the helper contract tests (SC-002), the two-language parity tests (SC-003) and the uncaptured-call tests (SC-005). Every row runs in both helpers, against the local mock API servers, unless it names one language.
 
 - "Outcome row N" is a row of [data-model §Outcome Decision](../data-model.md#outcome-decision).
-- "K1" to "K35" are rows of [data-model §Known Limits](../data-model.md#known-limits): the expected result is the limit, not the service's real behaviour.
+- "K1" to "K36" are rows of [data-model §Known Limits](../data-model.md#known-limits): the expected result is the limit, not the service's real behaviour.
 - A, W and L IDs are the messages of [helper-api §Messages](helper-api.md#messages).
 
 ## Two-Language Parity
@@ -88,7 +88,7 @@ Rules: [data-model §Call Branches](../data-model.md#call-branches), [data-model
 | S-ANS-19 | A forced `reply` tool with `answer_tool` | Raw is the argument, finish reason `stop`. Called again after validation: `answers` 2. Argument cut at the output limit: empty raw, `length`. The service sends a tool result and continues the branch: `answers` 1 |
 | S-ANS-20 | A regeneration with a changed system, `reply_call` true for both branches, first answer as `Result(raw=)` | No Outcome row 5, `answers` 2, finish reason of the regenerated answer; the raw call is the first answer's response with the same text. Without `reply_call`, `Result(raw=)` alone is Outcome row 5 (answer outside the raw call's branch); with `Result(finish_reason=, answers=)` too, normal with those values |
 | S-ANS-21 | Same request to two models at once, the candidate loses | Outcome row 6, `timeout` |
-| S-ANS-22 | Tool loop limit reached, fixed message shipped | `fallback`, empty raw |
+| S-ANS-22 | Tool loop limit reached, fixed message shipped | `fallback`, empty raw, `answers` 0 |
 | S-ANS-23 | Another model's answer shipped without `fallback`: after the first answer; the same request to two models, both succeed; another model regenerates with a changed prompt and the text is shipped unchanged; another model answers through `answer_tool` | W2 |
 | S-ANS-24 | A memory summary by another model (another system) whose text differs from the shipped text | No warning |
 | S-ANS-25 | A same-model classification before the answer | Without `reply_call`, Outcome row 5 in a run and `anchor-missing` in lint |
@@ -100,7 +100,7 @@ Rules: [data-model §Call Branches](../data-model.md#call-branches), [data-model
 | S-ANS-31 | A variant model call fails and the service answers with another model | Outcome row 6 |
 | S-ANS-32 | A regeneration fails and the service ships the first answer | Outcome row 7, no warning |
 | S-ANS-33 | A failed validation answer regenerated with another model, that request ends in 429 after the SDK's retries, a message is shipped | Outcome row 7; wrapped, a fallback with W1 |
-| S-ANS-34 | Regenerating with the same model ends in 429 and a larger model answers | Outcome row 7; wrapped, a fallback; the larger model's call came after the failure, so no warning |
+| S-ANS-34 | Regenerating with the same model ends in 429 and a larger model answers | Outcome row 7. Unwrapped: W2. Wrapped: a fallback; the larger model's call came after the failure, so no warning |
 | S-ANS-35 | Regeneration ends in 429 and the service raises the SDK exception | Outcome row 3, `transient` |
 | S-ANS-36 | Regeneration ends in 429 and the service raises a `discard_on` exception | Outcome row 8 discard with W1 |
 | S-ANS-37 | A check sent with the answer fails with 429 after the first answer ended, the service ships a message, the target function only wraps it | A fallback with W1 |
@@ -229,14 +229,14 @@ Rules: [helper-api §Reading Response Bodies](helper-api.md#reading-response-bod
 | ID | Scenario | Expected |
 |---|---|---|
 | S-CONN-01 | TLS certificate failures: self-signed (Node `DEPTH_ZERO_SELF_SIGNED_CERT`), a proxy that does not send its root (`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`), expired, hostname mismatch; on the httpx and httpx2 default transports, the aiohttp backend and Node | `config`, `failed` |
-| S-CONN-02 | Connection refused, connect time-out, connection-pool wait time-out, request body write failure | `transient`, `failed` |
+| S-CONN-02 | Connection refused, connect time-out, connection-pool wait time-out, request body write failure | `transient`, `failed`; a request body write failure on the httpx and httpx2 default transports is `transient`, `unanswered`, and on the aiohttp backend this row decides which of the two (K36) |
 | S-CONN-03 | The server closes the connection after the request without a response | `transient`, `unanswered` |
 | S-CONN-04 | A drop while receiving; a read time-out on a non-stream body | `transient` |
 | S-CONN-05 | A read time-out between stream events | `timeout` in both languages |
 | S-CONN-06 | A read time-out before the response; the service cancelling the request before or during the response | `timeout` |
 | S-CONN-07 | Connection refused and a drop before headers raised inside an `except` block handling another HTTPS call's certificate error | `transient` |
 | S-CONN-08 | After `[DONE]` the SDK closes the stream or cancels the remaining read (Python sync and async, Node) | An unread response |
-| S-CONN-09 | The final chunk arrives 0.5 s late and the async SDK cancels the remaining read | An unread response |
+| S-CONN-09 | The `[DONE]` chunk arrives 0.5 s late, after the generation-end marker, and the async SDK cancels the remaining read | An unread response |
 | S-CONN-10 | The service `break`s from the SDK stream iterator | An unread response. A Node stream helper left with `break` from `for await` with events sent one by one: the SDK cancels the awaited read, `timeout` (data-model §Cut Streams view 3; K8) |
 | S-CONN-11 | The service cancels the remaining read after the generation-end marker | An unread response |
 | S-CONN-12 | A drop after the generation-end marker and before `[DONE]` | `transient` |
@@ -407,6 +407,6 @@ Rules: [helper-api §Render Mode](helper-api.md#render-mode), [data-model §Serv
 | S-RV-12 | `status.showUntrackedFiles=no` | Untracked files still count for `dirty` |
 | S-RV-13 | File names with U+1F600, U+FF01, or non-UTF-8 bytes (Linux) | The same values in both helpers |
 | S-RV-14 | The output folder in `toolPaths` not created yet (first run) | All three values reported |
-| S-RV-15 | A file deleted while computing | Left out, no failure |
+| S-RV-15 | A file deleted while computing: a listed path missing at `lstat` | Left out, no failure |
 | S-RV-16 | `service_dir` a subfolder of a monorepo | Changes in other folders do not affect `dirty` |
 | S-RV-17 | A case file that is a link to a file in the service folder | Its target is left out too |
