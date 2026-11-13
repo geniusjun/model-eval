@@ -90,11 +90,11 @@ Python `@adapter.target(...)`, TypeScript `targets.<name>`:
 |---|---|---|
 | `languages` | `languages` | The target's languages |
 | `input_schema` | `inputSchema` | JSON Schema of a case's input |
-| `render` | `render` | True: render mode (§Render Mode). A function: it receives `(case, variant)` and returns the render result `{messages, tools?, maxOutputTokens?}` itself (a dict with the same keys in Python). Python also accepts it as a decorator that takes the target name, `@adapter.render("chat")` |
+| `render` | `render` | True: render mode (§Render Mode). A function: it receives `(case, variant)` and returns the render result `{messages, tools?, maxOutputTokens?}` itself (a dict with the same keys in Python). Python also accepts it as a decorator that takes the target name, `@adapter.render("chat")`. `capabilities.render` is true when any target has it; a `render` request for a target without it is adapter error A15 |
 | `discard_on` | `discardOn` | Exceptions the service raises when it discards an answer: a list of exception classes, or a function that receives the exception and returns true or false |
 | `reply_call` | `replyCall` | Chooses the answer calls ([data-model §Answers](../data-model.md#answers)). Receives one call and returns true or false. Render mode has no responses, so write it to decide from request fields only (`model`, `messages`, `tool_names`) |
 | `answer_tool` | `answerTool` | For services that receive the final answer as a tool call: the tool name and the argument key that holds the text, for example `("reply", "text")` (TypeScript `["reply", "text"]`). A response that calls that tool is an answer |
-| `postprocess` | `postprocess` | False when the service has no post-processing. Default true; reported as `capabilities.postprocess` (constitution I) |
+| `postprocess` | `postprocess` | False when the service has no post-processing. Default true; reported as `capabilities.postprocess` (constitution I), which is true when any target has post-processing, so `final` is never claimed to equal `raw` for a target that post-processes |
 
 ### Target Function
 
@@ -121,13 +121,13 @@ Fields of a call (an element of the third argument and the argument of `reply_ca
 
 ### Return Values
 
-The target function returns the shipped text, `fallback(text)` or a `Result`. TypeScript builds a result with `result({ final, raw, … })`, from the same module as `fallback`. Values given in a `Result` override the defaults of [data-model §Outcome Decision](../data-model.md#outcome-decision).
+The target function returns the shipped text, `fallback(text)` or a `Result`. TypeScript builds a result with `result({ final, raw, … })`, from the same module as `fallback`. Values given in a `Result` override the defaults of [data-model §Outcome Decision](../data-model.md#outcome-decision). An awaitable return value (a coroutine a synchronous function returned, a promise) is awaited once and its value used. Any other value is adapter error A14 (data-model §Outcome Decision, non-text return): None after a missing `return`, `fallback()` of a value that is not text (`fallback(123)`), a `Result` given `final=None` (TypeScript `final: null`) with kind `model` or `fallback` (only a discarded trial has no shipped text, [001 data-model §Trial](../../001-swap-check/data-model.md#trial)), and in TypeScript a plain object not built with `result()`.
 
 #### `Result`
 
 | Python | TypeScript | Meaning |
 |---|---|---|
-| `final` | `final` | The shipped text |
+| `final` | `final` | The shipped text. Omitted (in TypeScript also `final: undefined`): `raw` with kind `model`, the empty string with kind `fallback`, absent with kind `discarded` (data-model §Derived Result Fields). An explicit `final=None` (TypeScript `final: null`) with kind `model` or `fallback` is adapter error A14 |
 | `kind` | `kind` | `model`, `fallback` or `discarded`. Default `model` |
 | `discard_reason` | `discardReason` | Why it was discarded. A `Result` with `kind="discarded"` is treated like a `discard_on` exception in the outcome decision (data-model Outcome row 8, the Outcome row 5 exception, data-model §Raw Cannot Be Determined). A service that gives raw and ends with a `discard_on` exception has the target function catch it and return `Result(raw=, kind="discarded", discard_reason=)`, with the reason in Outcome row 8's format |
 | `stages` | `stages` | Text after each post-processing stage, reported as protocol `stages` ([001 adapter-protocol §`generate`](../../001-swap-check/contracts/adapter-protocol.md#generate-required)) |
@@ -168,7 +168,8 @@ Failure end events of streams (for example Anthropic `overloaded_error`) are cap
 | `usage` | `usage` | Same meaning as `Result(usage=)`. With no captured call, the sum over all calls of the trial; without it the tool charges the attempt reservation. With captured calls, the value of the failed call (usually absent) |
 | `call` | `call` | The captured call (an element of the third argument) whose failure the service swallowed, given to report it as the trial's failure. It is used as the matching-failure candidate of [data-model §Matching Reported Failures](../data-model.md#matching-reported-failures) without searching, and `model` is that call's model (a `model` given with it is ignored). Adapter error A13 when that call is not an unrecovered failure (a successful call, an unfinished call, a recovered failure, a failure while a resent request was awaited), when its `retried` is true, or when `reply_call` exists and is not true for it (§The `call` Check) |
 
-- Exactly one of `status`, `kind` and `call` is given. With two or more, or none, the helper decides adapter error A12 without consulting `discard_on` ([research R14](../research.md#r14-outcome-decision-trade-offs)).
+- Exactly one of `status`, `kind` and `call` is given. With two or more, or none, the helper decides adapter error A12 after Outcome row 1, so a captured `config` failure still makes the trial `config` ([research R14](../research.md#r14-outcome-decision-trade-offs)).
+- `discard_on` is never consulted for a `ModelCallError`, well-formed or not: it is the adapter's report of a call failure, not a service exception.
 - The error kind comes from §Error Classification. `status`, `type`, `code` and `message` take the places of the response's status, error type, code and message; providers are not distinguished, because the table's type and code names do not collide across providers. `kind` `connect` and `disconnect` map to the connection row, `tls` to the certificate row and `timeout` to the time-limit row. A thrown failure is thus classified on the same terms as a captured call.
 - In a service without captured calls, when one unbilled failure ended the trial (an error response with a non-200 `status`, `connect`, `tls`), give `usage` 0 (`{"input": 0, "output": 0}`). Otherwise every trial of a candidate rejected every time piles up a reservation and the run stops on the cap instead of blocking ([001 adapter-protocol §Reporting Model Failures](../../001-swap-check/contracts/adapter-protocol.md#reporting-model-failures)).
 
@@ -223,8 +224,9 @@ Calls are kept per trial in a context (Python `contextvars`, Node `AsyncLocalSto
   1. An error-status response (4xx, 5xx) is a failed call even when its body was not read; the kind comes from the status code and as much of the body as was read (§Error Classification). The official SDKs close error responses they will resend (429, 5xx and others) without reading the body: Python for `stream=True` requests, Node for all requests.
   2. A request that ended before the response headers, and a call whose awaited body read on a 2xx response ended by a drop, time-out or cancel, are failed calls. When the awaited read ended because other service work closed the body, it is a cancel even if the transport raises a connection error (Python httpcore raises `ReadError`). The helper wraps body closing to see this, so it decides the same as a Node `AbortController` cut.
   3. An SSE copy that receives a failure end event is a 200 response that ended in failure, ended when that event was received. The kind comes from the event's error object through §Error Classification. An SSE response whose awaited read reached the end of the body without an end event (cut by a proxy in between) is a mid-body drop.
-  4. Not failures: a read failure or cancel after an end event reached the SSE copy, and a cancel after a generation-end marker reached it (§End Events).
-  5. A 2xx body that was closed or cancelled with no awaited read is not a failure. When it was not read to the end by the time the service function returned, it is an unread response ([data-model §Unread Response](../data-model.md#unread-response)). Whether a read was awaited is checked when the body is closed or cancelled: Node, the abort of the request `signal` and the cancel of the copy stream; Python, closing the body and cancelling the reading task. A read started after that close or cancel and ended by it is not an awaited read, such as the extra read some SDKs make after `abort()` inside an event handler (research R4).
+  4. A non-stream 2xx body read to the end that is not a JSON object (a proxy's page, a server that is not the API) is a 200 response that ended in failure, ended when the body was fully received; §Error Classification makes it `config`. A non-stream 2xx JSON object whose top-level `error` is not `null` is also a 200 response that ended in failure, ended then; its kind comes from that error object through §Error Classification, as for the SSE `data` of §End Events.
+  5. Not failures: a read failure or cancel after an end event reached the SSE copy, and a cancel after a generation-end marker reached it (§End Events).
+  6. A 2xx body that was closed or cancelled with no awaited read is not a failure. When it was not read to the end by the time the service function returned, it is an unread response ([data-model §Unread Response](../data-model.md#unread-response)). Whether a read was awaited is checked when the body is closed or cancelled: Node, the abort of the request `signal` and the cancel of the copy stream; Python, closing the body and cancelling the reading task. A read started after that close or cancel and ended by it is not an awaited read, such as the extra read some SDKs make after `abort()` inside an event handler (research R4).
 - For an SSE response (`content-type: text/event-stream`) the content is not parsed; only the markers of §End Events are read, and the call carries a stream mark ([data-model §Captured Call](../data-model.md#captured-call)). The copy and the markers are updated before the chunk is handed to the SDK (research R4).
 - SSE lines are split by the HTML standard's event-stream rules: line ends CR, LF or CRLF; lines starting with `:` are comments; several `data` lines of one event join with a newline; an empty line ends the event.
   - When the body ended without a read error, the last line without a line end is included, and a last event without a trailing empty line counts as received when its `data` is complete: it parses as JSON, or is Chat Completions `[DONE]`. Both languages decide the same ([research R13](../research.md#r13-make-both-helpers-produce-the-same-bytes)). Otherwise it is a mid-body drop.
@@ -255,12 +257,14 @@ The first matching row decides. The kind comes from the status code and the erro
 
 | Observation | Kind |
 |---|---|
-| Quota or spending limit exhausted: a 429 or a failed 200 response whose OpenAI error object has `type` or `code` `insufficient_quota`, or `code` `credit_balance_exhausted`, `organization_spend_limit_exceeded`, `project_spend_limit_exceeded`, `organization_usage_limit_exceeded`, `usage_limit_exceeded` or `billing_not_active` | `config` |
+| Quota or spending limit exhausted: a 429 or a failed 200 response whose error object, of any provider, has `type` or `code` `insufficient_quota`, or `code` `credit_balance_exhausted`, `organization_spend_limit_exceeded`, `project_spend_limit_exceeded`, `organization_usage_limit_exceeded`, `usage_limit_exceeded` or `billing_not_active` | `config` |
 | Spending limit, organisation or key problem: a 429, 400 or 409, or a failed 200 response, whose Anthropic error object has `details.error_code` of: `enforced_spend_limit_reached` (the organisation passed its API tier's monthly limit); `organization_on_hold` (the organisation is suspended); `claude_code_key_creator_not_member` (the person who created the Claude Code workspace's API key left the organisation or that workspace); `claude_code_version_too_old` (the Claude Code version that sent the request is older than the model or organisation requires; services that call the model through Claude Code, such as the Claude Agent SDK, report it from the target function); `cmek_key_disabled` or `cmek_key_network_blocked` (the customer-managed encryption key cannot be used); `skill_read_blocked_undecryptable` (a custom skill the request uses cannot be read because of the workspace's encryption key state) | `config` |
 | No conversation state: a 404 whose Anthropic error object has `details.error_code` `thread_not_found` (a conversation kept on the server through beta `thread` was not found; the service can resend the whole conversation and continue) | `permanent` |
 | 401, 402, 403, 404 | `config` |
 | Billing or limit error: a 400 or a failed 200 response whose Anthropic error object has `type` `billing_error`, or whose error object, of any provider, has a message that contains `credit balance` or `usage limit` (case-insensitive) | `config` |
 | TLS certificate verification failure (a company proxy's certificate, a wrong address) | `config` |
+| A request URL whose scheme is not `http` or `https`, failed by the helper before sending (§Transport Exceptions); message F3 | `config` |
+| A non-stream 2xx body, read to the end, that is not a JSON object (§Reading Response Bodies); message F1. A 2xx JSON object with a non-null top-level `error` is not this row: it is a failed 200 response classified by that error object | `config` |
 | 429, 5xx (529 overloaded included) | `transient` |
 | 200 but the response ended in failure (Responses `status: failed`, a stream's failure end event) with error code or type `server_error` or `rate_limit_exceeded` (OpenAI), or `api_error`, `overloaded_error`, `rate_limit_error` or `timeout_error` (Anthropic) | `transient` |
 | The request never arrived (connection refused, name resolution failure, connect time-out, connection-pool wait time-out, request body not fully sent, a 408 saying the server did not receive the whole request); the connection dropped after sending and before the response headers (the server closed without a response); the connection dropped while receiving the body; a read time-out while receiving a non-stream body | `transient` |
@@ -270,21 +274,29 @@ The first matching row decides. The kind comes from the status code and the erro
 - The complete list of transient failures is [001 data-model §Transient Failures](../../001-swap-check/data-model.md#transient-failures); this table maps that list to response shapes. Reasons for the 408, 409, connect time-out, `timeout_error` and certificate rows: [research R9](../research.md#r9-classify-errors-by-status-and-code-at-the-http-layer).
 - The helper classifies a stream's failure end event with this table (§Reading Response Bodies). Failures the helper cannot see (transports outside §Captured Requests, a background response that fails later) are classified from the `ModelCallError` the target function throws.
 - Context length exceeded (400) and parameters the candidate model does not accept (400) are `permanent`: that the candidate cannot take the service's request is a result to compare.
-- Rows that read the error body's type, code or message (quota, billing, spending limit, organisation or key, conversation state) match only when the body was read. An error response the SDK closed before resending is classified by its status code alone. The SDKs read the error body of the last attempt to build the exception, so quota exhaustion still hits the `config` row on the last call.
+- Rows that read the error body's type, code or message (quota, billing, spending limit, organisation or key, conversation state) match only when the body was read. An error response the SDK closed before resending is classified by its status code alone. The SDKs read the error body of the last attempt to build the exception, so quota exhaustion still hits the `config` row on the last call. A thrown `ModelCallError` carries the `type` and `code` its exception read, so a 429 thrown with a quota code is `config` even when it matches a captured 429 whose body was unread ([data-model §Matching Reported Failures](../data-model.md#matching-reported-failures)).
 - New quota and billing error shapes are added to this table as providers introduce them (research R9).
 - The official SDKs resend 408, 409, 429, 5xx, connection errors and time-outs up to twice by default. The helper reports an error only after the SDK's retries failed. When the tool retries a `transient` trial, the whole service function runs again.
-- Certificate failures are `config` and the call is `failed` (not billed).
+- Certificate failures and URLs without an `http` or `https` scheme are `config` and the call is `failed` (not billed).
 
 ### Transport Exceptions
 
-Transport exceptions are not split by class name, because transport backends convert or hide exceptions (research R9). Whether response headers arrived, together with the original exception, tells apart: request never arrived, drop before headers, drop mid-body, certificate failure.
+The classes of the SDK-facing exceptions (`httpx`, `httpx2`, `openai`, `anthropic`) are never used, because transport backends convert or hide exceptions on the way up (research R9). Whether response headers arrived, together with the transport layer's original exception, tells apart: request never arrived, drop before headers, drop mid-body, certificate failure, time-out.
 
-- **Python**: follow `__cause__` to the end, and for each exception in the chain also look at exceptions inside its `args`. `__context__` is not followed (research R9). When httpcore hides the original exception with `raise … from None`, it still sits in `args[0]`. An `ssl.SSLCertVerificationError` anywhere in the chain means the certificate row; self-signed, expired, unknown issuer and hostname mismatch all raise it. A failure while writing the request body cannot be told apart from a connection closed before headers, on the httpx and httpx2 default transports or on aiohttp (K36 of [data-model §Known Limits](../data-model.md#known-limits)).
-- **Node**: follow the error's `cause` to the end and look at `code`.
+- **URL scheme**: before sending, the helper checks the request URL. When its scheme is not `http` or `https` (a `base_url` without `http://`), the request is not sent and fails at once as never arrived, with message F3: kind `config` (the scheme row of §Error Classification), outcome `failed`, not billed. In Node, a base URL that does not parse as a URL at all makes the SDK throw before calling `fetch`, so nothing is captured and the trial is Outcome row 2 (A1) with the SDK's exception.
+- **Cancel**: an exception caused by the request's abort signal, by task cancellation or by other service work closing the body, except a call the helper cut for the tool's `cancel` (§Cancel), is a cancel and takes the time-limit row (`timeout`), before headers or mid-body. The Node SDKs' own time limits arrive as a bare `AbortError` through the signal; a Python cancel arrives as `asyncio.CancelledError`.
+- **Fallback**: before the headers, an exception that names none of the causes here or below is a drop before headers, so the call may have been billed; this includes requests the HTTP client refuses while sending the request for a reason other than the scheme, such as a header value (K37 of [data-model §Known Limits](../data-model.md#known-limits)).
+
+- **Python**: follow `__cause__` to the end, and for each exception in the chain also look at exceptions inside its `args`. `__context__` is not followed (research R9). When httpcore hides the original exception with `raise … from None`, it still sits in `args[0]`.
+  - An `ssl.SSLCertVerificationError` anywhere in the chain means the certificate row; self-signed, expired, unknown issuer and hostname mismatch all raise it.
+  - An exception whose class or a base class is `ConnectError`, `ConnectTimeout`, `PoolTimeout` or `WriteTimeout` of httpcore or httpcore2, `ClientConnectorError` or `ConnectionTimeoutError` of aiohttp, `ConnectionRefusedError` or `socket.gaierror` means the request never arrived.
+  - Otherwise `TimeoutError` (`asyncio.TimeoutError`, `socket.timeout`) in the chain means a time-out: before headers and between stream events the time-limit row, while receiving a non-stream body a read time-out.
+  - A failure while writing the request body cannot be told apart from a connection closed before headers, on the httpx and httpx2 default transports or on aiohttp (K36 of [data-model §Known Limits](../data-model.md#known-limits)).
+- **Node**: follow the error's `cause` to the end and look at `code` and `syscall`.
 
   | undici code | Kind |
   |---|---|
-  | `UND_ERR_CONNECT_TIMEOUT` | Request never arrived: `transient` |
+  | `UND_ERR_CONNECT_TIMEOUT`, or a system error whose `syscall` is `connect` or `getaddrinfo` (`ECONNREFUSED`, `ENOTFOUND` and others) | Request never arrived: `transient` |
   | `UND_ERR_HEADERS_TIMEOUT` | `timeout` |
   | `UND_ERR_BODY_TIMEOUT` | `timeout` for a stream, `transient` otherwise |
   | `UND_ERR_SOCKET` | `transient`, before headers or mid-body |
@@ -309,7 +321,8 @@ Call `outcome` for failed calls: [data-model §Call Outcome](../data-model.md#ca
 ## Cancel
 
 - A call the helper cut on the tool's `cancel` stays `unanswered` and is not classified, because the tool has already abandoned the trial. Calls are cut only for asynchronous target functions.
-- A synchronous target function runs to its end. Requests already in flight complete and are recorded as they ended, with their usage; later requests are not sent. The `generate` response goes out when the function ends, and `shutdown` waits for such a function up to the same limit as for other unfinished calls ([data-model §Late and Later Requests](../data-model.md#late-and-later-requests) item 4).
+- A synchronous target function runs to its end. Requests already in flight complete and are recorded as they ended, with their usage; later requests are not sent. `shutdown` waits for such a function up to the same limit as for other unfinished calls ([data-model §Late and Later Requests](../data-model.md#late-and-later-requests) item 4). A synchronous function that returned an awaitable counts as asynchronous from then on, because the helper awaits it (§Return Values).
+- Every cancelled trial gets one response, sent as soon as the function has ended, and at once when the `cancel` arrives after the function returned while the helper waits for unfinished calls: a failure result with the trial's `calls` and `usage`. Its kind is `config` with that call's failure when a call failed with `config` (data-model Outcome row 1), else `timeout` with message F2. Calls that have not ended then join as at the end of the wait ([data-model §Late and Later Requests](../data-model.md#late-and-later-requests) item 2) and are charged the call reservation, so nothing is counted short. The tool never grades the response ([001 adapter-protocol §`cancel`](../../001-swap-check/contracts/adapter-protocol.md#cancel-notification-tool--adapter-optional)).
 - After that, requests from that trial context are not sent: they fail at once as if the request never arrived, and are not recorded as calls. An abandoned trial then costs nothing more, and where service code keeps running after the cut (Python synchronous functions, Node), a request the SDK resends after waiting does not enter the late response.
 - Only captured requests (§Which Requests) are blocked; other transports are not seen. Blocked requests are not reported as calls after the result (`calls` notifications) either.
 - Exceptions in background work caused by a blocked request are logged with log warning L3, so they are told apart from environment problems.
@@ -318,14 +331,25 @@ Call `outcome` for failed calls: [data-model §Call Outcome](../data-model.md#ca
 
 With `render=True` on a target, the helper runs the same service function in render mode when it receives `render`.
 
-1. In render mode no captured model request goes to the network, variant model or not, trial context or not. Each gets an error response that is not retried: HTTP 400 with error type `render_only`.
+1. In render mode no captured model request goes to the network, variant model or not, trial context or not. Each gets an error response that is not retried: HTTP 400 with error type `render_only`, and no `x-should-retry` header, because the SDKs do not resend 400. A request outside any context while a render runs is handled per [data-model §Outside the Trial Context](../data-model.md#outside-the-trial-context), where a running render counts as a trial in progress.
 2. The target function receives the same `case` as in generation, with `repeat` 0 and the seed of repeat 0 ([001 adapter-protocol §`render`](../../001-swap-check/contracts/adapter-protocol.md#render-optional-when-capabilitiesrender)). An adapter that picks fake-storage fixtures by case ID uses the same fixtures in render.
 3. The render target is the first variant model request `reply_call` is true for; without `reply_call`, the first request to the variant model. The helper records it and builds the render result from it however the service function ends (exception, fixed message).
 
 The render result:
 
 - `messages`: the request's system as the first `system` message, followed by the conversation items in order. Anthropic `system` and Responses `instructions` become that first `system` message; the `system` and `developer` messages at the start of Chat Completions and in Responses `input` keep their roles.
-  - Role names stay as in the request (`developer`, and Chat Completions `tool`, included). `content` is always a string: text parts join with `\n`; non-text parts leave only their kind, such as `[image]`, `[file]`, `[audio]`. Tool-call and tool-result parts (Anthropic `tool_use` and `tool_result` blocks, the Chat Completions `tool_calls` field) and reasoning items each become one line of canonical JSON.
+  - Role names stay as in the request (`developer`, and Chat Completions `tool`, included). `content` is always a string: each part gives one line by the table below, and the lines join with `\n` in the parts' order. A string `content` is kept as it is; a missing, null or empty `content` gives no line.
+  - A Chat Completions message gives the lines of its `content` first, then one line per element of its `tool_calls` field in order, then one line for a legacy `function_call` field, each element or field as canonical JSON. A message with an empty or null `content` and `tool_calls` thus holds only the tool-call lines.
+
+    | Part (by `type`, the first matching row) | Line |
+    |---|---|
+    | Anthropic blocks whose `type` ends in `tool_use` or `tool_result` (`tool_use`, `server_tool_use`, `mcp_tool_use`, `tool_result`, `web_search_tool_result` and the other server-tool results), `thinking`, `redacted_thinking` | The whole part as canonical JSON |
+    | Any part with a string `text` field (`text`, `input_text`, `output_text`) | That text |
+    | `refusal` (Responses) | Its `refusal` text |
+    | `image_url`, `input_image`, `image` | `[image]` |
+    | `file`, `input_file`, `document` | `[file]` |
+    | `input_audio`, `audio` | `[audio]` |
+    | Any other part | Its `type` in brackets, `[]` when it has none |
   - Input items that are not messages (Responses `reasoning` items, the tool-call and result items of [data-model §Finish Reasons](../data-model.md#finish-reasons)) become `{role: <the item's type>, content: <the item's canonical JSON>}`.
   - A Responses `input` that is a string is one `user` message. An Anthropic `system` block list is one `system` message of its text blocks joined with newlines. Several `system` or `developer` messages at the start of Chat Completions stay separate, in order.
   - A Responses `prompt` (a reference to a stored prompt) becomes `{role: "prompt", content: <its canonical JSON>}`, placed right after the leading `system` and `developer` messages (those built from `instructions` included), or first when there are none. The prompt body is not in the request, so anchors cannot be checked against it ([spec §Assumptions](../spec.md#assumptions)), and the tool's input token estimate takes this into account ([001 data-model §Cost](../../001-swap-check/data-model.md#cost)).
@@ -333,7 +357,7 @@ The render result:
 - `fingerprint`: the render fingerprint of `{messages, tools}` ([001 data-model §Identifiers and Hashing](../../001-swap-check/data-model.md#identifiers-and-hashing)).
 - `maxOutputTokens`: the request's output limit, whichever of `max_tokens`, `max_completion_tokens` and `max_output_tokens` is present.
 
-A render function given by the adapter (`@adapter.render`) has its result normalised the same way before the fingerprint is computed ([research R7](../research.md#r7-render-by-running-the-service-in-render-mode)).
+A render function given by the adapter (`@adapter.render`) has its result normalised the same way before the fingerprint is computed ([research R7](../research.md#r7-render-by-running-the-service-in-render-mode)). Its `messages` are read as Chat Completions messages (roles kept, leading `system` and `developer` messages kept separate, `content` a string or a part list, `tool_calls`, `function_call`), and a part list may hold any part of the table above, whichever API it comes from, since the type names do not collide.
 
 ### When Render Fails
 
@@ -503,6 +527,9 @@ Sentences are identical in both helpers and use the Python names (`reply_call`, 
 | A11 | §When Render Fails | "Could not reach the render target request." |
 | A12 | `ModelCallError` | "`ModelCallError` takes exactly one of `status`, `kind` and `call`." |
 | A13 | §The `call` Check | "`call` takes only a failure the service received, and with `reply_call` only a failure of an answer call." |
+| A14 | §Return Values; data-model §Outcome Decision, non-text return | "The target function returned a value that is not text, `fallback(text)` or a valid `Result`. Return the shipped text; a missing `return` gives None, and only a discarded `Result` may have `final=None`." |
+| A15 | §Target Options, `render` | "This target has no render mode. Set `render` on it, or move targets without render mode to a separate adapter, which then does not declare `render`." |
+| A16 | data-model §Outcome Decision, decision failure | "Deciding the trial's outcome failed: <exception>. If `reply_call` or `discard_on` raised it, fix that function; otherwise report it as a helper defect." |
 
 - An adapter error that data-model Outcome row 9 decides has the message "The target function raised <exception>. If the service raises it when it discards an answer, add it to `discard_on` (a target function that gives raw catches it and returns `Result(raw=, kind=\"discarded\", discard_reason=)`); if the service's time limit raised it, catch it and throw `ModelCallError(kind=\"timeout\")`."
 - Placeholders are filled the same way in both helpers:
@@ -511,9 +538,19 @@ Sentences are identical in both helpers and use the Python names (`reply_call`, 
   - `<exception>`: the message is first trimmed of the 25 `White_Space` code points of [data-model §Comparing Text](../data-model.md#comparing-text). When the trimmed message is empty, the text is the class name alone; otherwise it is `Class: message`. Python uses `type(e).__name__` and `str(e)`; TypeScript uses `e.constructor.name` and `e.message`, and `String(e)`, trimmed the same way, for values that are not `Error`. No period is added after it when it already ends with `.`, `!` or `?`. The same text is `discardReason` (data-model Outcome row 8), which is then cut to 200 code points; `<exception>` is not cut.
   - `<reason>` (L1): `git <subcommand>`, or the file operation (`lstat`, `read`) and its path relative to `service_dir`, then `: ` and git's last non-empty stderr line (`exit code N` when it is empty) or the OS error code (`ENOENT`, `EACCES`). The stderr line is trimmed as the `<exception>` message is, and the period is handled as for `<exception>`.
 
+### Failure Messages
+
+The `message` of a failure the helper builds itself, without a provider error object or an exception to quote.
+
+| ID | Where | Message |
+|---|---|---|
+| F1 | §Reading Response Bodies item 4; §Error Classification | "The response body is not a JSON object." |
+| F2 | §Cancel | "The tool cancelled the trial." |
+| F3 | §Transport Exceptions, URL scheme | "The request URL does not start with http:// or https://; check base_url." |
+
 ### Trial Warnings
 
-Attached to the attempt's `warnings` ([001 adapter-protocol §`generate`](../../001-swap-check/contracts/adapter-protocol.md#generate-required)) and grouped by the comparison as `adapter-warnings` ([001 data-model §Warnings](../../001-swap-check/data-model.md#warnings)). None changes the outcome.
+Attached to the attempt's `warnings` ([001 adapter-protocol §`generate`](../../001-swap-check/contracts/adapter-protocol.md#generate-required)) and grouped by the comparison as `adapter-warnings` ([001 data-model §Warnings](../../001-swap-check/data-model.md#warnings)). None changes the outcome. When several apply, each is attached once, in ascending order of the ID number (W6 before W7, W8 before W10).
 
 | ID | Condition | Sentence |
 |---|---|---|

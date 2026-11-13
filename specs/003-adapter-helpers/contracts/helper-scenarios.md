@@ -5,8 +5,9 @@
 Expected results of the helper contract tests (SC-002), the two-language parity tests (SC-003) and the uncaptured-call tests (SC-005). Every row runs in both helpers, against the local mock API servers, unless it names one language.
 
 - "Outcome row N" is a row of [data-model §Outcome Decision](../data-model.md#outcome-decision).
-- "K1" to "K36" are rows of [data-model §Known Limits](../data-model.md#known-limits): the expected result is the limit, not the service's real behaviour.
-- A, W and L IDs are the messages of [helper-api §Messages](helper-api.md#messages).
+- "K1" to "K37" are rows of [data-model §Known Limits](../data-model.md#known-limits): the expected result is the limit, not the service's real behaviour.
+- A, F, W and L IDs are the messages of [helper-api §Messages](helper-api.md#messages).
+- **Cut styles per client**: cancelling an awaited read exists on Python async clients (aiohttp included) and Node; leaving the read loop (`break`, `close`, also at the first event after a deadline) exists everywhere; stopping to wait is `future.result(timeout=)` on Python sync clients, `asyncio.wait` without cancelling on Python async clients and `Promise.race` in Node. A row that names a style runs on the clients that have it. A row that says only that the service's time limit cut the stream or stopped waiting runs each style the client has, with the same expected result, because the styles are treated alike when the adapter gives raw ([data-model §Cut Styles](../data-model.md#cut-styles)), except under view 3 (K8, K9) and for a request the service only stopped waiting for that ended before the function returned (K17). Where they differ, and without raw (K7), the row names each style's result.
 
 ## Two-Language Parity
 
@@ -26,7 +27,7 @@ Both helpers give the same values in every row ([spec FR-024](../spec.md#functio
 | S-PAR-10 | `retry-after: 1.5`; `30s`, `-1`, `1e3`; `0.5005`; a number of 400 nines | 1500; not recorded; 500; not recorded |
 | S-PAR-11 | `ModelCallError` `retry_after_ms` of -1 or NaN | Not recorded |
 | S-PAR-12 | An HTTP date; a past date | The difference; 0 |
-| S-PAR-13 | `treeHash` scenarios of §Render and Version (S-RV-04 to S-RV-17) | `version`, `dirty`, `treeHash` |
+| S-PAR-13 | `treeHash` scenarios of §Render and Version (S-RV-04 to S-RV-19) | `version`, `dirty`, `treeHash` |
 
 ## Uncaptured Calls
 
@@ -58,8 +59,14 @@ Rules: [data-model §Captured Call](../data-model.md#captured-call), [data-model
 | S-RESP-08 | Variant model mismatch | Outcome row 4 |
 | S-RESP-09 | Render mode; `print` in the service | Render result, no request sent; output on stderr |
 | S-RESP-10 | Four concurrent requests | Contexts kept apart |
-| S-RESP-11 | Cancel | helper-api §Cancel |
+| S-RESP-11 | Cancel: of an asynchronous function in flight; of a synchronous function, which runs to its end; after the function returned while the helper waits for an unfinished call; each also after a captured 401 | One failure result each, sent as soon as the function has ended (at once in the third case): `timeout` with F2, or `config` with the 401's failure when a `config` failure was seen. Cut calls `unanswered` without `errorKind`; the unfinished call of the third case joins as `unanswered` and is charged the call reservation |
 | S-RESP-12 | Background mode: the first response has `status` `queued` and the target function returns text without raw | data-model §Raw Cannot Be Determined row 3, adapter error A6 |
+| S-RESP-13 | The target function returns None (a missing `return`), alone, after a captured 429 the service swallowed, and after a captured 401; also `fallback(123)`, `Result(final=None)` with kind `model` or `fallback`, and in TypeScript a plain object not built with `result()` | A14 with `calls` and `usage` in its data, also after the 429 (not Outcome row 3); after the 401, Outcome row 1, `config`. `Result(final=None, kind="discarded")` is valid: a discard without `final` |
+| S-RESP-14 | Python: a synchronous target function returns the coroutine of an asynchronous service function | The coroutine is awaited in the trial context; its text is the shipped text |
+| S-RESP-15 | An adapter with two targets, one with `render` and `postprocess=False`, the other with neither; a `render` request for each | `capabilities.render` and `capabilities.postprocess` true; the first renders, the second is A15 |
+| S-RESP-16 | A response with nothing to read, the service returning the empty text: Chat Completions `choices: []`; a Responses `output` holding only a `reasoning` item, `status` `incomplete` with reason `max_output_tokens`; an Anthropic `content: []` with `end_turn`; each also with that `choices`, `output` or `content` key missing | An empty answer (001 data-model §Trial Outcomes row 6), `answers` 1, finish reason `other`, `length`, `stop`; never A4 |
+| S-RESP-17 | `reply_call` raises; a `discard_on` function raises; each also after a captured 401; `reply_call` raises in render; an unfinished call when `reply_call` raises | A16 with `calls` and `usage` in its data; after the 401, Outcome row 1, `config`; in render A16, not A11; the result waits for the unfinished call and records it as it ended |
+| S-RESP-18 | Two calls: one fully received, one failed by a drop mid-body; one still running when the function returns | Each ended call's `latencyMs` runs from the wrapped `send` or `fetch` call to its end (a pooled connection wait included); the call still running has none |
 
 ## Answer Calls
 
@@ -142,7 +149,7 @@ Rules: [data-model §When the Adapter Gives Raw](../data-model.md#when-the-adapt
 | S-STR-20 | `break` at a configured string without `stopped_early` | `timeout` with W6 |
 | S-STR-21 | An adapter that always gives `stopped_early`; the service's time limit cancels an awaited read | `timeout` |
 | S-STR-22 | The same adapter; the time limit fires while the service processes each chunk from the iterator with `await` | No awaited read, so it passes as complete (K9). Without `stopped_early`, or through a Node stream helper: `timeout` |
-| S-STR-23 | `stopped_early` with `kind="fallback"` or an empty raw | Ignored, W7 |
+| S-STR-23 | `stopped_early` with `kind="fallback"` or an empty raw | Ignored, W7. With an empty raw the cut stream stays view 1: a stream the time limit cut gives `timeout` with W6 without the stop-string clause, and a regeneration stream cut after a first answer stream read to the end, without `answers`, gives the cut last answer's `timeout` with that W6, each before W7 |
 | S-STR-24 | A streaming tool loop (earlier calls are tool-call streams), the last call cut for content | No `kind` with `finish_reason="stop"`: the earlier calls do not block the check, `timeout` with W6. `kind="fallback"`: a fallback. Resent as a stream after the cut and fully received and shipped: normal, raw is the pre-cut text; `answers=2` gives 2 |
 | S-STR-25 | The same with `answer_tool` on the target | The earlier calls block the check, but the cut last answer gives `timeout`. A last call ending in a provider error that the service swallows passes (K12); when the target function reads that call's `outcome` and reports `ModelCallError(call=)`, `transient` |
 | S-STR-26 | A streaming tool loop hits its limit, a fixed message, `Result(raw="", kind="fallback")` | `answers` 0, a fallback |
@@ -154,6 +161,7 @@ Rules: [data-model §When the Adapter Gives Raw](../data-model.md#when-the-adapt
 | S-STR-32 | A shared message for time limits and swallowed call failures with no other marker; the deadline fires and the service leaves the iterator | `Result(raw="", kind="fallback", finish_reason="other")`: `timeout` with W6. `fallback(text)` alone: data-model §Raw Cannot Be Determined adapter error. Throwing `kind="timeout"` on the message alone: `timeout` |
 | S-STR-33 | The same service swallows the answer request's 429 and ships the same message | The same `Result`: `transient` with W5. Throwing `kind="timeout"` on the message alone: no candidate matches, so a new call and `timeout` |
 | S-STR-34 | The same service fully receives the answer stream, validation fails, the same message | An empty raw: an empty answer, and that answer is not graded on raw rules (K20). Reading the collected stream's finish reason and giving the received text with `kind="fallback"` and `finish_reason="other"`: a fallback graded on raw rules |
+| S-STR-35 | The service stops waiting for the answer stream under its own time limit without cutting it (`Promise.race`, `future.result(timeout=)`) and ships a fixed message, given as `Result(raw="", kind="fallback", finish_reason="other")` | The stream is an unfinished call, or with `future.result(timeout=)`, whose thread reads the stream, a cut stream that became unread when the thread is between chunks (K34); either way the failure check gives `timeout` with W6, whether it later finishes, fails or is still running when the wait ends; the same as when the service cancels it (spec User Story 4, scenario 8) |
 
 ## Regeneration in Streaming Services That Give Raw
 
@@ -161,7 +169,7 @@ Rules: [data-model §Answer Candidate Calls When Raw Is Given](../data-model.md#
 
 | ID | Scenario | Expected |
 |---|---|---|
-| S-REGEN-01 | A streamed first answer filtered, a modified request streamed for regeneration and cut by the service's time limit, the first answer refined and shipped | `Result(raw=<first answer>, finish_reason="stop", answers=2)`: normal, the first answer's violations count on raw rules. Without `answers`: cut last answer, `timeout` with W6. `kind="fallback"`: a fallback |
+| S-REGEN-01 | A streamed first answer filtered, a modified request streamed for regeneration and cut by the service's time limit, the first answer refined and shipped | `Result(raw=<first answer>, finish_reason="stop", answers=2)`: normal, the first answer's violations count on raw rules. Without `answers`: cut last answer, `timeout` with W6. The same `Result` with `kind="fallback"` added: a fallback, `answers` 2. `kind="fallback"` without `answers`: a fallback, `answers` 1, because only `Result(answers=)` counts the cut answer (data-model §Cut Last Answer) |
 | S-REGEN-02 | The same, the regeneration stream cut before its first character | `answers=2`: normal; a cut answer stream counts even without text |
 | S-REGEN-03 | A same-request re-draw on `content.done` of the openai-node stream helper, cut by the service's time limit, first answer shipped | The first stream ended when its generation-end marker was read, even though the SDK read its usage and `[DONE]` after the re-draw was sent. Without `answers`: cut last answer, `timeout`. `answers=2`: normal. The same as the Python service |
 | S-REGEN-04 | The same on Responses `response.output_text.done` | `answers=2`: normal. Without it: `timeout` or normal depending on whether `response.completed` arrived before the re-draw was sent (K14) |
@@ -179,7 +187,7 @@ Rules: [data-model §Answer Candidate Calls When Raw Is Given](../data-model.md#
 | S-REGEN-16 | The original request streamed; when it is late, without cutting it, a modified request (same system, asking for a short answer) also streamed; the original finishes first, the modified one is cut, the original's answer shipped | `reply_call` true for both and `Result(raw=, finish_reason="stop", answers=1)`: normal, `answers` 1. Without `reply_call` or `answers`: cut last answer, `timeout` with W6 |
 | S-REGEN-17 | A stalled answer stream cut (an awaited read cancelled, `break` with or without close), the same request resent, the resend gets 429 after the SDK's retries, a fixed message shipped | `ModelCallError(status=429)` or `call=`, or an empty raw with `kind="fallback"`, or `fallback(text)` without raw: `transient` in both languages, no call counted twice. Also when the service raises the SDK exception instead, or closes the cut stream after the resend failed. A resend that also ends at the time limit with `ModelCallError(kind="timeout")`: `timeout`. When the service only stopped waiting for the first stream and the target function returns a value without throwing: the unfinished call gives `timeout`; when that stream came in full before the function returned, a value without raw is an adapter error, and an empty raw makes that stream the raw call, so an adapter error without `finish_reason` and an empty answer with it (`answers` 1, 001 data-model §Trial Outcomes row 6) (K17). Throwing `status=429` gives `transient` either way |
 | S-REGEN-18 | The same request sent alongside without cutting; after the SDK's last retry is sent and before its 429 arrives, the service cuts the first stream without an awaited read (Python or Node `create` iterator `break`, an immediate `abort()` in a Node stream helper handler) and ships a message | An empty raw with `kind="fallback"`, or throwing `status=429` or `call=`: `transient`, no call counted twice. A value without raw, or the service raising: the first stream overlaps that request as a successful call, an adapter error (K7). Cut before the last retry was sent: no overlap, `transient` in all forms. Two streams sent together where the winner cut the other and then ended in a mid-stream provider error: the same limit (K7) |
-| S-REGEN-19 | The same request as two streams; the first to end fails with 429 after the SDK's retries and the service cuts the other and ships a message | Throwing that failure with `status=429` or `call=`: `transient`, no call counted twice. Not thrown: the cut stream looks like the last failure, `timeout` or an adapter error |
+| S-REGEN-19 | The same request as two streams, the second sent while the first is still running; the first to end fails with 429 after the SDK's retries and the service cuts the other and ships a message | Throwing that failure with `status=429` or `call=`: `transient`, no call counted twice. Not thrown: the cut stream looks like the last failure, `timeout` or an adapter error |
 | S-REGEN-20 | The service cut, as late, a stream the SDK had resent after a 429, and the target function gives the earlier 429 as `call=` | A request followed it, so A13 whatever the cut style |
 
 ## Other Raw-Giving Scenarios
@@ -200,6 +208,7 @@ Rules: [data-model §Raw Call](../data-model.md#raw-call), [data-model §Answer 
 | S-RAW-10 | The answer through an uncaptured transport, only a same-model classification captured and excluded by `reply_call`; the answer is empty (reasoning used the whole output limit) and turned into a message: `Result(raw="", kind="fallback", model=, usage=, finish_reason="length")` | Not the uncaptured-call exception: the call is added, `answers` 1, an empty answer. Also with a swallowed other-model side-call failure |
 | S-RAW-11 | No captured call, only an uncaptured transport; a same-model classification before the answer refuses and a message is shipped | `Result(raw="", kind="fallback", model=, answers=0, finish_reason="other")`: a fallback, `answers` 0. Without `model=`: A7. Without `answers`: an empty answer |
 | S-RAW-12 | A stream answer given as `Result(raw=)` without `finish_reason=` | The raw call is the last unread response and the last answer, so the finish-reason check gives adapter error A9 |
+| S-RAW-13 | A `Result` without `final`: `Result(raw="Hi.", finish_reason="stop")`, `Result(raw="", kind="fallback", answers=0)`, `Result(raw="Hi.", kind="discarded", discard_reason="filtered", finish_reason="stop")`; and `final=None` given with kind `model` and with `fallback` | Shipped text `Hi.`; the empty string; no `final`. `final=None`: A14 |
 
 ## Status Codes
 
@@ -221,6 +230,7 @@ Rules: [helper-api §Error Classification](helper-api.md#error-classification), 
 | S-STAT-12 | 409 | `permanent` |
 | S-STAT-13 | 529 | `transient` |
 | S-STAT-14 | Responses `failed` with `server_error`, and with other codes | With usage: `failed`, priced at it. Without: `unanswered` |
+| S-STAT-15 | A 200 non-stream response whose body, read to the end, is an HTML page, or JSON that is not an object (`[]`); a 200 JSON object with a top-level `error` (`server_error`, and `insufficient_quota`) | A failed call, `unanswered` with status 200, `config` (Outcome row 1) with message F1; never A5. The `error` object: a failed 200 response classified by it, `transient` and `config`; never an empty answer |
 
 ## Connections and Time
 
@@ -251,6 +261,10 @@ Rules: [helper-api §Reading Response Bodies](helper-api.md#reading-response-bod
 | S-CONN-21 | Non-stream requests and the aiohttp backend | Both helpers split not-reached, before-headers and mid-body the same way |
 | S-CONN-22 | A `with_streaming_response` response dropped mid-body | The SDK's retry count and the exception the service receives equal those without the helper |
 | S-CONN-23 | The service reads only the headers or one chunk of a `with_streaming_response` response (Node `.asResponse()`) and returns | Not waited for; an unread response in both languages (an adapter error without raw) |
+| S-CONN-24 | A request with a header value the HTTP client refuses while sending it (a line break in a header value) | Python: httpcore raises `LocalProtocolError` while writing the headers after connecting, so `transient`, `unanswered` (K37). Node: the SDK's `Headers.append` throws a `TypeError` before `fetch`, so nothing is captured and the trial is Outcome row 2 (A1, the raised form) |
+| S-CONN-25 | A `base_url` without a scheme (`localhost:8080/v1`, and in Python `api.example.com/v1`) | Not sent; `config`, `failed`, not billed, message F3. Node `api.example.com/v1`: the SDK throws before `fetch`, Outcome row 2 (A1) |
+| S-CONN-26 | A name resolution failure (`socket.gaierror`, Node `getaddrinfo` `ENOTFOUND`) | Never arrived: `transient`, `failed` |
+| S-CONN-27 | httpcore `WriteTimeout` while sending the request body | Never arrived (request body not fully sent): `transient`, `failed` |
 
 ## Side Calls
 
@@ -261,7 +275,7 @@ Rules: [data-model §Outcome Decision](../data-model.md#outcome-decision), [data
 | S-SIDE-01 | A side call fails, the service swallows it and returns a value | Result unchanged |
 | S-SIDE-02 | A side call fails and the service raises | Outcome row 3 |
 | S-SIDE-03 | A side call gets 401 | Outcome row 1 |
-| S-SIDE-04 | Another model's input safety check before the answer ends in 429 after the SDK's retries; the service ships a fixed message without requesting the answer | Returning a value: Outcome row 3, `transient`. A raw-giving service with an empty raw: the failure check, `transient`. Also with a same-model check excluded by `reply_call` |
+| S-SIDE-04 | Another model's input safety check before the answer ends in 429 after the SDK's retries; the service ships a fixed message without requesting the answer | Returning a value: Outcome row 3, `transient`. A raw-giving service with an empty raw and no `model=`: there are no searched calls, so data-model §No Searched Calls gives `transient` with no warning. Also with a same-model check excluded by `reply_call` |
 | S-SIDE-05 | The same check through uncaptured `/moderations` | The service raises and the target function throws `status=429` with `usage` 0: `transient`. Not thrown: Outcome row 2 adapter error |
 | S-SIDE-06 | Another model's safety check and the answer stream sent together with `asyncio.TaskGroup`; the check ends in 429 after the SDK's retries and the answer task is cancelled | Throwing that failure with `status=429` and `model=`, whether the service raises or ships a fixed message: `transient`. Not thrown: a cancel landing on an awaited chunk read makes the cut answer request decide, `timeout`; landing while a chunk is processed gives Outcome row 3 `transient` when the service raises, and the data-model §Raw Cannot Be Determined adapter error when it ships a fixed message |
 | S-SIDE-07 | The same with `except*` swallowing the exception and a fixed message; the target function throws the third argument's `error` and `model` | 429: `transient`; 400: `permanent`. Matched to that call even with `reply_call`, so no call counted twice; with a same-model check excluded by `reply_call`, added as a new call |
@@ -320,7 +334,7 @@ Rules: [helper-api §`ModelCallError`](helper-api.md#modelcallerror), [data-mode
 | S-MCE-04 | `kind` `timeout`; `connect`; `tls` | `timeout`, call reservation; `transient`, added as `failed` without billing when calls were captured; `config` |
 | S-MCE-05 | No captured call: `usage` 0; no `usage` | Cost 0; the attempt reservation |
 | S-MCE-06 | Thrown together with a captured side call's `config` failure | `config` |
-| S-MCE-07 | Two or more of `status`, `kind`, `call`, or none | A12, even with `ValueError` in `discard_on` |
+| S-MCE-07 | Two or more of `status`, `kind`, `call`, or none | A12, even with `ValueError` in `discard_on`. With a captured `config` failure: `config` |
 | S-MCE-08 | `call` with a captured failure the service swallowed | That call's classification; no call counted twice |
 | S-MCE-09 | `call` with a successful call, a 429 the SDK recovered from, a side call excluded by `reply_call`, or a 503 whose SDK resend was still awaited when the service ended | A13 in every case |
 | S-MCE-10 | A stream starts with 200 and ends with an `error` event (`overloaded_error`); the service raises and the target function throws `status` 200 with `type` | That stream call already failed as `transient`, so the matching-failure candidate matches: `transient`. Ending in the exception without throwing: Outcome row 3, `transient` |
@@ -339,6 +353,8 @@ Rules: [helper-api §`ModelCallError`](helper-api.md#modelcallerror), [data-mode
 | S-MCE-23 | The answer through an uncaptured transport; a same-model memory summary excluded by `reply_call` dropped mid-body and swallowed; the target function throws `kind` `timeout` | Not matched to the memory summary; a new call, `timeout` |
 | S-MCE-24 | After a fully received answer, a same-model validation stream excluded by `reply_call` ends in an `error` event with `type` `overloaded_error` and an unlisted `details.error_code`; the service ships a message; the target function throws that call's `error` | Added as a new call: `transient` by type |
 | S-MCE-25 | The answer through an uncaptured transport; the earlier attempt of a same-model side call excluded by `reply_call` recovered by SDK retry after 429; the target function throws the answer's 429 as `status` | A new call, `transient`; no call is true for `reply_call`, so no W10 |
+| S-MCE-26 | A well-formed `ModelCallError` with `discard_on` true for every exception (a function returning true, or `Exception` listed) | Decided as the thrown failure, never a discard |
+| S-MCE-27 | A captured 429 with `retry-after: 2` that the service raised, thrown with `status=429` and `retry_after_ms=9000`; the same thrown value with no matching call | `transient`, `retryAfterMs` 2000 from the matched call; 9000 on the added call and the result |
 
 ## Cost
 
@@ -350,7 +366,7 @@ Rules: [data-model §Derived Result Fields](../data-model.md#derived-result-fiel
 | S-COST-02 | The same without `usage` | The reservation |
 | S-COST-03 | A stream response with `Result(raw=, finish_reason=, usage=)` | The raw call's `usage` |
 | S-COST-04 | The answer outside the captured transports, only side calls captured | `Result(usage=)` is added to `calls` as the uncaptured call; without it, that call is charged its reservation. The same when the side calls use the variant model (one or two branches), and the side calls' `usage` stays. A side call that answers in text gives W4; excluded by `reply_call`, no warning |
-| S-COST-05 | A captured answer refined and given as `Result(raw=, finish_reason=)` | Added as an uncaptured call with W4 |
+| S-COST-05 | A captured answer refined and given as `Result(raw=, finish_reason=, model=)` | Added as an uncaptured call with W4. Without `model=`: A7 |
 | S-COST-06 | A Responses background response (first request `queued`) with `Result(raw=, finish_reason=, usage=)` | The first request's `usage`; not counted twice |
 | S-COST-07 | A streaming service with an empty raw and a variant side call that ended only in tool calls | The side call is not chosen as the raw call; its `usage` stays |
 | S-COST-08 | A streaming tool loop of three calls with `Result(raw=, finish_reason=)` | `fingerprint` from the first request, equal to the render fingerprint; all three `branch: answer`; the first two at their reservation |
@@ -386,6 +402,7 @@ Rules: [data-model §Outside the Trial Context](../data-model.md#outside-the-tri
 | S-CTX-22 | A request sent after the result | A `calls` notification |
 | S-CTX-23 | Background requests left at `shutdown` | Waited for and reported before the response |
 | S-CTX-24 | An exception in background work | Log warning L2 |
+| S-CTX-25 | A request from a thread without the context while only a render runs; while a render and a `generate` run | The render-mode 400 and a normal render; both end as A10 and the request gets the render-mode 400. The mock server receives no request in either case |
 
 ## Render and Version
 
@@ -410,3 +427,7 @@ Rules: [helper-api §Render Mode](helper-api.md#render-mode), [data-model §Serv
 | S-RV-15 | A file deleted while computing: a listed path missing at `lstat` | Left out, no failure |
 | S-RV-16 | `service_dir` a subfolder of a monorepo | Changes in other folders do not affect `dirty` |
 | S-RV-17 | A case file that is a link to a file in the service folder | Its target is left out too |
+| S-RV-18 | A `service_dir` that does not exist; git that fails to start with `EACCES`; git not installed | None of the three values, with L1 (`lstat .: ENOENT`; `git rev-parse: EACCES`); none of the three, no L1 |
+| S-RV-19 | An untracked nested repository removed while `treeHash` is computed, so its git fails | That folder left out, no failure |
+| S-RV-20 | A Chat Completions assistant message with text `content` and two `tool_calls`; one with `content` null and with `""`, and `tool_calls`; an Anthropic assistant message with `redacted_thinking`, `text` and `tool_use` blocks | The text line first, then one canonical JSON line per tool call in order; only the tool-call lines when `content` is null or empty; one line per block in block order, the `redacted_thinking` block as its canonical JSON |
+| S-RV-21 | A render function whose part lists hold Responses `input_text`, `input_image` and `refusal` parts and Anthropic `image`, `document`, `tool_use`, `server_tool_use` and `web_search_tool_result` blocks, and a message with a legacy `function_call` | Normalised as Chat Completions messages with those parts: text joined, the refusal text, `[image]`, `[file]`, a canonical JSON line for each tool block and for `function_call` |

@@ -138,7 +138,7 @@ One mock server, `adapters/python/mock_api/server.py`, answers both the OpenAI a
 
 ### D11. Helper messages are English sentences
 
-Helper adapter error messages (A1–A13), trial warnings (W1–W10) and log warnings (L1–L3) are English sentences whatever `--lang` says, because the adapter process writes them into trial records and logs, which are language-independent data. The tool's own messages follow `--lang` (001 plan D11). See [helper-api §Messages](contracts/helper-api.md#messages).
+Helper adapter error messages (A1–A16), failure messages (F1–F3), trial warnings (W1–W10) and log warnings (L1–L3) are English sentences whatever `--lang` says, because the adapter process writes them into trial records and logs, which are language-independent data. The tool's own messages follow `--lang` (001 plan D11). See [helper-api §Messages](contracts/helper-api.md#messages).
 
 ## Risks
 
