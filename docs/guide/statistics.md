@@ -14,15 +14,14 @@ The unit of judgement is a cell: one rule, one language, one output surface.
 - `final` is the text the service shipped after post-processing.
 - `trial` is the whole trial, used only by `completed`.
 
-Languages are never pooled for a verdict. Services often keep a prompt per language, so a model can
-break a rule in Japanese only, and a 30-point drop in one of three languages is only a 10-point drop
-when pooled. The report shows pooled values per rule for reference, without a verdict.
+Languages are never pooled for a verdict, because a model can break a rule in one language only.
+The report shows pooled values per rule for reference, without a verdict.
 
 ## Compliance
 
-A cell's compliance is the share of passing trials per case, averaged over cases. Cases are
-different situations and repeats re-measure the same one, so each case weighs the same however many
-of its trials were judged. Only cases that both runs share, with identical content, are compared.
+A cell's compliance is the share of passing trials per case, averaged over cases, so each case
+weighs the same however many of its trials were judged. Only cases that both runs share, with
+identical content, are compared.
 
 Intervals are Wilson score intervals, widened by a design effect when repeats of one case agree
 with each other more than chance would explain. The difference between candidate and baseline has
@@ -33,8 +32,8 @@ its own interval:
 ```
 
 The lower bound uses the configured confidence (`stats.confidence`, two-sided 95% by default). The
-upper bound of a gated cell is corrected for the number of gated cells, because a block needs only
-one regressed cell and every extra cell is another chance of a false block. In the Pogo example
+upper bound of a gated cell is corrected for the number of gated cells, so that more gated cells do
+not mean more false blocks. In the Pogo example
 there are 5 gated cells, so the gated `raw` cell above uses z = 2.576 for its upper bound, while
 the ungated `final` cell of the same rule uses 1.96 on both sides:
 
@@ -42,17 +41,13 @@ the ungated `final` cell of the same rule uses 1.96 on both sides:
   script-ja          ja  final  blocking   100.0% → 56.7%  -43.3pp  [-51.3, -35.3]  Regressed
 ```
 
-The lower bound is not corrected. Passing requires every gated cell to hold, so each cell at the
-configured level already keeps the chance of a false pass at that level.
+The lower bound is not corrected.
 
 With fewer than 10 cases, the upper bound uses a Student t quantile with one degree of freedom
-fewer than the number of cases, in place of the normal quantile. The spread between cases is then
-estimated from a handful of values and often comes out too small by chance, which would make the
-interval too narrow and block candidates that are no worse. With 5 gated cells and 3 cases the
-quantile grows from 2.576 to 9.925. The price is that such cells seldom block, even when a rule
-collapses: at margin 0.10 and 5 repeats, a drop from 0.95 to 0.20 is detected 55.9% of the time
-with 5 cases and 9.1% with 3 cases when cases are alike (42.8% and 7.2% when they differ a lot),
-and every time with 10 cases. The lower bound, which decides passing, keeps the normal quantile.
+fewer than the number of cases, in place of the normal quantile, so that a few similar cases do not
+block a candidate that is no worse. With 5 gated cells and 3 cases the quantile grows from 2.576 to
+9.925, so such cells seldom block, even when a rule collapses. The lower bound, which decides
+passing, keeps the normal quantile.
 
 ## Verdicts
 
@@ -100,9 +95,8 @@ gated.
 | `undecided` | A gated cell is undecided, or a gated rule has no judged cell                                                         | 2    |
 | `pass`      | Every gated cell held or got better                                                                                   | 0    |
 
-Rows are checked from the top. The first row checks the premise of the comparison before the gate
-config, so a half-finished or empty comparison is never a pass. `no-gate` exits 0 because nothing
-can block, but it is shown apart from `pass` because nothing was judged. The full table, with
+Rows are checked from the top, so a half-finished or empty comparison is never a pass. `no-gate`
+exits 0 because nothing can block, but it is shown apart from `pass` because nothing was judged. The full table, with
 reason codes, is in [data-model §Gate](../../specs/001-swap-check/data-model.md#gate).
 
 ## When the result is undecided

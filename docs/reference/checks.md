@@ -161,9 +161,8 @@ check: { type: completed }
 
 Graded once per trial on the surface `trial`, from the shipped result. It fails on rejections,
 time-outs, empty answers, discards, fallbacks, empty shipped text and answers that did not finish
-with `stop`. Transient and adapter errors leave the denominator, except when every finished trial
-of a case, at least two, ended in one of them for one variant while the other variant answered
-that case; those trials count as systematic failures. The full table is
+with `stop`. Transient and adapter errors are left out, unless one variant fails a case this way
+every time while the other answers it; those count as systematic failures. The full table is
 [data-model §Trial Outcomes](../../specs/001-swap-check/data-model.md#trial-outcomes).
 
 Gate on a `completed` rule. Lint warns with `completed-not-gated` when a gate exists without one,

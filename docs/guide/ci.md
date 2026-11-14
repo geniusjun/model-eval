@@ -131,9 +131,8 @@ the cap stops as `partial` with exit code 5.
 
 ## Cancelled and failed jobs
 
-When a job is cancelled, repeated signals leave the in-flight trials `stopped`; a kill after the
-grace period leaves the run `running`. Either way the comparison is `undecided`, never a pass. With
-the output directory still there, resume the swap; only the cut trials are sent again:
+A cancelled or killed job leaves the comparison `undecided`, never a pass. With the output
+directory still there, resume the swap; only the cut trials are sent again:
 
 ```bash
 npx model-eval swap --from current --to next --resume <swapId>
@@ -142,10 +141,10 @@ npx model-eval swap --from current --to next --resume <swapId>
 Each swap is recorded as `.model-eval/swaps/<swapId>.json`; `--json` output carries the ID as
 `result.swapId`.
 
-Resume keeps the first run's variant, seed, repeats, retries and adapter time limit, and refuses to
-continue when the service code changed in between. After exit code 3 from transient errors or an
-outage, start a new run rather than resuming: resume does not resend trials that already used their
-retries, so the outage's errors would stay in the run.
+Resume keeps the first run's settings and refuses to continue when the service code changed in
+between ([details](../../specs/001-swap-check/data-model.md#resume-and-locking)). After exit code 3
+from transient errors or an outage, start a new run rather than resuming: resume does not resend
+trials that already used their retries.
 
 ## Output
 

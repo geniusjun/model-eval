@@ -43,9 +43,7 @@ rules:
 - `completed` fails a trial when the user did not get a complete model answer: rejections,
   time-outs, cut or empty answers, discards and fallbacks. Without it, a candidate that fails to
   answer cannot block.
-- A script rule catches the most common swap breakage in multilingual services: words from another
-  language mixed into an answer.
-- A forbidden-phrase or pattern rule catches the sentences your prompt rules out.
+- A script rule catches words from another language mixed into an answer.
 
 Every check type and its fields are in the [checks reference](../reference/checks.md).
 
@@ -89,9 +87,8 @@ warning: rules/pogo.yaml:40:9: no-emoji (en): The rendered prompt does not conta
 ```
 
 When a prompt edit removes the sentence, the rule loses its basis, and this warning says so before
-any model is called. A sentence inside a conditional block of the prompt lists the cases that turn
-the block on (`cases: [mood-vague-ko]`). Rules without an anchor, such as fixes made in code, are
-reported as `unanchored` info and do not count as warnings.
+any model is called. Rules without an anchor, such as fixes made in code, are reported as
+`unanchored` info and do not count as warnings.
 
 ## Examples
 
@@ -211,4 +208,5 @@ model-eval lint --render --max-warnings 0
 ```
 
 Lint exits 1 on errors, or on warnings above `--max-warnings`, and 4 when the adapter fails to
-start or breaks the protocol (`adapter-failed`). Info findings never count. The full list of codes is in [data-model §Validation Rules](../../specs/001-swap-check/data-model.md#validation-rules).
+start or breaks the protocol (`adapter-failed`). Info findings never count. The full list of codes
+is in [data-model §Validation Rules](../../specs/001-swap-check/data-model.md#validation-rules).

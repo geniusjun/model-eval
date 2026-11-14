@@ -99,32 +99,20 @@ hash and overrides the language the page was written in:
 report.html#/cell/script-ja/ja/raw?lang=ko
 ```
 
-Rule IDs, case IDs and model answers stay as written in either language. The error screen starts
-in English unless the hash names a language.
+Rule IDs, case IDs and model answers stay as written in either language.
 
 Colours follow the system's light or dark setting. Verdict colours keep a contrast of at least
 4.5:1 in both.
 
 ## What the page never does
 
-The page sets this Content Security Policy in a `<meta>` tag:
-
-```text
-default-src 'none'; script-src 'sha256-…'; style-src 'unsafe-inline'; img-src data:
-```
-
-`default-src 'none'` blocks every resource the page could load and every connection it could
-open: no script, style, font, image or frame from anywhere else, and no fetch. The one script
-allowed is the page's own, named by the SHA-256 hash the build computes. Images may only be
-`data:` URLs. Separately, `<meta name="referrer" content="no-referrer">` makes links send no
-referrer.
-
-So the page:
+The page sets a Content Security Policy that blocks every resource and connection from outside the
+file and allows only its own script, and its links send no referrer. So the page:
 
 - makes no network request, while it loads or while you use it;
 - reads nothing but the data inside the file;
 - never treats a model, service or provider string as markup. An answer that contains
-  `</script>`, `<!--`, HTML tags or `$&` shows exactly as written;
+  `</script>`, `<!--` or HTML tags shows exactly as written;
 - keeps no state outside the URL hash: no cookies and no browser storage.
 
 The embedded data is the comparison as `comparison.json` holds it, after the config's `redact`

@@ -79,12 +79,10 @@ The request carries the variant (`id`, `model`, optional `params` from the confi
 - `targets` are the service functions the adapter can run. Cases name a target, and `lint` checks
   each case's `input` against the target's `inputSchema`. A target with several languages needs
   `lang` on every case.
-- Add `service` for a real service, since the adapter version alone does not show changed
-  post-processing: `{"version": "<commit SHA>", "dirty": false, "treeHash": "sha256:…"}`, with
-  fields you cannot compute left out. Runs record it, comparisons warn with `versions-differ`
-  when two runs used different code, and resume refuses to mix code versions. When you hash the
-  service files, leave out the paths listed in `toolPaths` of the request: the config, rule and
-  case files and the output directory.
+- Add `service` for a real service, with fields you cannot compute left out:
+  `{"version": "<commit SHA>", "dirty": false, "treeHash": "sha256:…"}`. Comparisons warn with
+  `versions-differ` when two runs used different code, and resume refuses to mix code versions.
+  When you hash the service files, leave out the paths in the request's `toolPaths`.
 - `capabilities`: `render` and `cancel` default to `false`, `postprocess` to `true`. Declare
   `postprocess: false` when the shipped text is always the raw answer; reports then say so.
 
@@ -190,8 +188,7 @@ failure is itself compared between models:
 Keep the service's retry policy and time limits as they are; they are production behaviour.
 Return a JSON-RPC `error` only for bugs in the adapter itself, such as unreadable input or an
 exception the service does not define. Those count as adapter errors, and too many of them stop
-the run. If you turned provider exceptions into JSON-RPC errors, a burst of rate limits would stop
-the run instead of being retried.
+the run.
 
 When the service swallows a failure and ships a fallback, report the failure; the rules for that
 and for regenerations are in
@@ -201,8 +198,7 @@ and for regenerations are in
 
 Set `adapter.timeoutMs` longer than one service call can take, SDK retry waits included, so the
 service's own time limit fires first. When the tool's limit fires instead, the trial is abandoned
-as an adapter error and the comparison warns with `abandoned-trials`. The tool never resends a
-trial whose response did not come back, since the provider may already have billed it.
+as an adapter error, is not resent, and the comparison warns with `abandoned-trials`.
 
 ## Background calls and logs
 

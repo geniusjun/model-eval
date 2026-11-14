@@ -22,10 +22,8 @@ The behaviour of each command and option is specified in
 `init` keeps files that already exist. With an existing config it only adds that config's
 `output.dir` to `.gitignore`.
 
-`compare`, `swap` and `report` fill the result page from the template the package ships in
-`dist/viewer/report.html`. Without it, as in a source checkout whose viewer is not built, they
-write no `report.html` or `index.html`, print one warning on stderr, point `report.md` to
-`samples.review` in `comparison.json` and exit as they would otherwise.
+In a source checkout whose viewer is not built, `compare`, `swap` and `report` write no
+`report.html` or `index.html` and print a warning on stderr; the exit code does not change.
 
 `lint`, `run` and `swap` start the adapter; `lint --no-adapter` does not. See
 [Running in CI](../guide/ci.md#untrusted-changes-lint---no-adapter) before running them on
@@ -56,11 +54,8 @@ common options.
 Without `--render`, lint starts the adapter with the first variant to read the targets' input
 schemas.
 
-An adapter may name a helper library it is built on in its `initialize` result
-(`adapter.helper`, with `language` and `version`). Lint compares that version with the helper
-version bundled with this release, part by part as `MAJOR.MINOR.PATCH`, and warns with
-`helper-outdated` when it is older or not of that form. A newer version is not reported, and an
-adapter that names no helper is not checked.
+When the adapter names the helper library it is built on, lint warns with `helper-outdated` if
+that helper is older than the one bundled with this release.
 
 Lint codes are listed in
 [data-model §Validation Rules](../../specs/001-swap-check/data-model.md#validation-rules).
@@ -141,9 +136,8 @@ names are a public contract and change only with a major version.
 
 Every command writes the same envelope: `schemaVersion`, `command`, `exit` (`code` and `name`),
 `result` and `warnings`. Each command's envelope, with its `result`, has a schema in
-[`schemas/`](../../schemas/) named after the command (`init.schema.json`, `lint.schema.json`,
-`run.schema.json`, `grade.schema.json`, `compare.schema.json`, `swap.schema.json` and
-`report.schema.json`). [`schemas/envelope.schema.json`](../../schemas/envelope.schema.json)
-describes the envelope of any command, including one whose command line names no known command.
+[`schemas/`](../../schemas/) named after the command, such as `swap.schema.json`.
+[`schemas/envelope.schema.json`](../../schemas/envelope.schema.json) describes the envelope of any
+command.
 Field details:
 [contracts/cli.md §`--json` Output](../../specs/001-swap-check/contracts/cli.md#--json-output).
