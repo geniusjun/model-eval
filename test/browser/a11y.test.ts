@@ -82,6 +82,17 @@ async function openedSection(page: Page): Promise<string> {
   return selector;
 }
 
+/** Opens every `<details>` of the page, so axe checks what they hold. */
+async function openEveryDisclosure(page: Page): Promise<void> {
+  const details = page.getByRole('main').locator('details');
+  expect(await details.count()).toBeGreaterThan(0);
+  await details.evaluateAll((all) => {
+    for (const item of all) {
+      item.setAttribute('open', '');
+    }
+  });
+}
+
 async function withPage(opened: OpenedPage, check: (page: Page) => Promise<void>): Promise<void> {
   try {
     await check(opened.page);
@@ -111,6 +122,9 @@ test.describe('002 accessibility', () => {
           const html = await pageHtml(await readComparisonPageFixture(fixtureName));
           await withPage(await openIn(browser, html, lang, scheme), async (page) => {
             await expectNoViolation(page, 'summary');
+            // The supporting details start closed, where axe does not look; open them all.
+            await openEveryDisclosure(page);
+            await expectNoViolation(page, 'summary with every closed part open');
             const cells = cellButtons(page, lang);
             const count = await cells.count();
             expect(count).toBeGreaterThan(0);
@@ -147,7 +161,10 @@ test.describe('002 accessibility', () => {
         await withPage(await openIn(browser, html, lang, scheme), async (page) => {
           await expect(
             page.getByText(
-              CATALOGS[lang]['metrics.latency.notMeasured'].replace('{variant}', 'next'),
+              CATALOGS[lang]['metrics.latency.notMeasured'].replace(
+                '{variant}',
+                CATALOGS[lang]['role.candidate'],
+              ),
             ),
           ).toBeVisible();
           await expectNoViolation(page, 'summary');

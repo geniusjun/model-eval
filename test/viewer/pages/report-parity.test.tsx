@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { message } from '../../../src/messages/index.js';
 import { renderReport } from '../../../src/report/markdown.js';
 import type { Cell, ComparisonPage } from '../../../src/report/schema.js';
 import { ReportPage } from '../../../viewer/src/pages/ReportPage.js';
@@ -9,8 +10,10 @@ import { COMPARISON_FIXTURES, loadComparisonPage } from '../fixtures.js';
 
 // report.md quotes every string it does not compute itself (model output, messages, rule texts,
 // IDs from the files) in a code span or block. Each such content must be somewhere on the page,
-// so nobody needs the Markdown report to see it. Numbers and IDs are checked field by field by
-// the tests of each region.
+// so nobody needs the Markdown report to see it, except in the reproduction section: runs,
+// versions, statistics settings, the settings used and the commands stay in report.md, and the
+// page names only the comparison and when it was written (FR-007, FR-016). Numbers and IDs are
+// checked field by field by the tests of each region.
 
 afterEach(() => {
   window.location.hash = '';
@@ -75,6 +78,16 @@ function spans(line: string): string[] {
   return found;
 }
 
+/** The report without its reproduction section, which runs from its heading to the next one. */
+function withoutReproduction(markdown: string): string {
+  const heading = `## ${message('en', 'report.section.reproduction')}`;
+  const lines = markdown.split('\n');
+  const start = lines.indexOf(heading);
+  expect(start).toBeGreaterThan(0);
+  const next = lines.findIndex((line, index) => index > start && line.startsWith('## '));
+  return [...lines.slice(0, start), ...(next === -1 ? [] : lines.slice(next))].join('\n');
+}
+
 /** Every quoted string of the report: code span and code block contents. */
 function quotedStrings(markdown: string): string[] {
   const { blocks, lines } = splitBlocks(markdown);
@@ -115,13 +128,15 @@ function cellView(cell: Cell) {
 
 describe('002 report parity', () => {
   it.each(COMPARISON_FIXTURES)(
-    '002 FR-016 shows every quoted string of report.md for the %s comparison',
+    '002 FR-016 shows every quoted string of report.md outside its reproduction section for the %s comparison',
     (kind) => {
       const page: ComparisonPage = {
         ...loadComparisonPage(`page-comparison-${kind}.json`),
         lang: 'en',
       };
-      const quoted = quotedStrings(renderReport(page.comparison, 'en', 'result-page'));
+      const quoted = quotedStrings(
+        withoutReproduction(renderReport(page.comparison, 'en', 'result-page')),
+      );
       expect(quoted.length).toBeGreaterThan(0);
       const texts = pageTexts(page);
       const missing = quoted.filter(

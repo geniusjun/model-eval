@@ -50,12 +50,19 @@ function fixtureTexts(fixture: ComparisonPage): string[] {
   ];
 }
 
-/** How many elements without child elements hold exactly `text`. */
+/**
+ * How many elements hold exactly `text` with no child element but `<mark>`, which highlights
+ * the evidence of a failure inside an answer and holds only text itself.
+ */
 function textElements(scope: Locator, text: string): Promise<number> {
   return scope.evaluate(
     (root, wanted) =>
       [...root.querySelectorAll('*')].filter(
-        (element) => element.childElementCount === 0 && element.textContent === wanted,
+        (element) =>
+          element.textContent === wanted &&
+          [...element.children].every(
+            (child) => child.tagName === 'MARK' && child.childElementCount === 0,
+          ),
       ).length,
     text,
   );

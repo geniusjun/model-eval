@@ -53,10 +53,14 @@ test.describe('002 example page', () => {
       await expect(summary).toBeVisible({ timeout: SUMMARY_WITHIN_MS });
       // Milliseconds since the navigation started, read after the summary showed.
       expect(await page.evaluate(() => performance.now())).toBeLessThan(SUMMARY_WITHIN_MS);
-      const worse = summary
-        .locator('section')
-        .filter({ has: page.getByRole('heading', { name: en['summary.worse'], exact: true }) });
-      await expect(worse.getByRole('listitem').filter({ hasText: BLOCKING_CELL })).toHaveCount(1);
+      // The blocking cell is the first row of the worse cells in the change chart.
+      const worse = summary.locator('tbody').filter({
+        has: page.getByRole('rowheader', { name: new RegExp(`^${en['summary.worse']}`) }),
+      });
+      await expect(worse.getByRole('link', { name: BLOCKING_CELL, exact: true })).toHaveCount(1);
+      await expect(worse.getByRole('link').first()).toHaveText(BLOCKING_CELL);
+      // The gate's reasons and blocking cells open from the line under the outcome.
+      await summary.locator('summary', { hasText: en['summary.gateDetails'] }).click();
       const blocking = summary.locator('dt', { hasText: en['summary.blocking'] }).locator('+ dd');
       await expect(blocking.getByRole('listitem')).toHaveText([BLOCKING_CELL]);
       expect(opened.outsideRequests()).toEqual([]);
