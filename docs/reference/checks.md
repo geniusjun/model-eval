@@ -1,8 +1,7 @@
 # Checks reference
 
-A rule has exactly one `check`, selected by `type`. Deterministic checks give the same result for
-the same text and definition every time. The definition of record is
-[data-model §Check](../../specs/001-swap-check/data-model.md#check); the schema is the `check`
+A rule has exactly one `check`, selected by `type`. Full definitions are in
+[data-model §Check](../../specs/001-swap-check/data-model.md#check). The schema is the `check`
 property in [`schemas/rules.schema.json`](../../schemas/rules.schema.json).
 
 | `type`              | Surfaces          | Fails when                                                    |
@@ -18,15 +17,17 @@ property in [`schemas/rules.schema.json`](../../schemas/rules.schema.json).
 | `completed`         | trial             | The user did not get a complete model answer                  |
 | `review`            | none              | Never; collects answers for people to compare                 |
 
-Text checks grade the raw answer and the shipped text separately. An empty raw answer is not
-graded by text checks, because an empty string passes every forbidding check; `completed` catches
-it instead.
+Text checks grade the raw answer and the shipped text separately. They skip an empty raw answer;
+`completed` catches it instead.
 
 ## Values from the case
 
 Fields ending in `From` (`ignoreFrom`, `anyFrom`, `withFrom`) take a path into the case:
-`input.<key>…` reads the case input, `params.<key>…` the `params` the case gives this rule. A string
-value counts as a one-item list.
+
+- `input.<key>…` reads the case input.
+- `params.<key>…` reads the `params` the case gives this rule.
+
+A string value counts as a one-item list.
 
 | Field        | Value missing from the case                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
@@ -49,9 +50,9 @@ check:
 | `ignore`     | no       | Strings removed from the text before checking             |
 | `ignoreFrom` | no       | Path to case values removed from the text before checking |
 
-Characters are code points, and their script is the Unicode `Script` property, not
-`Script_Extensions`. Punctuation and digits are `Common`; combining marks are `Inherited`. List
-both unless the rule is about them. Evidence is the characters that failed.
+Each code point is checked by its Unicode `Script` property, not `Script_Extensions`.
+Punctuation and digits are `Common`; combining marks are `Inherited`. List both unless the rule is
+about them. Evidence is the characters that failed.
 
 ## `emoji`
 
@@ -108,9 +109,9 @@ check:
 | `withFrom` | `with` or `withFrom` | Path to case values with more texts             |
 | `minChars` | yes                  | Shortest shared run, in code points, that fails |
 
-Both sides are NFKC-normalised with all whitespace removed. The check fails when their longest
-common substring has at least `minChars` code points. Use it to catch an answer that repeats an
-example line of the prompt.
+Use it to catch an answer that repeats an example line of the prompt. Both sides are
+NFKC-normalised with all whitespace removed. The check fails when their longest common substring
+has at least `minChars` code points.
 
 ## `length`
 
@@ -159,14 +160,19 @@ check:
 check: { type: completed }
 ```
 
-Graded once per trial on the surface `trial`, from the shipped result. It fails on rejections,
-time-outs, empty answers, discards, fallbacks, empty shipped text and answers that did not finish
-with `stop`. Transient and adapter errors are left out, unless one variant fails a case this way
-every time while the other answers it; those count as systematic failures. The full table is
+Graded once per trial on the surface `trial`, from the shipped result. It fails on:
+
+- rejections and time-outs;
+- empty answers and empty shipped text;
+- discards and fallbacks;
+- answers that did not finish with `stop`.
+
+Transient and adapter errors are left out, unless one variant fails a case this way every time
+while the other answers it. Those count as systematic failures. Full table:
 [data-model §Trial Outcomes](../../specs/001-swap-check/data-model.md#trial-outcomes).
 
-Gate on a `completed` rule. Lint warns with `completed-not-gated` when a gate exists without one,
-because a candidate that fails to answer could not block otherwise.
+Gate on a `completed` rule, or a candidate that fails to answer cannot block. Lint warns with
+`completed-not-gated` when a gate exists without one.
 
 ## `review`
 
@@ -174,9 +180,9 @@ because a candidate that fails to answer could not block otherwise.
 check: { type: review, samples: 3 }
 ```
 
-Never graded and never gated. The comparison stores baseline and candidate answers of the same
-cases, `samples` per case (default 3, from the lowest repeats), raw and shipped, for people to read
-side by side. A `review` rule of a gated severity is left out of the gate with the warning
+Never graded and never gated. The comparison stores baseline and candidate answers to the same
+cases for people to read side by side: `samples` per case (default 3, from the lowest repeats),
+raw and shipped. A `review` rule of a gated severity is left out of the gate with the warning
 `excluded-from-gate`.
 
 ## Examples

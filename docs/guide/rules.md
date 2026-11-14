@@ -4,14 +4,14 @@ A rule is one thing your prompt or post-processing promises, written as a check 
 on an answer. A case is one input to your service. Every applicable rule is graded on every answer
 to every case, so one case serves many rules.
 
-Rules live in `rules/**/*.yaml` and cases in `cases/**/*.yaml` by default (`files` in the config).
-`lint` validates both against [`schemas/rules.schema.json`](../../schemas/rules.schema.json) and
+Rules go in `rules/**/*.yaml` and cases in `cases/**/*.yaml` by default (`files` in the config).
+`lint` validates them against [`schemas/rules.schema.json`](../../schemas/rules.schema.json) and
 [`schemas/cases.schema.json`](../../schemas/cases.schema.json) and reports each problem with file,
 line and column.
 
 ## Start with three rules
 
-Begin with checks that cannot be argued with:
+Begin with checks nobody can argue with:
 
 ```yaml
 rules:
@@ -43,7 +43,8 @@ rules:
 - `completed` fails a trial when the user did not get a complete model answer: rejections,
   time-outs, cut or empty answers, discards and fallbacks. Without it, a candidate that fails to
   answer cannot block.
-- A script rule catches words from another language mixed into an answer.
+- `script-ja` catches words from another language mixed into a Japanese answer.
+- `no-emoji` fails on any emoji.
 
 Every check type and its fields are in the [checks reference](../reference/checks.md).
 
@@ -60,9 +61,9 @@ Every check type and its fields are in the [checks reference](../reference/check
 | `status`    | `active`      | `retired` rules are not run, graded or anchor-checked                                                       |
 
 Every rule is graded on the raw answer and on the shipped text, and the report shows both. The
-gate reads `raw` by default because the question is whether the prompt still holds. Use
-`gateOn: final` for rules whose accepted fix is post-processing or regeneration, where only what
-the user sees matters.
+gate reads `raw` by default: post-processing that strips other scripts or emoji would make a rule
+hold on the shipped text however often the model breaks it. Use `gateOn: final` for rules whose
+accepted fix is post-processing or regeneration, where only what the user sees matters.
 
 `origin` records where a rule came from (`commit`, `date`, `layer`: `prompt`, `code` or
 `pipeline`). It is shown in the report and never used for grading.
@@ -77,18 +78,19 @@ anchors:
   - { lang: en, quote: 'Never use emoji' }
 ```
 
-`lint --render` asks the adapter for the rendered prompt of every case and variant and reports a
-quote that does not appear as `anchor-missing`. The Pogo example has one on purpose: its English
-prompt says "Do not use emoji". Lint reports it once, with the variants and cases that miss it
-(the case list is shortened here):
+`lint --render` renders the prompt of every case and variant and reports a quote that does not
+appear as `anchor-missing`. If a prompt edit removes the sentence, the rule loses its basis, and
+lint says so before any model is called.
+
+The Pogo example has a missing anchor on purpose: its English prompt says "Do not use emoji".
+Lint reports it once, with the variants and cases that miss it (case list shortened):
 
 ```text
 warning: rules/pogo.yaml:40:9: no-emoji (en): The rendered prompt does not contain "Never use emoji". (variants: current, next · cases: greet-en, mood-vague-en, …)
 ```
 
-When a prompt edit removes the sentence, the rule loses its basis, and this warning says so before
-any model is called. Rules without an anchor, such as fixes made in code, are reported as
-`unanchored` info and do not count as warnings.
+Rules without an anchor, such as fixes made in code, are reported as `unanchored` info and do not
+count as warnings.
 
 ## Examples
 
@@ -122,7 +124,8 @@ For checks that read case values, `examples.input` and `examples.params` supply 
 ## Values from the case
 
 Fields ending in `From` read a value from the case by path: `input.<key>` from its input,
-`params.<key>` from the per-case values the case gives the rule.
+`params.<key>` from the values the case gives the rule. What happens when the value is missing:
+[checks reference](../reference/checks.md#values-from-the-case).
 
 ```yaml
 # rules/pogo.yaml
@@ -144,9 +147,6 @@ Fields ending in `From` read a value from the case by path: `input.<key>` from i
     - no-unprompted-self-state
 ```
 
-A missing `ignoreFrom` or `withFrom` value counts as an empty list. A missing `anyFrom` value is a
-lint error (`unresolved-ref`), because an empty forbid list would check nothing.
-
 ## Rules that people judge
 
 Some promises cannot be checked by a program, such as "does not describe its own clothes before
@@ -160,8 +160,8 @@ being asked". Write them as `review` rules:
 ```
 
 A `review` rule is never graded and never gated. The comparison keeps baseline and candidate
-answers to the same cases under `samples.review` in `comparison.json`, for a person to read side
-by side.
+answers to the same cases under `samples.review` in `comparison.json`, and the result page shows
+them side by side ([`review`](../reference/checks.md#review)).
 
 ## Cases
 
@@ -188,16 +188,18 @@ cases:
 
 ## How many cases
 
-A gated cell is one rule in one language on one surface. Write at least 10 cases per language for
-every gated rule, and 30 to use the default settings: with 30 cases and 5 repeats, an unchanged
-candidate passes a cell about 94% of the time and a 30-point drop is caught about 97% of the
-time. Lint and `--dry-run` warn when a gated cell has too few:
+Write at least 10 cases per language for every gated rule, and 30 to use the default settings.
+With 30 cases, 5 repeats, margin 0.10 and 95% confidence, an unchanged candidate passes a cell
+about 94% of the time and a 30-point drop is caught about 97% of the time.
+
+A gated cell is one rule in one language on one surface. Lint and `--dry-run` warn when one has
+too few:
 
 - `few-cases`: fewer than 10 cases; such a cell seldom blocks, even when the rule collapses.
 - `margin-unreachable`: fewer planned trials than the margin needs (35 for a margin of 0.10),
   so equal compliance cannot pass.
 
-[Reading the results](statistics.md) explains where these numbers come from.
+[Reading the results](statistics.md#verdicts) explains these numbers.
 
 ## Running lint
 
