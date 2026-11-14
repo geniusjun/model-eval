@@ -90,7 +90,7 @@ export function ReportPage({ page }: ReportPageProps) {
   const sideHref = (side: SideView) => formatHash({ view: side, lang: hash.lang });
   const ids = useRegionIds();
   const topbarRef = useRef<HTMLElement>(null);
-  useMeasuredHeight(topbarRef, '--topbar-height');
+  const measureTopbar = useMeasuredHeight(topbarRef, '--topbar-height');
   const regressed = comparison.cells.filter((cell) => cell.verdict === 'regressed');
   const regressedRuleIds = new Set(regressed.map((cell) => cell.ruleId));
   const warningCount = comparison.warnings.length;
@@ -114,6 +114,7 @@ export function ReportPage({ page }: ReportPageProps) {
         </div>
         <SectionNav
           label={messages.text('nav.label')}
+          beforeMove={measureTopbar}
           sections={[
             { headingId: ids.summary, label: messages.text('nav.summary') },
             {

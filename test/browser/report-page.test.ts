@@ -176,6 +176,8 @@ test.describe('002 report page', () => {
     const opened = await openHtml(browser, await pageHtml(await readComparisonPageFixture(BLOCK)));
     try {
       const { page } = opened;
+      // count() does not wait, so the page must have rendered first.
+      await expect(region(page, en['summary.heading'])).toBeVisible();
       const details = page.getByRole('main').locator('details');
       expect(await details.count()).toBeGreaterThanOrEqual(5);
       expect(
