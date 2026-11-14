@@ -8,7 +8,7 @@ import process from 'node:process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { apiEnv } from '../contract/helper/support/driver.js';
-import { MockApi } from '../contract/helper/support/mock-api.js';
+import { MockApi, type ReceivedRequest } from '../contract/helper/support/mock-api.js';
 import { CLI, ROOT, type CliResult } from '../e2e/support/cli.js';
 import { SWAP } from '../e2e/support/commands.js';
 import {
@@ -20,7 +20,7 @@ import {
   type RunFiles,
 } from '../e2e/support/outputs.js';
 
-// SC-001 and SC-004: quickstart.md §Verify: Example Python Service, steps 1 and 3, in
+// SC-001, SC-004 and FR-021: quickstart.md §Verify: Example Python Service, steps 1 to 3, in
 // examples/python-service itself, whose adapter is written with the Python helper. Its model
 // calls go to the mock API server, so no model is called.
 
@@ -37,9 +37,14 @@ const HELPER_IMPORT = /^\s*(from|import)\s+model_eval_adapter\b/mu;
 
 /** The CI step of the example has 5 minutes; one swap of the example cases fits well inside. */
 const BUDGET_MS = 240_000;
+/** `lint --render` renders each case once and sends no model request. */
+const LINT_BUDGET_MS = 30_000;
 
 let mock: MockApi | undefined;
 let serviceBefore: Map<string, string>;
+let lint: CliResult;
+/** The requests the mock server received during `lint --render`. */
+let lintRequests: ReceivedRequest[];
 let swap: CliResult;
 
 /** Each file under service/ as git sees it (tracked and untracked, not ignored), with its hash. */
@@ -100,8 +105,12 @@ beforeAll(async () => {
   await rm(OUTPUT_DIR, { recursive: true, force: true });
   serviceBefore = serviceFiles();
   mock = await MockApi.start();
+  lint = await runExample(mock, ['lint', '--render']);
+  lintRequests = await mock.log();
+  // The swap's request count is checked against its own records only.
+  await mock.reset();
   swap = await runExample(mock, [...SWAP, '--json']);
-}, BUDGET_MS);
+}, BUDGET_MS + LINT_BUDGET_MS);
 
 afterAll(async () => {
   await mock?.stop();
@@ -118,6 +127,11 @@ describe('003 example examples/python-service (quickstart.md §Verify: Example P
       const text = await readFile(path.join(EXAMPLE, file), 'utf8');
       expect(text, file).not.toMatch(HELPER_IMPORT);
     }
+  });
+
+  it('003 FR-021 SC-004 step 2: lint --render exits 0 and the mock server received no request', () => {
+    expect(lint.code, lint.stderr).toBe(0);
+    expect(lintRequests).toEqual([]);
   });
 
   it(
@@ -160,6 +174,30 @@ describe('003 example examples/python-service (quickstart.md §Verify: Example P
       expect(request).toMatchObject({ method: 'POST', path: '/v1/chat/completions' });
       expect(MODELS).toContain(request.model);
       expect(request.headers['user-agent']).toMatch(SDK_USER_AGENT);
+    }
+  });
+
+  it('003 FR-021 FR-022 SC-004 the swap raises no render-mismatch: every trial fingerprint equals its case render', async () => {
+    const envelope = parseSwapEnvelope(swap.stdout);
+    expect(envelope.warnings.map((warning) => warning.code)).not.toContain('render-mismatch');
+    // The warning compares only trials with a fingerprint against cases with a render, so
+    // both are checked here, or a run without them would pass unseen.
+    const runs = await swapRuns();
+    expect(runs).toHaveLength(2);
+    for (const run of runs) {
+      const prompts = run.manifest.prompts ?? {};
+      const trials = [...effectiveLines(run.lines).values()];
+      expect(trials.length).toBeGreaterThan(0);
+      for (const trial of trials) {
+        const where = `${run.manifest.runId} ${trial.caseId}#${String(trial.repeat)}`;
+        expect(Object.hasOwn(prompts, trial.caseId), where).toBe(true);
+        expect(trial.status, where).toBe('ok');
+        if (trial.status !== 'ok') {
+          continue;
+        }
+        expect(trial.fingerprint, where).toBeDefined();
+        expect(trial.fingerprint, where).toBe(prompts[trial.caseId]);
+      }
     }
   });
 

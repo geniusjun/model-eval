@@ -40,7 +40,7 @@ def apis_run(data: dict[str, Any], installed: dict[str, str], requirements: str)
 
 
 def test_003_SC_002_a_case_without_sdks_runs_every_installed_api_and_backend() -> None:
-    cases = select_cases({"S-RESP-01": [case()]}, BOTH_TRANSPORTS, "both-transports")
+    cases = select_cases({"S-RESP-01": [case()]}, BOTH_TRANSPORTS, None)
     assert len(cases) == 9
     assert {(c.api, c.backend) for c in cases} == {
         (api, backend)
@@ -59,6 +59,7 @@ def test_003_SC_002_an_sdks_entry_counts_only_for_the_apis_its_sdk_serves() -> N
 
 
 def test_003_SC_002_the_both_transports_environment_runs_only_cases_naming_it() -> None:
+    assert apis_run(case(), BOTH_TRANSPORTS, "both-transports") == []
     assert apis_run(case(sdks=["anthropic-1"]), BOTH_TRANSPORTS, "both-transports") == []
     assert apis_run(case(sdks=["openai-2"]), BOTH_TRANSPORTS, "both-transports") == []
     assert apis_run(case(sdks=["both-transports"]), BOTH_TRANSPORTS, "both-transports") == [
@@ -219,7 +220,7 @@ def test_003_SC_002_a_response_written_just_before_exit_is_still_delivered(
 
 
 def trials_case(**params: Any) -> ScenarioCase:
-    data = {
+    data: dict[str, Any] = {
         "name": "three trials at once",
         "service": {"behaviour": "harness-trials", "params": {"trials": 3, **params}},
         "trials": 3,
@@ -248,7 +249,7 @@ def test_003_SC_002_every_trial_is_held_to_expect_and_one_mismatch_fails(mock_ap
 
 
 def in_a_row_case(*raws: str) -> ScenarioCase:
-    data = {
+    data: dict[str, Any] = {
         "name": "three trials in a row",
         "service": {"behaviour": "harness-trials", "params": {"delayMs": 200}},
         "trialsInARow": 3,

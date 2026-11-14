@@ -1,0 +1,3431 @@
+{
+  "S-MCE-01": [
+    {
+      "name": "the answer through an uncaptured transport ends in 429, thrown with retry_after_ms: transient with that wait (acceptance scenario 7)",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 1500,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 1500,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": 1500,
+        "calls": null
+      }
+    }
+  ],
+  "S-MCE-02": [
+    {
+      "name": "401 thrown from an uncaptured transport: config (acceptance scenario 7)",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 401,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 401,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": null
+      }
+    },
+    {
+      "name": "401 thrown with retry_after_ms: config, so no retryAfterMs",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 401,
+              "retryAfterMs": 1500,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 401,
+              "retryAfterMs": 1500,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "retryAfterMs": null,
+        "calls": null
+      }
+    }
+  ],
+  "S-MCE-03": [
+    {
+      "name": "429 thrown with code insufficient_quota: config",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "type": "insufficient_quota",
+              "code": "insufficient_quota",
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "type": "insufficient_quota",
+              "code": "insufficient_quota",
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "type": "insufficient_quota",
+            "code": "insufficient_quota"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": null
+      }
+    }
+  ],
+  "S-MCE-04": [
+    {
+      "name": "kind timeout after a captured call to another model: timeout, added as unanswered with the call reservation",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout",
+            "usage": null
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "kind connect: transient, added as failed without billing",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "connect"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "connect"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "usage": null
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "kind tls: config, added as failed",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "tls"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "tls"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "config"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-05": [
+    {
+      "name": "no captured call, thrown with usage 0: the trial's usage is 0, so it costs nothing",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "usage": {
+          "input": 0,
+          "output": 0
+        },
+        "calls": null
+      }
+    },
+    {
+      "name": "no captured call, thrown without usage: no usage, so the attempt reservation is charged",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "usage": null,
+        "calls": null
+      }
+    }
+  ],
+  "S-MCE-06": [
+    {
+      "name": "thrown together with a captured side call's config failure: config",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Look up the user's memory.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config"
+      }
+    }
+  ],
+  "S-MCE-07": [
+    {
+      "name": "status and kind together: A12",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "kind": "disconnect"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "kind": "disconnect"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A12"
+        }
+      }
+    },
+    {
+      "name": "status and call together: A12",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A12"
+        }
+      }
+    },
+    {
+      "name": "kind and call together: A12",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout",
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout",
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A12"
+        }
+      }
+    },
+    {
+      "name": "status, kind and call together: A12",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "kind": "timeout",
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "kind": "timeout",
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A12"
+        }
+      }
+    },
+    {
+      "name": "none of status, kind and call: A12",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed."
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed."
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A12"
+        }
+      }
+    },
+    {
+      "name": "status and kind together with the builtin ValueError and ModelCallError in discard_on: A12, not a discard",
+      "languages": [
+        "python"
+      ],
+      "target": {
+        "discardOn": [
+          "builtins.ValueError",
+          "model_eval_adapter.ModelCallError"
+        ]
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "kind": "disconnect"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "kind": "disconnect"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A12"
+        }
+      }
+    },
+    {
+      "name": "none of them with the builtin ValueError and ModelCallError in discard_on: A12, not a discard",
+      "languages": [
+        "python"
+      ],
+      "target": {
+        "discardOn": [
+          "builtins.ValueError",
+          "model_eval_adapter.ModelCallError"
+        ]
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed."
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed."
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A12"
+        }
+      }
+    },
+    {
+      "name": "status and kind together after a captured config failure the service swallowed: Outcome row 1 first, config",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "kind": "disconnect"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 500,
+              "kind": "disconnect"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "config"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-08": [
+    {
+      "name": "call with a captured failure the service swallowed: that call's classification, no call counted twice",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same failure thrown from its error fields with model=c.model, **c.error: matched, no call counted twice",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "errorOf": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "errorOf": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-09": [
+    {
+      "name": "call with a successful call: A13",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A13"
+        }
+      }
+    },
+    {
+      "name": "call with a 429 the SDK recovered from: A13",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 1
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "10"
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A13"
+        }
+      }
+    },
+    {
+      "name": "call with a failure whose retried is true, its resend also failed: A13",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          },
+          "headers": {
+            "retry-after-ms": "10"
+          },
+          "times": 2
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A13"
+        }
+      }
+    },
+    {
+      "name": "call with the failure of a side call excluded by reply_call: A13",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "memory"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "system": "Write a short memory note about the user.",
+                "user": "The user said hello.",
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 1
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 1
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        },
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A13"
+        }
+      }
+    },
+    {
+      "name": "call with a 503 whose SDK resend was still awaited when the service stopped waiting: A13",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 1,
+                "waitMs": 1000
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          },
+          "headers": {
+            "retry-after-ms": "10"
+          }
+        },
+        {
+          "delayMs": 5000,
+          "reply": {
+            "text": "Late."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A13"
+        }
+      }
+    },
+    {
+      "name": "call with an unfinished call the service stopped waiting for: A13",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 1000
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "call": {
+                "index": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "delayMs": 5000,
+          "reply": {
+            "text": "Late."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A13"
+        }
+      }
+    }
+  ],
+  "S-MCE-10": [
+    {
+      "name": "a stream that ends in an overloaded_error event, the service raises and status 200 with type is thrown: the matching-failure candidate, transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "type": "overloaded_error"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "type": "overloaded_error"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same ending in the service's exception without throwing: Outcome row 3, transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-11": [
+    {
+      "name": "a background Responses response that later ends failed with server_error, thrown with status 200: the first request's call is corrected, transient",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "kwargs": {
+                  "background": true
+                }
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "code": "server_error"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "",
+            "status": "queued"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same thrown with usage=: the corrected call is failed and priced at that usage",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "kwargs": {
+                  "background": true
+                }
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "code": "server_error",
+              "usage": {
+                "input": 30,
+                "output": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "",
+            "status": "queued"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "usage": {
+              "input": 30,
+              "output": 0
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-12": [
+    {
+      "name": "a captured 429 raised by the service, converted and thrown: no call counted twice",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the captured 429 said retry-after-ms 20 and the thrown value 5000: the matched call's 20",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 5000
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 5000
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": 20,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-13": [
+    {
+      "name": "a captured mid-body read time-out raised by the SDK, thrown as kind timeout: the captured classification, transient",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "timeoutMs": 1500
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "{\"id\":\"chatcmpl-slow\",\"object\":\"chat.completion\","
+              },
+              {
+                "delayMs": 5000,
+                "text": "\"created\":0,\"model\":\"model-b\",\"choices\":[]}"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-14": [
+    {
+      "name": "a failed 200 response over an uncaptured transport, thrown with status 200: added as unanswered with the call reservation",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "reply": {
+            "text": "",
+            "failure": {
+              "message": "The response failed."
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "permanent",
+            "usage": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same with code insufficient_quota: config",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "code": "insufficient_quota"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "code": "insufficient_quota"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "reply": {
+            "text": "",
+            "failure": {
+              "message": "The response failed."
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same thrown with usage=: the added call is failed and priced at that usage",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "usage": {
+                "input": 30,
+                "output": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "usage": {
+                "input": 30,
+                "output": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "reply": {
+            "text": "",
+            "failure": {
+              "message": "The response failed."
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "permanent",
+            "usage": {
+              "input": 30,
+              "output": 0
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-15": [
+    {
+      "name": "Anthropic timeout_error in a captured stream error event, thrown as status 200 with that type: transient, no call counted twice",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "type": "timeout_error"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "type": "timeout_error"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "timeout_error",
+              "message": "Timed out."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a failed 200 response with timeout_error over an uncaptured transport, thrown as status 200 with that type: transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "type": "timeout_error"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "type": "timeout_error"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "",
+            "failure": {
+              "message": "The response failed."
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": null
+      }
+    }
+  ],
+  "S-MCE-16": [
+    {
+      "name": "the answer stream and a same-model safety check sent alongside, the check fails with 400 first, the stream ends in overloaded_error, status 200 thrown: matched to the stream call, transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {
+                  "stream": true,
+                  "onError": "swallow"
+                },
+                {
+                  "system": "Check the input for safety.",
+                  "startAfterMs": 200,
+                  "onError": "swallow"
+                }
+              ],
+              "wait": "all"
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "type": "overloaded_error"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 200,
+              "type": "overloaded_error"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "stream": false
+          },
+          "error": {
+            "status": 400
+          }
+        },
+        {
+          "match": {
+            "stream": true
+          },
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure",
+            "chunkDelaysMs": [
+              0,
+              600
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "permanent"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-17": [
+    {
+      "name": "a captured 429, then a 400 from an uncaptured transport thrown: added as a new call, permanent",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 400
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 400
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "error": {
+            "status": 400
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "permanent"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "an uncaptured 429 thrown with retry_after_ms 700 after a captured 400: added as a new call that carries 700, the trial's too",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 700
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 700
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 400
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": 700,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "permanent",
+            "retryAfterMs": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 700
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-18": [
+    {
+      "name": "a captured connection refusal raised by the SDK, thrown as kind connect: no call counted twice",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "baseUrl": "http://127.0.0.1:1"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "connect"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "connect"
+            }
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-19": [
+    {
+      "name": "a same-model classification by SSE, the answer without streaming, its mid-body read time-out thrown as kind timeout: the classification stream not corrected, the answer call's captured classification",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "stream": true
+              }
+            },
+            {
+              "call": {
+                "timeoutMs": 1500
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "{\"id\":\"chatcmpl-slow\",\"object\":\"chat.completion\","
+              },
+              {
+                "delayMs": 5000,
+                "text": "\"created\":0,\"model\":\"model-b\",\"choices\":[]}"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-20": [
+    {
+      "name": "the answer through an uncaptured transport, a same-model side call recovered by SDK retry after a drop, kind timeout thrown: not matched to the recovered failure, timeout",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "maxRetries": 1
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "connection": "close-before-headers"
+        },
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same thrown as kind disconnect: no candidate, a new call, and the only matching captured failure was resent, W10",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "maxRetries": 1
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "disconnect"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "disconnect"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "connection": "close-before-headers"
+        },
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W10"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-21": [
+    {
+      "name": "a 429 the SDK closed before resending, its resend dropped, then a thrown insufficient_quota 429: config",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 1
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "type": "insufficient_quota",
+              "code": "insufficient_quota"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "type": "insufficient_quota",
+              "code": "insufficient_quota"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "type": "insufficient_quota",
+            "code": "insufficient_quota"
+          },
+          "headers": {
+            "retry-after-ms": "10"
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "config"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the first 429 without a code, its resend dropped, then a thrown insufficient_quota 429: the matched call and the trial config",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 1
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "type": "insufficient_quota",
+              "code": "insufficient_quota"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "type": "insufficient_quota",
+              "code": "insufficient_quota"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "10"
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "retryAfterMs": null,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "config"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-22": [
+    {
+      "name": "a fully received same-model classification stream, then kind timeout for the uncaptured answer call: the stream not corrected, a new call added",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "stream": true
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-23": [
+    {
+      "name": "the answer through an uncaptured transport, a same-model memory summary excluded by reply_call dropped mid-body and swallowed, kind timeout thrown: not matched to the summary, a new call, timeout",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "memory"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Write a short memory summary.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "The user said hello."
+          },
+          "drop": {
+            "chunks": 0,
+            "bytes": 20
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-24": [
+    {
+      "name": "after a fully received answer, a same-model validation stream excluded by reply_call ends in overloaded_error with an unlisted code, its error thrown: added as a new call, transient by type",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Validate"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "system": "Validate the answer.",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "errorOf": {
+                "index": 1
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "errorOf": {
+                "index": 1
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Partial",
+            "failure": {
+              "type": "overloaded_error",
+              "code": "queue_full",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-MCE-25": [
+    {
+      "name": "the answer through an uncaptured transport, a same-model side call excluded by reply_call recovered after 429, the answer's 429 thrown: a new call, transient, no W10",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "maxRetries": 1
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "10"
+          }
+        },
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same without reply_call: the only matching captured failure was resent, W10",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "maxRetries": 1
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "10"
+          }
+        },
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W10"
+          }
+        ]
+      }
+    }
+  ],
+  "S-PAR-11": [
+    {
+      "name": "retry_after_ms of -1: not recorded",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": -1
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": -1
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": null
+      }
+    },
+    {
+      "name": "retry_after_ms of NaN: not recorded",
+      "service": {
+        "behaviour": "flow-report-numbers",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": {
+                "number": "NaN"
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": {
+                "number": "NaN"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": null
+      }
+    },
+    {
+      "name": "retry_after_ms of Infinity: not recorded",
+      "service": {
+        "behaviour": "flow-report-numbers",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": {
+                "number": "Infinity"
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": {
+                "number": "Infinity"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": null
+      }
+    },
+    {
+      "name": "retry_after_ms of 2.5: rounded half up to 3",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 2.5
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 2.5
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": 3
+      }
+    }
+  ],
+  "S-MCE-26": [
+    {
+      "name": "discard_on a function true for every exception, a captured 429 raised, converted and thrown: the thrown failure, not a discard",
+      "target": {
+        "discardOn": {
+          "when": {
+            "messageIncludes": ""
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "discard_on a function true for every exception, a 401 from an uncaptured transport thrown: config, not a discard",
+      "target": {
+        "discardOn": {
+          "when": {
+            "messageIncludes": ""
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 401,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 401,
+              "usage": {
+                "input": 0,
+                "output": 0
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": null
+      }
+    },
+    {
+      "name": "Exception listed in discard_on, kind timeout thrown after another model's call: timeout, not a discard",
+      "languages": [
+        "python"
+      ],
+      "target": {
+        "discardOn": [
+          "builtins.Exception"
+        ]
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-MCE-27": [
+    {
+      "name": "a captured 429 with retry-after 2 raised by the service, thrown with status 429 and retry_after_ms 9000: transient, 2000 from the matched call",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 9000
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 9000
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after": "2"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": 2000,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 2000
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same thrown value with no matching call: 9000 on the added call and the result",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 9000
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "status": 429,
+              "retryAfterMs": 9000
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "retryAfterMs": 9000,
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 9000
+          }
+        ]
+      }
+    }
+  ]
+}

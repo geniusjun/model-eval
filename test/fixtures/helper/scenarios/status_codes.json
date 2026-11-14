@@ -1550,5 +1550,177 @@
         ]
       }
     }
+  ],
+  "S-STAT-15": [
+    {
+      "name": "a 200 body that is an HTML page: a failed call, unanswered, config (Outcome row 1)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry."
+          }
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "<html><body>Sign in to the proxy</body></html>"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a 200 body that is JSON but not an object ([]): a failed call, unanswered, config",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry."
+          }
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "[]"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a 200 JSON object with a top-level error server_error: a failed 200 response, transient, never an empty answer",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry."
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "error": {
+              "message": "The request failed.",
+              "type": "server_error",
+              "code": "server_error"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a 200 JSON object with a top-level error insufficient_quota: a failed 200 response, config",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry."
+          }
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "error": {
+              "message": "The request failed.",
+              "type": "insufficient_quota",
+              "code": "insufficient_quota"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    }
   ]
 }

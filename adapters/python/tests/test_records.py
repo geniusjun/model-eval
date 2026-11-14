@@ -35,3 +35,42 @@ def test_003_FR_007_calls_and_the_trial_record_latency(mock_api: MockApi) -> Non
     assert latencies[0] >= 300
     assert latencies[1] >= 200
     assert result["latencyMs"] >= 500
+
+
+def test_003_FR_007_S_RESP_18_latency_runs_from_send_to_the_end_of_each_call(
+    mock_api: MockApi,
+) -> None:
+    # A received call, one dropped mid-body, and one still running when the function returns.
+    steps = [
+        {"call": {"user": "First."}},
+        {"call": {"user": "Second."}, "swallow": True},
+        {"background": {"user": "Third."}},
+        {"sleep": 200},
+        {"return": "Done."},
+    ]
+    case = case_of(
+        {
+            "service": {"behaviour": "steps", "params": {"steps": steps}},
+            "script": [
+                {"match": {"bodyIncludes": "First."}, "delayMs": 300, "reply": {"text": "One."}},
+                {
+                    "match": {"bodyIncludes": "Second."},
+                    "delayMs": 200,
+                    "reply": {"text": "A body cut short."},
+                    "drop": {"chunks": 0, "bytes": 5},
+                },
+                {"match": {"bodyIncludes": "Third."}, "delayMs": 1000, "reply": {"text": "Late."}},
+            ],
+        },
+        backend="async",
+    )
+    with started(case, mock_api) as adapter:
+        initialize(adapter, case)
+        response = adapter.wait(generate(adapter, case))
+    calls = (
+        response["result"]["calls"] if "result" in response else response["error"]["data"]["calls"]
+    )
+    assert [call["outcome"] for call in calls] == ["ok", "unanswered", "ok"]
+    assert calls[0]["latencyMs"] >= 300
+    assert calls[1]["latencyMs"] >= 200
+    assert "latencyMs" not in calls[2]

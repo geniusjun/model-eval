@@ -1,0 +1,4855 @@
+{
+  "S-RAW-01": [
+    {
+      "name": "the answer through an uncaptured transport with Result(raw=, final=, finish_reason=, usage=, model=): normal, its usage the trial's (acceptance scenario 6)",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 12,
+                "output": 5
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the other transport."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the other transport.",
+        "final": "Hello from the other transport.",
+        "answers": 1,
+        "finishReason": "stop",
+        "usage": {
+          "input": 12,
+          "output": 5
+        },
+        "calls": null,
+        "warnings": [],
+        "requests": [
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same after a captured call to another model: the uncaptured call is appended with Result(model=) and Result(usage=), without branch",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 12,
+                "output": 5
+              },
+              "model": "model-b",
+              "modelSnapshot": "model-b-snapshot-1"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello from the other transport."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the other transport.",
+        "answers": 1,
+        "finishReason": "stop",
+        "modelSnapshot": "model-b-snapshot-1",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null,
+            "usage": {
+              "input": 12,
+              "output": 5
+            },
+            "responseModel": "model-b-snapshot-1"
+          }
+        ],
+        "fingerprint": null,
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same without Result(model=): A7 naming the captured models",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Pick a topic for the reply."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 12,
+                "output": 5
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Topic: greetings."
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello from the other transport."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A7",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-x`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Result(model=) names another model: the A2 form for Result(model=)",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 12,
+                "output": 5
+              },
+              "model": "model-x"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the other transport."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2-result-model",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-x`"
+          }
+        },
+        "calls": null
+      }
+    },
+    {
+      "name": "the uncaptured call as raw call without Result(finish_reason=): the finish-reason check, A9",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "usage": {
+                "input": 12,
+                "output": 5
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the other transport."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A9"
+        },
+        "calls": null
+      }
+    },
+    {
+      "name": "Result(model=) names another model while a captured variant model call exists: Outcome row 4 still checks it, the A2 form for Result(model=)",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the intent of the request."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 12,
+                "output": 5
+              },
+              "model": "model-x"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "question"
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello from the other transport."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2-result-model",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-x`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    }
+  ],
+  "S-RAW-02": [
+    {
+      "name": "a refined captured answer given with Result(model=), a same-model side call fails and is swallowed: not failed, an uncaptured call with W4",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "draft"
+              }
+            },
+            {
+              "call": {
+                "system": "Write a short memory note about the user.",
+                "user": "The user said hello.",
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Refined answer.",
+              "final": "Refined answer.",
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Draft answer."
+          }
+        },
+        {
+          "error": {
+            "status": 500
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Refined answer.",
+        "answers": 1,
+        "finishReason": "stop",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": null,
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W4"
+          }
+        ]
+      }
+    }
+  ],
+  "S-RAW-03": [
+    {
+      "name": "another model's captured answer refined and given with Result(model=<variant>): Outcome row 4 passes, W8 (User Story 1 acceptance scenario 9)",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "model": "model-x"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "The capital of France is Paris.",
+              "final": "The capital of France is Paris.",
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Answer: The capital of France is Paris."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "The capital of France is Paris.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W8",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-RAW-04": [
+    {
+      "name": "a streamed first answer filtered and regenerated without streaming, reply_call true for both, the first answer as Result(raw=): answers 2, the regenerated answer's finish reason",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "again"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer.",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "Second answer.",
+        "answers": 2,
+        "finishReason": "length",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-RAW-05": [
+    {
+      "name": "a non-stream first answer filtered and regenerated by stream, reply_call true for both, only Result(raw=<first answer>): Outcome row 5, an unread response follows the raw answer",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter.",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "again"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-raw-unread-follows"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same with Result(raw=, finish_reason=, answers=): those values",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter.",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "again"
+              },
+              "finishReason": "length",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "Second answer.",
+        "answers": 2,
+        "finishReason": "length"
+      }
+    }
+  ],
+  "S-RAW-06": [
+    {
+      "name": "a stream from a default model, the collected raw given with Result(model=<variant>): W8",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "model": "model-x",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W8",
+            "placeholders": {
+              "model": "model-x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same with rendering on: the render target is not reached (A11), a configuration error at the start",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "model": "model-x",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          },
+          "onException": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A11"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the same with reply_call true only for variant model calls: the other model's stream is no source candidate, no W8",
+      "target": {
+        "replyCall": {
+          "model": "model-b"
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "model": "model-x",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-RAW-07": [
+    {
+      "name": "a short raw answer contained in another model's long summary: no warning",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Summarise the conversation."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Summary of the conversation so far: the user asked for a greeting in several languages, the assistant answered Hello. in English and then listed the same greeting in French, Spanish and German, and the user said thanks."
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello.",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-RAW-08": [
+    {
+      "name": "a streaming tool loop whose last call alone is non-stream: the earlier call also branch answer, the fingerprint is the first request",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "The weather is sunny."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "The weather is sunny.",
+        "answers": 1,
+        "finishReason": "stop",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "fingerprint": "render"
+      }
+    }
+  ],
+  "S-RAW-09": [
+    {
+      "name": "a streaming same-model classification before a non-stream answer: Outcome row 5, unread responses have different system prompts",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "stream": true
+              }
+            },
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-raw-unread-systems"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-RAW-10": [
+    {
+      "name": "the answer through an uncaptured transport, a same-model classification excluded by reply_call, an empty answer cut by the output limit shipped as a message: the call is added, answers 1, an empty answer",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I could not answer that.",
+              "kind": "fallback",
+              "model": "model-b",
+              "usage": {
+                "input": 20,
+                "output": 256
+              },
+              "finishReason": "length"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "reply": {
+            "text": "",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "Sorry, I could not answer that.",
+        "answers": 1,
+        "finishReason": "length",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": null,
+            "usage": {
+              "input": 20,
+              "output": 256
+            }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same after a swallowed failure of another model's side call",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Look up the user's memory.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I could not answer that.",
+              "kind": "fallback",
+              "model": "model-b",
+              "usage": {
+                "input": 20,
+                "output": 256
+              },
+              "finishReason": "length"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          }
+        },
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "reply": {
+            "text": "",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "answers": 1,
+        "finishReason": "length",
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 256
+            }
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-RAW-11": [
+    {
+      "name": "no captured call, a same-model classification through the uncaptured transport refuses, Result(raw=\"\", kind=\"fallback\", model=, answers=0, finish_reason=\"other\"): a fallback with answers 0",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "I can't help with that.",
+              "kind": "fallback",
+              "finishReason": "other",
+              "model": "model-b",
+              "answers": 0
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "I can't help with that.",
+        "answers": 0,
+        "finishReason": "other",
+        "calls": null
+      }
+    },
+    {
+      "name": "the same without model=: A7 with <models> none",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "I can't help with that.",
+              "kind": "fallback",
+              "finishReason": "other",
+              "answers": 0
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A7",
+          "placeholders": {
+            "model": "model-b",
+            "models": "none"
+          }
+        },
+        "calls": null
+      }
+    },
+    {
+      "name": "the same without answers=: an empty answer",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "I can't help with that.",
+              "kind": "fallback",
+              "finishReason": "other",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "answers": 1,
+        "finishReason": "other"
+      }
+    }
+  ],
+  "S-RAW-12": [
+    {
+      "name": "a stream answer given as Result(raw=) without finish_reason=: the raw call is the last unread response and the last answer, A9",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A9"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    }
+  ],
+  "S-UNC-06": [
+    {
+      "name": "the answer through a child process like the Claude Agent SDK, a same-model intent classification through the Anthropic SDK excluded by reply_call: raw is the answer, the classification a side call",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the intent of the request."
+              }
+            },
+            {
+              "child": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 12,
+                "output": 5
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "question"
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello from the other transport."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the other transport.",
+        "answers": 1,
+        "finishReason": "stop",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 12,
+              "output": 5
+            }
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-17": [
+    {
+      "name": "a non-stream request and the same request as a stream sent together, the finished non-stream answer used and given as raw, the stream cut: one branch, normal, answers 1",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "parallel": [
+                {
+                  "name": "plain"
+                },
+                {
+                  "name": "streamed",
+                  "stream": true,
+                  "startAfterMs": 200
+                }
+              ],
+              "wait": "first"
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "plain"
+              },
+              "final": {
+                "callText": "plain"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "stream": false
+          },
+          "delayMs": 600,
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "match": {
+            "stream": true
+          },
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 1,
+        "finishReason": "stop",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same on the synchronous client from pool threads, the service stops waiting for the stream: one branch, normal, answers 1",
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "race-report",
+        "params": {
+          "steps": [
+            {
+              "race": [
+                {
+                  "name": "plain"
+                },
+                {
+                  "name": "streamed",
+                  "stream": true,
+                  "startAfterMs": 200
+                }
+              ]
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "plain"
+              },
+              "final": {
+                "callText": "plain"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "stream": false
+          },
+          "delayMs": 600,
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "match": {
+            "stream": true
+          },
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              5000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 1,
+        "finishReason": "stop",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-18": [
+    {
+      "name": "n = 3, the last item cut and an earlier one stop, with Result(finish_reason=): that value, no W3",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "n": 3
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "One.",
+              "final": "One.",
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "choices": [
+              {
+                "text": "One.",
+                "finishReason": "stop"
+              },
+              {
+                "text": "Two.",
+                "finishReason": "stop"
+              },
+              {
+                "text": "Thr",
+                "finishReason": "length"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "One.",
+        "answers": 3,
+        "finishReason": "stop",
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-20": [
+    {
+      "name": "a regeneration with a changed system, reply_call true for both, the first answer as Result(raw=): answers 2, the regenerated answer's finish reason",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "second",
+                "system": "You are a careful assistant. Answer in one sentence."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "second"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer.",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "final": "Second answer.",
+        "answers": 2,
+        "finishReason": "length",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without reply_call, Result(raw=) alone: Outcome row 5, an answer outside the raw call's branch",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "second",
+                "system": "You are a careful assistant. Answer in one sentence."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "second"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer.",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-raw-other-answer"
+        }
+      }
+    },
+    {
+      "name": "without reply_call, with Result(finish_reason=, answers=) too: normal with those values",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "second",
+                "system": "You are a careful assistant. Answer in one sentence."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "second"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer.",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "finishReason": "stop"
+      }
+    }
+  ],
+  "S-ANS-26": [
+    {
+      "name": "a raw-giving service, the classification refuses, Result(raw=\"\", kind=\"fallback\", finish_reason=\"other\") with reply_call: the uncaptured-call exception, a fallback with answers 0 and no call added",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I can't help with that.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "Sorry, I can't help with that.",
+        "answers": 0,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same without reply_call: the classification's answer is a searched answer, A7",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I can't help with that.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A7",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-b`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same uncaptured-call exception without Result(finish_reason=): finish reason other, no A9",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I can't help with that.",
+              "kind": "fallback"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "answers": 0,
+        "finishReason": "other"
+      }
+    },
+    {
+      "name": "the same exception as a discard: Result(raw=\"\", kind=\"discarded\", discard_reason=) is a discard with answers 0",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "kind": "discarded",
+              "discardReason": "Refused: the request is off-topic."
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "",
+        "answers": 0,
+        "finishReason": "other",
+        "discardReason": "Refused: the request is off-topic.",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-38": [
+    {
+      "name": "content cut, the same request resent ends in 429 after the SDK's retries, a message shipped: a fallback with W1",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W1-variant"
+          }
+        ]
+      }
+    },
+    {
+      "name": "content cut, the same request resent ends in 429 after the SDK's retries, a message shipped: a fallback with W1",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W1-variant"
+          }
+        ]
+      }
+    },
+    {
+      "name": "content cut, the same request resent ends in 429 after the SDK's retries, a message shipped: a fallback with W1",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          }
+        ],
+        "warnings": [
+          {
+            "message": "W1-variant"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-39": [
+    {
+      "name": "content cut, the resent stream cut by the service's time limit, a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "chat-completions"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent stream cut by the service's time limit, a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "responses"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent stream cut by the service's time limit, a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "messages"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent stream cut by the service's time limit (break), a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                },
+                "same": "first"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent stream cut by the service's time limit (break), a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                },
+                "same": "first"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent stream cut by the service's time limit (break), a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                },
+                "same": "first"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent stream cut by the service's time limit (stop-waiting), a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                },
+                "same": "first"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent stream cut by the service's time limit (stop-waiting), a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                },
+                "same": "first"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent stream cut by the service's time limit (stop-waiting), a message shipped: a fallback, no warning, timeout not thrown",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                },
+                "same": "first"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-40": [
+    {
+      "name": "cut late, the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "chat-completions"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "late",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "cut late, the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "responses"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "late",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "cut late, the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "messages"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "late",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "cut late by the service's time limit (break), the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                },
+                "name": "late"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "cut late by the service's time limit (break), the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                },
+                "name": "late"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "cut late by the service's time limit (break), the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                },
+                "name": "late"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "cut late by the service's time limit (stop-waiting), the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                },
+                "name": "late"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "cut late by the service's time limit (stop-waiting), the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                },
+                "name": "late"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "cut late by the service's time limit (stop-waiting), the resent stream cut for content, a message shipped: a fallback whose raw is the content-cut text",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                },
+                "name": "late"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "Hello there."
+                  },
+                  "style": "break"
+                },
+                "name": "first",
+                "same": "late"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": "Sorry, something went wrong. Please try again.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              900,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Sorry, something went wrong. Please try again.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-41": [
+    {
+      "name": "content cut, the resent request ends in 429, a larger model's answer shipped: a fallback, no warning as the larger model's call came after the failure",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "large",
+                "model": "model-large"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "large"
+              },
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          }
+        },
+        {
+          "reply": {
+            "text": "Here is a longer answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Here is a longer answer.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-large",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent request ends in 429, a larger model's answer shipped: a fallback, no warning as the larger model's call came after the failure",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "large",
+                "model": "model-large"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "large"
+              },
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          }
+        },
+        {
+          "reply": {
+            "text": "Here is a longer answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Here is a longer answer.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-large",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "content cut, the resent request ends in 429, a larger model's answer shipped: a fallback, no warning as the larger model's call came after the failure",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": {
+                  "untilText": "Hello there."
+                },
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "same": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "large",
+                "model": "model-large"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "large"
+              },
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "deltas": 1,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          }
+        },
+        {
+          "reply": {
+            "text": "Here is a longer answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there.",
+        "final": "Here is a longer answer.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-large",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-19": [
+    {
+      "name": "a raw-giving service whose final answer is a forced reply tool call, with answer_tool: the argument is the matching answer, finish reason stop (acceptance scenario 11)",
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "tools": [
+                  "reply"
+                ],
+                "toolChoice": "reply"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Hello there.",
+              "final": "Hello there."
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "reply",
+                "arguments": "{\"text\":\"Hello there.\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there.",
+        "answers": 1,
+        "finishReason": "stop",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-RAW-13": [
+    {
+      "name": "Result(raw=, finish_reason=) without final, kind model: the shipped text is raw",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Hi.",
+              "finishReason": "stop"
+            },
+            "finalFromFlow": false
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hi."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hi.",
+        "final": "Hi.",
+        "answers": 1
+      }
+    },
+    {
+      "name": "Result(raw=\"\", kind=\"fallback\", answers=0) without final: the shipped text is the empty string",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "kind": "fallback",
+              "answers": 0
+            },
+            "finalFromFlow": false
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "refuse"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "",
+        "answers": 0
+      }
+    },
+    {
+      "name": "Result(raw=, kind=\"discarded\", discard_reason=, finish_reason=) without final: no final",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Hi.",
+              "kind": "discarded",
+              "discardReason": "filtered",
+              "finishReason": "stop"
+            },
+            "finalFromFlow": false
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hi."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "discarded",
+        "raw": "Hi.",
+        "final": null,
+        "discardReason": "filtered"
+      }
+    },
+    {
+      "name": "final=None given with kind model: A14",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Hi.",
+              "final": null,
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hi."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A14"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "final=None given with kind fallback: A14",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Hi.",
+              "final": null,
+              "kind": "fallback",
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hi."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A14"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -323,11 +323,17 @@ def environment_requirements(installed: Mapping[str, str], env: Mapping[str, str
     return matching[0] if len(matching) == 1 else None
 
 
+# The environment with httpx and httpx2 installed together is not an SDK major of its own, so it
+# runs only the cases that name it (S-UNC-02, S-UNC-03); every other case runs in the SDK majors.
+BOTH_TRANSPORTS = "both-transports"
+
+
 def runs_for(data: JsonObject, api: str, requirements: str | None) -> bool:
     """A case's `sdks` holds requirements files; one counts for an API only when it pins the SDK
-    that serves that API, and the case runs when this environment's file is among those."""
+    that serves that API, and the case runs when this environment's file is among those. A case
+    without `sdks` runs in every environment but `both-transports`."""
     if "sdks" not in data:
-        return True
+        return requirements != BOTH_TRANSPORTS
     serving = {name for name in data["sdks"] if SDK_OF_API[api] in requirements_sdks(name)}
     return requirements in serving
 
@@ -370,14 +376,18 @@ class ScenarioCase:
     @property
     def expect(self) -> Expectation:
         """`expectPerTrial` when the case gives one, else `expect`."""
-        expected: Expectation = self.data.get("expectPerTrial", self.data.get("expect"))
+        data = self.data
+        expected: Expectation = (
+            data["expectPerTrial"] if "expectPerTrial" in data else data["expect"]
+        )
         return expected
 
 
 @dataclass
 class Outcome:
     """Everything a case's `expect` is compared with. `responses` holds the response of every
-    trial of a case with `trials` or `trialsInARow`, in send order; `response` is the first."""
+    trial of a case with `trials` or `trialsInARow`, in send order, or the render and generate
+    responses of `render-and-generate`; `response` is the first."""
 
     response: JsonObject
     exchange: Exchange
@@ -452,7 +462,8 @@ def run_case(case: ScenarioCase, mock: MockApi, service: str = "scenario") -> Ou
 def send_trials(case: ScenarioCase, adapter: AdapterProcess, mock: MockApi) -> list[JsonObject]:
     """Sends the case's request. With `trials` N, that many `generate`s with caseIds `case-1`
     to `case-N`, all before waiting for any response; with `trialsInARow` N, each after the
-    previous response arrived."""
+    previous response arrived. `render-and-generate` sends a `render` and then a `generate`
+    before waiting for either, and returns both responses, render first."""
     request = case.data.get("request", "generate")
     together = int(case.data.get("trials", 1))
     in_a_row = int(case.data.get("trialsInARow", 1))
@@ -464,6 +475,11 @@ def send_trials(case: ScenarioCase, adapter: AdapterProcess, mock: MockApi) -> l
     params = [trial_params(case)]
     if total > 1:
         params = [{**params[0], "caseId": f"case-{n}"} for n in range(1, total + 1)]
+    if request == "render-and-generate":
+        if "cancel" in case.data:
+            raise ValueError("`render-and-generate` takes no `cancel`")
+        sent = [adapter.send(method, params[0]) for method in ("render", "generate")]
+        return [adapter.wait(request_id) for request_id in sent]
     if in_a_row > 1:
         return [adapter.request(request, trial) for trial in params]
     request_ids = [adapter.send(request, trial) for trial in params]
@@ -689,7 +705,7 @@ def assert_expect(expect: Expectation, outcome: Outcome) -> None:
     expected = expect if isinstance(expect, list) else [expect] * len(responses)
     if len(expected) != len(responses):
         raise AssertionError(f"{len(expected)} expectations for {len(responses)} trials")
-    mismatches = []
+    mismatches: list[str] = []
     for number, (wanted, response) in enumerate(zip(expected, responses, strict=True), start=1):
         found = check_expect(wanted, replace(outcome, response=response))
         prefix = f"trial {number}: " if len(responses) > 1 else ""

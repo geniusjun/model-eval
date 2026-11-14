@@ -1892,5 +1892,133 @@
         ]
       }
     }
+  ],
+  "S-CONN-24": [
+    {
+      "name": "a header value the HTTP client refuses before connecting (a line break): a drop before headers, transient, unanswered (K37)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "kwargs": {
+                  "extra_headers": {
+                    "x-note": "one\ntwo"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ],
+        "requests": []
+      }
+    }
+  ],
+  "S-CONN-25": [
+    {
+      "name": "a base_url without a scheme (localhost:8080/v1): not sent, config, failed, not billed (F3)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "baseUrl": "localhost:8080/v1"
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ],
+        "requests": []
+      }
+    },
+    {
+      "name": "a base_url with neither scheme nor port (api.example.com/v1): not sent, config, failed (F3)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "baseUrl": "api.example.com/v1"
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ],
+        "requests": []
+      },
+      "languages": [
+        "python"
+      ]
+    }
+  ],
+  "S-CONN-26": [
+    {
+      "name": "a name resolution failure (socket.gaierror): never arrived, transient, failed",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "baseUrl": "http://model-eval.invalid:1/v1"
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
   ]
 }

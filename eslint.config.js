@@ -54,6 +54,7 @@ export default tseslint.config(
       '.specify/',
       'test-results/',
       '**/.venv/',
+      '**/.venv-*/',
     ],
   },
   js.configs.recommended,

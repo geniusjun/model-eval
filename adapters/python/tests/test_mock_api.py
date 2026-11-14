@@ -13,6 +13,7 @@ import ssl
 import subprocess
 import sys
 import time
+import urllib.error
 import zlib
 from collections.abc import Iterator
 from typing import Any
@@ -256,6 +257,91 @@ def test_003_SC_002_chunk_delays_split_chunks_in_time(mock_api: MockApi) -> None
         moment for moment, _ in chunks_of(send(mock_api, body={"model": "m", "stream": True}))
     ]
     assert arrived[2] - arrived[1] >= DELAY_S
+
+
+def test_003_SC_002_body_chunks_split_a_json_body_in_time(mock_api: MockApi) -> None:
+    body = {"id": "resp-1", "status": "completed"}
+    text = json.dumps(body, separators=(",", ":")).encode()
+    chunking = {"splitAt": [5, 12], "chunkDelaysMs": [0, DELAY_MS]}
+    mock_api.load([{"body": body, "bodyChunks": chunking}])
+    response = send(mock_api)
+    arrived = list(chunks_of(response))
+    assert response.getheader("transfer-encoding") == "chunked"
+    assert [chunk for _, chunk in arrived] == [text[:5], text[5:12], text[12:]]
+    assert arrived[1][0] - arrived[0][0] >= DELAY_S
+
+
+def load_error(mock: MockApi, entry: dict[str, Any]) -> str:
+    """The message of the 400 a script load is refused with."""
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        mock.load([entry])
+    assert refused.value.code == 400
+    message: str = json.loads(refused.value.read())["error"]
+    return message
+
+
+STORED_GZIP = base64.b64encode(zlib.compress(b"abc")).decode()
+
+
+@pytest.mark.parametrize(
+    ("entry", "named"),
+    [
+        ({"text": "abc", "bodyChunks": {"splitAt": [3]}}, "splitAt must fall inside"),
+        ({"text": "abc", "bodyChunks": {"splitAt": [2, 1]}}, "splitAt must be positive"),
+        ({"text": "abc", "bodyChunks": {"splitAt": [0]}}, "splitAt must be positive"),
+        (
+            {"text": "abc", "bodyChunks": {"splitAt": [1], "chunkDelaysMs": [0, 0, 5]}},
+            "chunkDelaysMs has more entries",
+        ),
+        (
+            {"reply": {"text": "abc"}, "stream": {}, "bodyChunks": {"splitAt": [1]}},
+            "a stream reply",
+        ),
+        (
+            {"sse": {"chunks": [{"text": "data: {}\n\n"}]}, "bodyChunks": {"splitAt": [1]}},
+            "an sse body",
+        ),
+        (
+            {
+                "text": "abc",
+                "encoding": "gzip",
+                "compressed": {"gzip": STORED_GZIP},
+                "bodyChunks": {"splitAt": [1]},
+            },
+            "a stored body",
+        ),
+    ],
+)
+def test_003_SC_002_body_chunks_the_server_cannot_apply_fail_the_script_load(
+    mock_api: MockApi, entry: dict[str, Any], named: str
+) -> None:
+    assert named in load_error(mock_api, entry)
+
+
+@pytest.mark.parametrize(
+    ("entry", "request_body", "named"),
+    [
+        (
+            {"reply": {"text": "abc"}, "bodyChunks": {"splitAt": [100000]}},
+            None,
+            "splitAt must fall inside",
+        ),
+        (
+            {"reply": {"text": "abc"}, "bodyChunks": {"splitAt": [1]}},
+            {"model": "m", "stream": True},
+            "not SSE",
+        ),
+    ],
+)
+def test_003_SC_002_body_chunks_that_only_a_request_shows_wrong_are_a_script_error(
+    mock_api: MockApi, entry: dict[str, Any], request_body: Any, named: str
+) -> None:
+    """A reply body is written per request, and a reply is SSE only when the request asks for a
+    stream, so these two are found when the request arrives."""
+    mock_api.load([entry])
+    response = send(mock_api, body=request_body)
+    assert response.status == 500
+    assert named in response.read().decode()
 
 
 # --- Script and request log -----------------------------------------------------------------

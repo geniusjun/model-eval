@@ -159,3 +159,99 @@ def test_003_FR_023_background_work_hitting_a_blocked_request_logs_l3(mock_api: 
     assert warnings == [sentence]
     assert len(mock_api.log()) == 1
     assert adapter.exchange.calls == []
+
+
+def test_003_FR_023_cancel_while_waiting_for_unfinished_calls_blocks_later_requests(
+    mock_api: MockApi,
+) -> None:
+    # The function has returned and the helper waits for a slow background call when the tool
+    # cancels; a request that context makes afterwards is not sent and not reported.
+    steps = [
+        {"call": {}},
+        {"background": {"user": "Slow note."}},
+        {"background": {"user": "Late note."}, "delay": 1000},
+        {"sleep": 200},
+    ]
+    case = case_of(
+        {
+            "service": {"behaviour": "steps", "params": {"steps": steps}},
+            "script": [
+                {"match": {"bodyIncludes": "Slow note"}, "delayMs": 3000, "reply": {"text": "Ok."}},
+                {"match": {"bodyIncludes": "Late note"}, "reply": {"text": "Never sent."}},
+                {"reply": {"text": "Hello."}},
+            ],
+        },
+        backend="async",
+    )
+    with started(case, mock_api) as adapter:
+        initialize(adapter, case)
+        request_id = generate(adapter, case)
+        wait_to_cancel({"afterRequests": 2}, mock_api)
+        # The function returns 0.2 s after starting, so the trial is waiting by now.
+        time.sleep(0.5)
+        adapter.notify("cancel", {"id": request_id})
+        response = adapter.wait(request_id)
+        time.sleep(1.5)
+        adapter.request("shutdown")
+    # helper-api §Cancel: an asynchronous trial's response goes out right away as a failure
+    # result with its calls, the slow call cut as `unanswered`.
+    assert response["result"]["error"] == {
+        "kind": "timeout",
+        "message": "The tool cancelled the trial.",
+    }
+    outcomes = [call["outcome"] for call in response["result"]["calls"]]
+    assert outcomes == ["ok", "unanswered"]
+    assert "errorKind" not in response["result"]["calls"][1]
+    assert len(mock_api.log()) == 2
+    assert adapter.exchange.calls == []
+
+
+def test_003_FR_023_a_sync_target_awaiting_its_returned_coroutine_is_cancelled_as_async(
+    mock_api: MockApi,
+) -> None:
+    # helper-api §Cancel: a synchronous function that returned an awaitable counts as
+    # asynchronous from then on, so the call its coroutine has in flight is cut at once.
+    case = case_of(
+        {
+            "service": {"behaviour": "returns", "params": {"steps": [], "value": "coroutine"}},
+            "script": [{"delayMs": 5000, "reply": {"text": "Too late."}}],
+        },
+        backend="sync",
+    )
+    with started(case, mock_api) as adapter:
+        initialize(adapter, case)
+        request_id = generate(adapter, case)
+        cancel_after_first_request(adapter, mock_api, request_id)
+        cancelled = time.monotonic()
+        response = adapter.wait(request_id)
+        answered_after = time.monotonic() - cancelled
+    assert answered_after < 2.0
+    assert response["result"]["error"]["kind"] == "timeout"
+    calls = response["result"]["calls"]
+    assert [(call["outcome"], call.get("errorKind")) for call in calls] == [("unanswered", None)]
+
+
+def test_003_FR_023_a_cancelled_trial_with_a_raising_reply_call_still_reports_config(
+    mock_api: MockApi,
+) -> None:
+    # Outcome row 1 is decided from the calls without reply_call, so a captured 401 makes the
+    # cancel result `config` even though reply_call raises.
+    case = case_of(
+        {
+            "service": {"behaviour": "reply"},
+            "script": [
+                {"status": 401, "error": {"message": "invalid key"}},
+                {"delayMs": 5000, "reply": {"text": "Too late."}},
+            ],
+        },
+        backend="async",
+    )
+    with started(case, mock_api, service="raising_targets") as adapter:
+        initialize(adapter, case)
+        request_id = generate(adapter, case, target="reply-call-cancelled")
+        wait_to_cancel({"afterRequests": 2}, mock_api)
+        adapter.notify("cancel", {"id": request_id})
+        result = adapter.wait(request_id)["result"]
+    assert result["error"]["kind"] == "config"
+    calls = [(call["outcome"], call.get("errorKind")) for call in result["calls"]]
+    assert calls == [("failed", "config"), ("unanswered", None)]

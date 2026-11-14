@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -485,3 +486,74 @@ def test_003_FR_003_a_failing_git_command_reports_none_with_l1(
     assert reported.service == {}
     assert len(reported.warnings) == 1
     assert L1_GIT.match(reported.warnings[0]), reported.warnings
+
+
+def test_003_FR_003_l1_names_the_git_subcommand_that_failed(
+    mock_api: MockApi, tmp_path: Path
+) -> None:
+    # A submodule whose .git file points nowhere fails `git status` only, which runs with a
+    # global option before its subcommand; L1 names the subcommand (helper-api §Messages).
+    origin = repository(tmp_path / "origin", {"lib.py": b"VALUE = 1\n"})
+    service = repository(tmp_path / "service", SERVICE_FILES)
+    git(service, "submodule", "add", "-q", str(origin), "sub")
+    commit(service, "add submodule")
+    (service / "sub" / ".git").write_text("gitdir: ../nowhere\n")
+    reported = report(mock_api, service)
+    assert reported.service == {}
+    assert len(reported.warnings) == 1
+    assert reported.warnings[0].startswith("Service version not reported: git status: "), (
+        reported.warnings
+    )
+
+
+# --- S-RV-18, S-RV-19: git or the folder missing, and a nested repository that vanishes -----
+
+
+def git_on_path(folder: Path, script: str | None) -> dict[str, str]:
+    """A PATH that holds only `folder`, with a `git` there running `script` when given (with
+    the mode 0o644 when it is empty, so starting it fails with EACCES)."""
+    folder.mkdir()
+    if script is not None:
+        command = folder / "git"
+        command.write_text(script)
+        command.chmod(0o755 if script else 0o644)
+    return {"PATH": str(folder)}
+
+
+def test_003_FR_003_S_RV_18_a_missing_service_dir_or_git_that_cannot_start(
+    mock_api: MockApi, tmp_path: Path
+) -> None:
+    missing = report(mock_api, tmp_path / "missing")
+    assert missing.service == {}
+    assert missing.warnings == ["Service version not reported: lstat .: ENOENT."]
+
+    service = repository(tmp_path / "service", SERVICE_FILES)
+    denied = report(mock_api, service, extra_env=git_on_path(tmp_path / "denied", ""))
+    assert denied.service == {}
+    assert denied.warnings == ["Service version not reported: git rev-parse: EACCES."]
+
+    absent = report(mock_api, service, extra_env=git_on_path(tmp_path / "absent", None))
+    assert absent.service == {}
+    assert absent.warnings == []
+
+
+def test_003_FR_003_S_RV_19_a_nested_repository_removed_while_computing_is_left_out(
+    mock_api: MockApi, tmp_path: Path
+) -> None:
+    service = repository(tmp_path / "service", SERVICE_FILES)
+    nested = repository(service / "nested", {"notes.md": b"nested\n"})
+    real_git = shutil.which("git")
+    assert real_git is not None
+    # Listing the nested repository's files removes that folder, and that git call fails.
+    script = (
+        "#!/bin/sh\n"
+        f'if [ "$(pwd -P)" = "{nested.resolve()}" ] && [ "$1" = ls-files ]; then\n'
+        f'  {shutil.which("rm")} -rf "{nested}"\n'
+        '  echo "fatal: the folder is gone" >&2\n'
+        "  exit 128\n"
+        "fi\n"
+        f'exec "{real_git}" "$@"\n'
+    )
+    reported = report(mock_api, service, extra_env=git_on_path(tmp_path / "vanishing", script))
+    assert reported.warnings == []
+    assert reported.service["treeHash"] == tree_hash_of(SERVICE_FILES)

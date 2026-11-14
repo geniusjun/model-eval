@@ -1637,5 +1637,187 @@
         ]
       }
     }
+  ],
+  "S-RESP-13": [
+    {
+      "name": "the target function returns None after an answer: A14 with calls, usage and capturedRaw",
+      "service": {
+        "behaviour": "returns",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "value": "none"
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer.",
+            "usage": {
+              "input": 12,
+              "output": 6
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "usage": {
+          "input": 12,
+          "output": 6
+        },
+        "capturedRaw": "Here is the answer."
+      }
+    },
+    {
+      "name": "None after a captured 429 the service swallowed: A14, not Outcome row 3",
+      "service": {
+        "behaviour": "returns",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "value": "none"
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "None after a captured 401: Outcome row 1, config",
+      "service": {
+        "behaviour": "returns",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "value": "none"
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 401
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fallback() of a value that is not text (fallback(123)): A14",
+      "service": {
+        "behaviour": "returns",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "value": "fallback-number"
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "capturedRaw": "Here is the answer."
+      }
+    }
+  ],
+  "S-RESP-14": [
+    {
+      "name": "a synchronous target function returns the coroutine of an asynchronous service function: awaited in the trial context",
+      "languages": [
+        "python"
+      ],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "returns",
+        "params": {
+          "steps": [],
+          "value": "coroutine"
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the coroutine."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the coroutine.",
+        "final": "Hello from the coroutine.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
   ]
 }

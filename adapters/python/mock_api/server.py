@@ -162,6 +162,37 @@ def check_entry(index: int, entry: Any) -> None:
         raise ScriptError(f"script entry {index} closes the connection but gives {contents[0]}")
     if not closes and len(contents) != 1:
         raise ScriptError(f"script entry {index} needs exactly one of {', '.join(CONTENT_FIELDS)}")
+    if "bodyChunks" in entry:
+        check_body_chunks(index, entry)
+
+
+def check_body_chunks(index: int, entry: JsonObject) -> None:
+    """Refuses at load what `bodyChunks` cannot apply to, so a bad script fails the load instead
+    of answering a request with a 500 that a helper would take as a transient failure. Offsets
+    past a `reply` or `error` body are known only once the body is written for a request."""
+    split = entry["bodyChunks"]
+    where = f"script entry {index}: bodyChunks"
+    for field, reason in (
+        ("sse", "an sse body gives its own chunks"),
+        ("stream", "a stream reply is chunked by stream"),
+        ("compressed", "a stored body gives its own chunks"),
+    ):
+        if field in entry:
+            raise ScriptError(f"{where} does not apply: {reason}")
+    if not isinstance(split, dict) or not isinstance(split.get("splitAt"), list):
+        raise ScriptError(f"{where} is {{splitAt: [offset, ...], chunkDelaysMs: [ms, ...]}}")
+    offsets = split["splitAt"]
+    rising = all(isinstance(offset, int) and offset > 0 for offset in offsets)
+    if not offsets or not rising or offsets != sorted(set(offsets)):
+        raise ScriptError(f"{where}.splitAt must be positive byte offsets that rise strictly")
+    if len(split.get("chunkDelaysMs", [])) > len(offsets) + 1:
+        count = len(offsets) + 1
+        raise ScriptError(f"{where}.chunkDelaysMs has more entries than the {count} chunks")
+    known = entry.get("text") if "text" in entry else None
+    if known is None and "body" in entry:
+        known = compact_json(entry["body"])
+    if known is not None and offsets[-1] >= len(known.encode("utf-8")):
+        raise ScriptError(f"{where}.splitAt must fall inside the {len(known.encode())}-byte body")
 
 
 def matches(match: JsonObject | None, method: str, path: str, body: Any) -> bool:
@@ -788,27 +819,48 @@ def compress(response: Response, entry: JsonObject, accept_encoding: str | None)
     return str(encoding)
 
 
+def body_chunks(body: bytes, entry: JsonObject) -> list[tuple[int, bytes]]:
+    """A non-SSE body as one chunk, or split at `bodyChunks.splitAt` byte offsets with
+    `bodyChunks.chunkDelaysMs` before each chunk, so a client waits in the middle of the body."""
+    split = entry.get("bodyChunks")
+    if split is None:
+        return [(0, body)]
+    offsets = [int(offset) for offset in split["splitAt"]]
+    if offsets[-1] >= len(body):
+        size = len(body)
+        raise ScriptError(f"bodyChunks.splitAt must fall inside the {size}-byte body")
+    delays = list(split.get("chunkDelaysMs", []))
+    edges = [0, *offsets, len(body)]
+    return [
+        (delays[index] if index < len(delays) else 0, body[start:end])
+        for index, (start, end) in enumerate(zip(edges, edges[1:]))
+    ]
+
+
 def build_response(entry: JsonObject, api: str, request: JsonObject, rid: int) -> Response:
     model = str(request.get("model") or "model")
     if "reply" in entry:
         reply = entry["reply"]
         model = str(reply.get("model", model))
         if request.get("stream") is True:
+            if "bodyChunks" in entry:
+                raise ScriptError("bodyChunks is for bodies that are not SSE; use stream")
             options = entry.get("stream") or {}
             events = stream_events(api, rid, model, reply, request, options)
             return Response(int(entry.get("status", 200)), {}, stream_chunks(events, options), True)
         body = compact_json(reply_body(api, rid, model, reply)).encode("utf-8")
-        return Response(int(entry.get("status", 200)), {}, [(0, body)], False)
+        return Response(int(entry.get("status", 200)), {}, body_chunks(body, entry), False)
     if "error" in entry:
         status = int(entry.get("status", entry["error"].get("status", 500)))
         body = compact_json(error_body(api, entry["error"], status)).encode("utf-8")
-        return Response(status, {}, [(0, body)], False)
+        return Response(status, {}, body_chunks(body, entry), False)
     if "sse" in entry:
         sse = entry["sse"]
         chunks = sse_chunks(sse["chunks"], sse.get("lastLine", "blank-line"))
         return Response(int(entry.get("status", 200)), {}, chunks, True)
     text = entry["text"] if "text" in entry else compact_json(entry["body"])
-    return Response(int(entry.get("status", 200)), {}, [(0, text.encode("utf-8"))], False)
+    chunks = body_chunks(text.encode("utf-8"), entry)
+    return Response(int(entry.get("status", 200)), {}, chunks, False)
 
 
 def unscripted(api: str, message: str) -> Response:

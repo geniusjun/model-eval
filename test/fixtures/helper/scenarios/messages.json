@@ -833,6 +833,77 @@
         "finishReason": "stop",
         "warnings": []
       }
+    },
+    {
+      "name": "W3 and W9 together: the warnings in ascending ID order",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-fixture-2",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Complete.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              },
+              {
+                "index": 1,
+                "message": {
+                  "role": "assistant",
+                  "content": "Cut",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "length"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 5,
+              "completion_tokens": 3,
+              "total_tokens": 8,
+              "prompt_tokens_details": {
+                "cached_tokens": 4,
+                "cache_write_tokens": 3
+              }
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Complete.",
+        "answers": 2,
+        "finishReason": "length",
+        "warnings": [
+          {
+            "message": "W3"
+          },
+          {
+            "message": "W9"
+          }
+        ]
+      }
     }
   ],
   "S-ANS-33": [

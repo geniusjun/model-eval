@@ -1,0 +1,262 @@
+{
+  "S-ANS-04": [
+    {
+      "name": "a regeneration with a modified request, reply_call true for both: the fingerprint is the first answer's branch, equal to the render fingerprint",
+      "target": {
+        "render": true,
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "after": "first",
+                "user": "Make it shorter."
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Second answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "First answer.",
+        "answers": 2,
+        "fingerprint": "render"
+      }
+    },
+    {
+      "name": "render-mismatch cause 1: the first request failed and the service sent a modified request that answered: the fingerprint is that request's, not the render's",
+      "target": {
+        "render": true,
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "user": "Say hello, briefly."
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 500
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Hello.",
+        "fingerprint": "not-render"
+      }
+    },
+    {
+      "name": "render-mismatch cause 1: the first request ended only in a tool call and the service sent a modified request that answered: the fingerprint is not the render's",
+      "target": {
+        "render": true,
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ]
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "user": "Say hello, briefly."
+              }
+            }
+          ],
+          "result": {
+            "callText": "again"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Hello.",
+        "fingerprint": "not-render"
+      }
+    }
+  ],
+  "S-RESP-03": [
+    {
+      "name": "a tool loop of two calls: the fingerprint is the loop's first request, equal to the render fingerprint",
+      "target": {
+        "render": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ]
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "after": "first"
+              }
+            }
+          ],
+          "result": {
+            "callText": "next"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "First answer.",
+        "fingerprint": "render"
+      }
+    }
+  ],
+  "S-RESP-04": [
+    {
+      "name": "no answer after another model's call, the answer candidate ending in a tool call and a fallback: the fingerprint is the first answer candidate request, equal to the render fingerprint",
+      "target": {
+        "render": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a",
+                "system": "Pick a tone.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "toolChoice": "lookup"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, I cannot look that up."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Friendly."
+          }
+        },
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "answers": 0,
+        "fingerprint": "render"
+      }
+    }
+  ]
+}

@@ -345,9 +345,10 @@ def resource(client: Any, api: str) -> Any:
     return client.messages
 
 
-def send_sync(api: str, spec: CallSpec, kwargs: JsonObject) -> tuple[Any, str]:
-    """Sends one request with the synchronous client: (response or None, text read)."""
-    client = sync_client(api, spec)
+def send_sync(api: str, spec: CallSpec, kwargs: JsonObject, client: Any = None) -> tuple[Any, str]:
+    """Sends one request with the synchronous client, made here unless given: (response or
+    None, text read)."""
+    client = client if client is not None else sync_client(api, spec)
     mode = spec.get("streamingResponse")
     if mode is not None:
         with resource(client, api).with_streaming_response.create(**kwargs) as response:
@@ -404,9 +405,9 @@ def read_sync(api: str, spec: CallSpec, stream: Any) -> tuple[Any, str]:
 
 
 async def send_async(
-    api: str, backend: str, spec: CallSpec, kwargs: JsonObject, shared: Any = None
+    api: str, backend: str, spec: CallSpec, kwargs: JsonObject, client: Any = None
 ) -> tuple[Any, str]:
-    client = async_client(api, backend, spec, shared)
+    client = client if client is not None else async_client(api, backend, spec)
     mode = spec.get("streamingResponse")
     if mode is not None:
         async with resource(client, api).with_streaming_response.create(**kwargs) as response:
@@ -532,24 +533,37 @@ class Flow:
 
     # One call in each mode
 
-    def call_in_thread(self, spec: CallSpec) -> Received:
+    def client_for(self, spec: CallSpec, sync: bool) -> Any:
+        """The SDK client of one call, built before the call starts, with its API resource
+        resolved: the SDKs import their resource modules on first access, which takes longer
+        than a member's `startAfterMs`."""
+        api = self.api_of(spec)
+        client = (
+            sync_client(api, spec) if sync else async_client(api, self.backend, spec, self.shared)
+        )
+        resource(client, api)
+        return client
+
+    def call_in_thread(self, spec: CallSpec, client: Any = None) -> Received:
         """A request with the synchronous client, for the sync backend and for threads."""
         if "startAfterMs" in spec.data:
             threading.Event().wait(spec.data["startAfterMs"] / 1000)
         kwargs, conversation = self.prepare(spec)
         received = Received(kwargs, conversation)
         try:
-            received.response, received.text = send_sync(self.api_of(spec), spec, kwargs)
+            received.response, received.text = send_sync(self.api_of(spec), spec, kwargs, client)
         except Exception as error:
             received.error = error
         return received
 
-    async def call_awaited(self, spec: CallSpec) -> Received:
+    async def call_awaited(self, spec: CallSpec, client: Any = None) -> Received:
         if "startAfterMs" in spec.data:
             await asyncio.sleep(spec.data["startAfterMs"] / 1000)
         kwargs, conversation = self.prepare(spec)
         received = Received(kwargs, conversation)
-        sending = send_async(self.api_of(spec), self.backend, spec, kwargs, self.shared)
+        if client is None:
+            client = self.client_for(spec, False)
+        sending = send_async(self.api_of(spec), self.backend, spec, kwargs, client)
         try:
             if "limitMs" in spec.data:
                 outcome = await asyncio.wait_for(sending, spec.data["limitMs"] / 1000)
@@ -583,19 +597,25 @@ class Flow:
     # Steps
 
     async def parallel(self, specs: list[CallSpec], wait: str) -> None:
+        # The SDK is imported and every client built before the first member starts, so that
+        # `startAfterMs` delays only the send and the members leave in the order given.
+        clients = [self.client_for(spec, self.sync) for spec in specs]
         if self.sync:
             if wait != "all":
                 raise ValueError("`first` needs an asynchronous backend")
             with ThreadPoolExecutor(max_workers=len(specs)) as pool:
                 futures = [
-                    pool.submit(contextvars.copy_context().run, self.call_in_thread, spec)
-                    for spec in specs
+                    pool.submit(contextvars.copy_context().run, self.call_in_thread, spec, client)
+                    for spec, client in zip(specs, clients, strict=True)
                 ]
                 outcomes = [future.result() for future in futures]
             for spec, received in zip(specs, outcomes, strict=True):
                 self.finish(spec, received)
             return
-        tasks = [asyncio.ensure_future(self.call_awaited(spec)) for spec in specs]
+        tasks = [
+            asyncio.ensure_future(self.call_awaited(spec, client))
+            for spec, client in zip(specs, clients, strict=True)
+        ]
         if wait == "all":
             outcomes = await asyncio.gather(*tasks)
             for spec, received in zip(specs, outcomes, strict=True):

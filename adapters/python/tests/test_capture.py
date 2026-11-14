@@ -29,6 +29,8 @@ from protocol_client import (
     trial_params,
 )
 
+from service_runs import any_api, case_of, generate, initialize, ok_result, started
+
 from mock_api.server import accepted_encodings
 
 SCENARIOS = "capture.json"
@@ -125,3 +127,38 @@ def test_003_FR_005_the_helper_imports_neither_httpx_nor_httpx2() -> None:
         [sys.executable, "-c", code], cwd=PYTHON_DIR, capture_output=True, text=True, check=True
     )
     assert json.loads(done.stderr.strip().splitlines()[-1]) == []
+
+
+CAPTURED_PATHS = {
+    "chat-completions": "/chat/completions",
+    "responses": "/responses",
+    "messages": "/v1/messages",
+}
+
+
+def test_003_FR_005_a_body_whose_model_is_empty_is_not_captured(mock_api: MockApi) -> None:
+    # A call record needs a model name, so a body with `model: ""` passes through untouched.
+    api = any_api()
+    empty = {"model": "", "messages": [{"role": "user", "content": "Say hello."}]}
+    steps = [
+        {"http": {"method": "POST", "path": CAPTURED_PATHS[api], "json": empty, "status": 200}},
+        {"call": {"name": "answer"}},
+    ]
+    case = case_of(
+        {
+            "service": {
+                "behaviour": "flow",
+                "params": {"steps": steps, "result": {"callText": "answer"}},
+            },
+            "script": [
+                {"match": {"bodyIncludes": '"model":""'}, "body": {"ok": True}},
+                {"reply": {"text": "Hello."}},
+            ],
+        },
+        api=api,
+    )
+    with started(case, mock_api) as adapter:
+        initialize(adapter, case)
+        result = ok_result(adapter.wait(generate(adapter, case)))
+    assert [call["model"] for call in result["calls"]] == ["model-b"]
+    assert len(mock_api.log()) == 2

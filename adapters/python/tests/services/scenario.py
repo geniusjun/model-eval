@@ -11,6 +11,7 @@ imported by the behaviours, after the helper.
 from __future__ import annotations
 
 import asyncio
+import builtins
 import importlib
 import json
 import os
@@ -33,9 +34,27 @@ EXCEPTIONS: dict[str, type[Exception]] = {}
 
 
 def exception_class(name: str) -> type[Exception]:
-    """The service exception class of that name, the same class each time it is asked for."""
+    """The service exception class of that name, the same class each time it is asked for.
+
+    Two forms name classes that are not new service classes, so `discard_on` holds them as a
+    real service's would and the helper's matching is checked with `isinstance`:
+
+    - `builtins.Name` and `model_eval_adapter.Name`: that existing class itself
+      (`builtins.ValueError`, `model_eval_adapter.ModelCallError`);
+    - `Name(Base)`: a new class `Name` that subclasses the builtin exception `Base`
+      (`ServiceValueError(ValueError)`), known by `Name` alone too.
+    """
     if name not in EXCEPTIONS:
-        EXCEPTIONS[name] = type(name, (Exception,), {"__module__": __name__})
+        module, dot, existing = name.partition(".")
+        own, _, base_name = name.removesuffix(")").partition("(")
+        if dot and module in ("builtins", "model_eval_adapter"):
+            found = getattr(importlib.import_module(module), existing)
+        else:
+            base = getattr(builtins, base_name) if base_name else Exception
+            found = EXCEPTIONS.setdefault(own, type(own, (base,), {"__module__": __name__}))
+        if not (isinstance(found, type) and issubclass(found, Exception)):
+            raise ValueError(f"{name} is not an exception class")
+        EXCEPTIONS[name] = found
     return EXCEPTIONS[name]
 
 

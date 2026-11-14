@@ -33,7 +33,9 @@
           {
             "model": "model-b"
           }
-        ]
+        ],
+        "status": "failed",
+        "errorKind": "timeout"
       }
     },
     {
@@ -94,7 +96,127 @@
           {
             "model": "model-b"
           }
-        ]
+        ],
+        "status": "failed",
+        "errorKind": "timeout"
+      }
+    },
+    {
+      "name": "an asynchronous target after a captured 401: config with that call's failure, the call in flight cut",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "user": "Check the key."
+              },
+              "swallow": true
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Check the key."
+          },
+          "status": 401,
+          "error": {
+            "message": "invalid key"
+          }
+        },
+        {
+          "delayMs": 5000,
+          "reply": {
+            "text": "Too late."
+          }
+        }
+      ],
+      "cancel": {
+        "afterRequests": 2
+      },
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "config"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": null
+          }
+        ],
+        "notifications": []
+      }
+    },
+    {
+      "name": "a synchronous target after a captured 401: config, the request in flight recorded as it ended",
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "user": "Check the key."
+              },
+              "swallow": true
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Check the key."
+          },
+          "status": 401,
+          "error": {
+            "message": "invalid key"
+          }
+        },
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "In flight."
+          }
+        }
+      ],
+      "cancel": {
+        "afterRequests": 2
+      },
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "config"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ],
+        "notifications": []
       }
     }
   ],

@@ -1,8 +1,9 @@
-"""Trial contexts: helper-scenarios §Contexts rows S-CTX-01 to S-CTX-11 and S-CTX-18 to S-CTX-24
-(without the parts that throw `ModelCallError`) and S-RESP-10, per data-model §Outside the Trial
-Context and §After the Function Returned: requests without a context, unfinished calls waited
-for until `timeoutMs` minus the time spent minus 5 s, requests after the result as `calls`
-notifications, and log warning L2."""
+"""Trial contexts: helper-scenarios §Contexts rows S-CTX-01 to S-CTX-24 and S-RESP-10, per
+data-model §Outside the Trial Context and §After the Function Returned: requests without a
+context, unfinished calls waited for until `timeoutMs` minus the time spent minus 5 s, requests
+after the result as `calls` notifications, and log warning L2. Rows S-CTX-12 to S-CTX-17 and the
+throwing parts of S-CTX-19 and S-CTX-20 report through `Result` and `ModelCallError` per
+helper-api §Services That Stopped Waiting."""
 
 from __future__ import annotations
 

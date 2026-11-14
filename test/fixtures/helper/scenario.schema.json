@@ -52,17 +52,17 @@
         "service": { "$ref": "#/$defs/service" },
         "target": { "$ref": "#/$defs/targetOptions" },
         "request": {
-          "description": "The protocol request the case sends; `generate` when absent.",
-          "enum": ["generate", "render"]
+          "description": "The protocol request the case sends; `generate` when absent. `render-and-generate` sends a `render` and a `generate` with the same params, the `generate` right after the `render` and before either response is awaited, so both run at once; `expect` applies to both responses, render first. Not combined with `cancel`.",
+          "enum": ["generate", "render", "render-and-generate"]
         },
         "params": { "$ref": "#/$defs/trialParams" },
         "trials": {
-          "description": "Number of `generate` requests sent at once, with caseIds `case-1` to `case-N`, all before any response is awaited; `expect` applies to every result, or `expectPerTrial` gives one per trial. One when absent. Not combined with `trialsInARow`, `request` `render` or `cancel`.",
+          "description": "Number of `generate` requests sent at once, with caseIds `case-1` to `case-N`, all before any response is awaited; `expect` applies to every result, or `expectPerTrial` gives one per trial. One when absent. Not combined with `trialsInARow`, a `request` other than `generate` or `cancel`.",
           "type": "integer",
           "minimum": 1
         },
         "trialsInARow": {
-          "description": "Number of `generate` requests sent one after another, each once the previous result arrived, with caseIds `case-1` to `case-N`; `expect` applies to every result, or `expectPerTrial` gives one per trial. Not combined with `trials`, `request` `render` or `cancel`.",
+          "description": "Number of `generate` requests sent one after another, each once the previous result arrived, with caseIds `case-1` to `case-N`; `expect` applies to every result, or `expectPerTrial` gives one per trial. Not combined with `trials`, a `request` other than `generate` or `cancel`.",
           "type": "integer",
           "minimum": 2
         },
@@ -273,6 +273,16 @@
         },
         "sse": { "$ref": "#/$defs/sse" },
         "stream": { "$ref": "#/$defs/streamOptions" },
+        "bodyChunks": {
+          "description": "A body that is not SSE (`reply` without a stream, `error`, `body`, `text`) sent in chunks: split at these byte offsets of the uncompressed body, which rise strictly and fall inside it, with `chunkDelaysMs[i]` before chunk i (0 beyond the list). A client then waits in the middle of the body. The server refuses the script at load when the offsets do not rise or fall outside a `text` or `body`, when there are more delays than chunks, and with `sse`, `stream` or a body stored in `compressed`, which give their own chunks. Offsets outside a `reply` or `error` body, and a `reply` the request asks for as a stream, are known only per request and answered with a script error (500).",
+          "type": "object",
+          "required": ["splitAt"],
+          "additionalProperties": false,
+          "properties": {
+            "splitAt": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1 } },
+            "chunkDelaysMs": { "type": "array", "items": { "type": "integer", "minimum": 0 } }
+          }
+        },
         "encoding": {
           "description": "Content-Encoding to send, used only when the request's accept-encoding names it; otherwise the body goes uncompressed.",
           "enum": ["gzip", "br", "zstd"]
@@ -545,7 +555,7 @@
         "retryAfterMs": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
         "finalKind": { "enum": ["model", "fallback", "discarded"] },
         "raw": { "type": "string" },
-        "final": { "type": "string" },
+        "final": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
         "answers": { "type": "integer", "minimum": 0 },
         "finishReason": { "enum": ["stop", "length", "content_filter", "other"] },
         "discardReason": { "oneOf": [{ "type": "string" }, { "type": "null" }] },

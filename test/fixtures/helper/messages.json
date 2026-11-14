@@ -174,6 +174,38 @@
       "text": "`call` takes only a failure the service received, and with `reply_call` only a failure of an answer call.",
       "placeholders": []
     },
+    "A14": {
+      "id": "A14",
+      "text": "The target function returned a value that is not text, `fallback(text)` or a valid `Result`. Return the shipped text; a missing `return` gives None, and only a discarded `Result` may have `final=None`.",
+      "placeholders": []
+    },
+    "A15": {
+      "id": "A15",
+      "text": "This target has no render mode. Set `render` on it, or move targets without render mode to a separate adapter, which then does not declare `render`.",
+      "placeholders": []
+    },
+    "A16": {
+      "id": "A16",
+      "text": "Deciding the trial's outcome failed: <exception>. If `reply_call` or `discard_on` raised it, fix that function; otherwise report it as a helper defect.",
+      "placeholders": [
+        "exception"
+      ]
+    },
+    "F1": {
+      "id": "F1",
+      "text": "The response body is not a JSON object.",
+      "placeholders": []
+    },
+    "F2": {
+      "id": "F2",
+      "text": "The tool cancelled the trial.",
+      "placeholders": []
+    },
+    "F3": {
+      "id": "F3",
+      "text": "The request URL does not start with http:// or https://; check base_url.",
+      "placeholders": []
+    },
     "row9": {
       "id": "Outcome row 9",
       "text": "The target function raised <exception>. If the service raises it when it discards an answer, add it to `discard_on` (a target function that gives raw catches it and returns `Result(raw=, kind=\"discarded\", discard_reason=)`); if the service's time limit raised it, catch it and throw `ModelCallError(kind=\"timeout\")`.",

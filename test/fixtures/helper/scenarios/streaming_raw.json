@@ -1,0 +1,5155 @@
+{
+  "S-STR-01": [
+    {
+      "name": "the answer stream gets 429 after the SDK's retries, an empty raw: transient, W5, no call added",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now."
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after-ms": "10"
+          },
+          "error": {
+            "message": "Rate limited."
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the answer stream gets 429 after the SDK's retries, a whitespace-only raw: transient, W5, no call added",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "maxRetries": 2,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "\n",
+              "final": "Sorry, I cannot answer that right now."
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after-ms": "10"
+          },
+          "error": {
+            "message": "Rate limited."
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-02": [
+    {
+      "name": "a non-stream same-model classification answers, the answer stream gets 429, an empty raw: transient, W5",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "classify",
+                "system": "Classify the request.",
+                "user": "Is this a greeting?"
+              }
+            },
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now."
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "greeting"
+          }
+        },
+        {
+          "status": 429,
+          "headers": {
+            "retry-after-ms": "10"
+          },
+          "error": {
+            "message": "Rate limited."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-03": [
+    {
+      "name": "a same-model classification before the answer stream, raw, finish_reason and answers given: no Outcome row 5, the stream request's fingerprint",
+      "target": {
+        "render": true
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "classify",
+                "system": "Classify the request.",
+                "user": "Is this a greeting?"
+              }
+            },
+            {
+              "call": {
+                "name": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "answers": 1
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "greeting"
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "answers": 1,
+        "fingerprint": "not-render",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-04": [
+    {
+      "name": "the classification and the answer both stream, no reply_call: A3, unread responses with different systems",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "classify",
+                "stream": true,
+                "system": "Classify the request.",
+                "user": "Is this a greeting?"
+              }
+            },
+            {
+              "call": {
+                "name": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "greeting"
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-raw-unread-systems"
+        }
+      }
+    }
+  ],
+  "S-STR-05": [
+    {
+      "name": "the answer through an uncaptured transport, a same-model side call excluded by reply_call fails: normal with the given raw",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Write a memory note."
+          }
+        }
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "memory",
+                "system": "Write a memory note.",
+                "user": "Note the greeting.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b",
+              "usage": {
+                "input": 9,
+                "output": 3
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "status": 400,
+          "error": {
+            "message": "Bad request."
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "permanent"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 9,
+              "output": 3
+            }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same with an empty raw and no Result(model=): no searched calls, the side call's failure decides, permanent without a warning",
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Write a memory note."
+          }
+        }
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "memory",
+                "system": "Write a memory note.",
+                "user": "Note the greeting.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "status": 400,
+          "error": {
+            "message": "Bad request."
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-06": [
+    {
+      "name": "the same without reply_call, the side call's 400 swallowed: permanent with W5, as Outcome row 6 without raw",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "memory",
+                "system": "Write a memory note.",
+                "user": "Note the greeting.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b",
+              "usage": {
+                "input": 9,
+                "output": 3
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "status": 400,
+          "error": {
+            "message": "Bad request."
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "permanent",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "permanent"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-07": [
+    {
+      "name": "the service's time limit stops waiting without cutting the request and it gives what it received: timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service's time limit cuts the request and it gives what it received: timeout with W6",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "limitMs": 400
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service's time limit leaves the read loop after the deadline and it gives what it received: timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-08": [
+    {
+      "name": "background work reads the stream, the function returns on the event with the finish reason before the end event: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "answers": 1,
+        "finishReason": "stop",
+        "warnings": []
+      }
+    },
+    {
+      "name": "background work reads the stream, the function returns on the event with the finish reason before the end event: normal",
+      "apis": [
+        "messages"
+      ],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "answers": 1,
+        "finishReason": "stop",
+        "warnings": []
+      }
+    },
+    {
+      "name": "acceptance scenario 1: a streaming service whose target function returns only the text: A5",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        }
+      }
+    },
+    {
+      "name": "acceptance scenario 2: the same service gives Result(raw=, finish_reason=) without usage: normal, the stream call has no usage, so it is charged its reservation",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "usage": {
+              "input": 7,
+              "output": 4
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "answers": 1,
+        "finishReason": "stop",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": null
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-09": [
+    {
+      "name": "Python: the SDK's stream helper, the service returns on content.done: normal",
+      "languages": [
+        "python"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "finishReason": "stop",
+        "warnings": []
+      }
+    },
+    {
+      "name": "Python: the SDK's stream helper, the service closes the stream on content.done: normal",
+      "languages": [
+        "python"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "close"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "finishReason": "stop",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-10": [
+    {
+      "name": "return on response.output_text.done with response.completed already in the copy: normal",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "response.output_text.done"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "eventsPerChunk": 20
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "warnings": []
+      }
+    },
+    {
+      "name": "return on response.output_text.done before response.completed arrived: timeout with W6 (K14)",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "response.output_text.done"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-11": [
+    {
+      "name": "acceptance scenario 3: a content cut (break in the read loop) given as Result(raw=, kind=\"fallback\", finish_reason=\"other\"): a fallback graded on raw rules",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Safe start. STOP here",
+        "final": "Sorry, I cannot answer that right now.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "acceptance scenario 3: a content cut (close in the read loop) given as Result(raw=, kind=\"fallback\", finish_reason=\"other\"): a fallback graded on raw rules",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "close"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Safe start. STOP here",
+        "final": "Sorry, I cannot answer that right now.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "acceptance scenario 3: a content cut (cancelling the awaited read) given as Result(raw=, kind=\"fallback\", finish_reason=\"other\"): a fallback graded on raw rules",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "cancel"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Safe start. STOP here",
+        "final": "Sorry, I cannot answer that right now.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "acceptance scenario 3: a content cut (only stopping to wait) given as Result(raw=, kind=\"fallback\", finish_reason=\"other\"): a fallback graded on raw rules",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Safe start. STOP here",
+        "final": "Sorry, I cannot answer that right now.",
+        "answers": 1,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "branch": "answer"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-12": [
+    {
+      "name": "a content cut that cancels the awaited read, with usage=: that call is failed and priced at that usage",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "cancel"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other",
+              "usage": {
+                "input": 12,
+                "output": 4
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Safe start. STOP here",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "usage": {
+              "input": 12,
+              "output": 4
+            }
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-13": [
+    {
+      "name": "a content cut (break in the read loop) given without kind and with finish_reason=\"stop\": timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a content cut (close in the read loop) given without kind and with finish_reason=\"stop\": timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "close"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a content cut (cancelling the awaited read) given without kind and with finish_reason=\"stop\": timeout with W6",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "cancel"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a content cut (only stopping to wait) given without kind and with finish_reason=\"stop\": timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-14": [
+    {
+      "name": "a content cut, regenerated with a modified non-stream request and shipped, reply_call true for both, the pre-cut text as raw: normal, answers 2, the regenerated answer's finish reason",
+      "target": {
+        "replyCall": true
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "user": "Answer again without that word."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "again"
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "A clean answer.",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Safe start. STOP here",
+        "final": "A clean answer.",
+        "answers": 2,
+        "finishReason": "length",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-15": [
+    {
+      "name": "a content cut, the same request resent as a stream and fully received, answers=2: normal, answers 2",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "again"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Safe start. STOP here",
+        "answers": 2,
+        "warnings": []
+      }
+    },
+    {
+      "name": "a content cut, the same request resent as a stream and fully received, without answers: taken as a late cut, answers 1",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "again"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Safe start. STOP here",
+        "answers": 1,
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-16": [
+    {
+      "name": "acceptance scenario 4: break at a configured string with Result(raw=, finish_reason=\"stop\", stopped_early=True): normal",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Safe start. STOP here",
+        "finishReason": "stop",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-20": [
+    {
+      "name": "acceptance scenario 5: break at a configured string without stopped_early: timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-21": [
+    {
+      "name": "an adapter that always gives stopped_early, the service's time limit cancels an awaited read: timeout, W6 for an honoured stopped_early",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-22": [
+    {
+      "name": "the same adapter, the time limit fires while the service awaits its work on each chunk: no awaited read, normal (K9)",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "processMs": 100,
+                "limitMs": 450,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same service without stopped_early: timeout with W6",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "processMs": 100,
+                "limitMs": 450,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-23": [
+    {
+      "name": "stopped_early with kind=\"fallback\" on a content cut: ignored, W7, a fallback",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Safe start. STOP here",
+        "warnings": [
+          {
+            "message": "W7"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stopped_early with an empty raw on a fully received stream: ignored, W7",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "",
+        "warnings": [
+          {
+            "message": "W7"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stopped_early with an empty raw on a stream the time limit cut: ignored, W7, and the time-out's W6 without the stop-string clause",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-ignored"
+          },
+          {
+            "message": "W7"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the first answer stream read to the end, the regeneration stream cut by the time limit (cancelling the awaited read), Result(raw=\"\", kind=\"fallback\", stopped_early=True) without answers: ignored, W7, and the cut last answer's W6 without the stop-string clause",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "stream": true,
+                "onError": "swallow",
+                "user": "Answer in one sentence.",
+                "limitMs": 400
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer-stopped-early-ignored"
+          },
+          {
+            "message": "W7"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the first answer stream read to the end, the regeneration stream cut by the time limit (leaving the read loop after the deadline), Result(raw=\"\", kind=\"fallback\", stopped_early=True) without answers: ignored, W7, and the cut last answer's W6 without the stop-string clause",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "stream": true,
+                "onError": "swallow",
+                "user": "Answer in one sentence.",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer-stopped-early-ignored"
+          },
+          {
+            "message": "W7"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the first answer stream read to the end, the regeneration stream cut by the time limit (only stopping to wait), Result(raw=\"\", kind=\"fallback\", stopped_early=True) without answers: ignored, W7, and the cut last answer's W6 without the stop-string clause",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "stream": true,
+                "onError": "swallow",
+                "user": "Answer in one sentence.",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer-stopped-early-ignored"
+          },
+          {
+            "message": "W7"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a first answer with empty text, the regeneration stream cut by the time limit, Result(raw=\"\", stopped_early=True) without answers: ignored, W7, and the cut last answer's W6 without the stop-string clause",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first"
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "stream": true,
+                "onError": "swallow",
+                "limitMs": 400,
+                "user": "Answer in one sentence."
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": ""
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer-stopped-early-ignored"
+          },
+          {
+            "message": "W7"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-24": [
+    {
+      "name": "a streaming tool loop, the last call cut for content, no kind and finish_reason=\"stop\": the earlier calls do not block the check, timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same with kind=\"fallback\": a fallback",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Safe start. STOP here",
+        "warnings": []
+      }
+    },
+    {
+      "name": "the last call resent as a stream after the cut, fully received and shipped: normal, raw is the pre-cut text",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "last",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "again"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Safe start. STOP here",
+        "warnings": [],
+        "answers": 1
+      }
+    },
+    {
+      "name": "the same with answers=2: answers 2",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "last",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "again"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Safe start. STOP here",
+        "answers": 2,
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-25": [
+    {
+      "name": "with answer_tool, the last call cut for content: the earlier calls block the check, the cut last answer gives timeout",
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "with answer_tool, the last call ends in a provider error the service swallows: passes (K12)",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same, the target function reports that call as ModelCallError(call=): transient",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "call": {
+                "index": -1
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b"
+          },
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "with answer_tool, the last call ends in a provider error the service swallows: passes (K12)",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same, the target function reports that call as ModelCallError(call=): transient",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "answerTool": [
+          "reply",
+          "text"
+        ]
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "call": {
+                "index": -1
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b"
+          },
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-26": [
+    {
+      "name": "a streaming tool loop hits its limit, a fixed message as Result(raw=\"\", kind=\"fallback\"): answers 0, a fallback",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ]
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "answers": 0,
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-27": [
+    {
+      "name": "the same loop, the service's time limit cuts the last call (cancelling the awaited read) and it ships what it received: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow",
+                "limitMs": 400
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same loop, the service's time limit cuts the last call (leaving the read loop after the deadline) and it ships what it received: timeout",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same loop, the service's time limit cuts the last call (only stopping to wait) and it ships what it received: timeout",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-28": [
+    {
+      "name": "the same loop's last call ends in a provider error event, the service ships what it received: transient with W5",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same loop's last call ends in a provider error event, the service ships what it received: transient with W5",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same loop's last call drops mid-body, the service ships what it received: transient with W5",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "last",
+                "after": "first",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "last"
+              },
+              "final": {
+                "callText": "last"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "deltas": 8
+          },
+          "drop": {
+            "chunks": 5
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-29": [
+    {
+      "name": "a tool loop of non-stream requests hits its limit before the streamed last answer, Result(raw=\"\", kind=\"fallback\", finish_reason=\"other\"): answers 0, a fallback, no call added",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "tools": [
+                  "lookup"
+                ],
+                "user": "Look it up."
+              }
+            },
+            {
+              "call": {
+                "name": "next",
+                "after": "first"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        },
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "answers": 0,
+        "finishReason": "other",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-30": [
+    {
+      "name": "a provider error mid-stream swallowed, the received text given as raw: transient with W5",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a provider error mid-stream swallowed, the received text given as raw: transient with W5",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-31": [
+    {
+      "name": "a drop after the generation-end marker and before the end event, the full answer shipped with kind model: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "drop": {
+            "chunks": 4
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same with kind=\"fallback\": transient",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "drop": {
+            "chunks": 4
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a drop after the generation-end marker and before the end event, the full answer shipped with kind model: normal",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "drop": {
+            "chunks": 7
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same with kind=\"fallback\": transient",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "drop": {
+            "chunks": 7
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    }
+  ],
+  "S-STR-32": [
+    {
+      "name": "the deadline fires and the service leaves the iterator, Result(raw=\"\", kind=\"fallback\", finish_reason=\"other\"): timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same with fallback(text) alone: the adapter error of Raw Cannot Be Determined",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, I cannot answer that right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        }
+      }
+    },
+    {
+      "name": "the same throwing kind=\"timeout\" on the message alone: timeout",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same Result with answers=0 (a parallel check's refusal): the cut stream is ignored, a fallback with zero answers",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other",
+              "answers": 0
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "answers": 0,
+        "finishReason": "other",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-33": [
+    {
+      "name": "the same service swallows the answer stream's 429 and gives the same Result: transient with W5",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after-ms": "10"
+          },
+          "error": {
+            "message": "Rate limited."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [
+          {
+            "message": "W5"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same throwing kind=\"timeout\" on the message alone: no candidate matches, a new call, timeout",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after-ms": "10"
+          },
+          "error": {
+            "message": "Rate limited."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "errorKind": "timeout"
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-34": [
+    {
+      "name": "the answer stream fully received, validation fails, the same message as an empty raw: an empty answer, not graded on raw rules (K20)",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "answers": 1,
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same giving the received text with kind=\"fallback\" and finish_reason=\"other\" after reading the stream's finish reason: a fallback graded on raw rules",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "Hello there, friend.",
+        "answers": 1,
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-35": [
+    {
+      "name": "future.result(timeout=) ends before the answer stream does, a fixed message as Result(raw=\"\", kind=\"fallback\", finish_reason=\"other\"), the stream left behind still running: timeout with W6",
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same, the stream left behind finishes after the wait ended: timeout with W6",
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              1200
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same, the stream left behind fails after the wait ended: timeout with W6",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure",
+            "chunkDelaysMs": [
+              0,
+              600
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same, the stream left behind fails after the wait ended: timeout with W6",
+      "apis": [
+        "messages"
+      ],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure",
+            "chunkDelaysMs": [
+              0,
+              600
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    }
+  ]
+}

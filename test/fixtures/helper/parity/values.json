@@ -290,10 +290,10 @@
       "discardReason": "E"
     },
     {
-      "name": "whitespace around a message stays",
+      "name": "whitespace around a message is trimmed before the class name is joined",
       "exceptionName": "E",
       "message": "  x ",
-      "discardReason": "E:   x "
+      "discardReason": "E: x"
     },
     {
       "name": "a joined emoji sequence is cut between code points",
