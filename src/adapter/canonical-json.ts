@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { Sha256 } from '../config/identifiers.js';
-import { isJsonArray, type JsonObject, type JsonValue } from './json-value.js';
+import { isJsonArray, type JsonObject, type JsonValue } from './json-types.js';
 
 /**
  * Serialises a value per data-model §Canonical JSON: keys sorted by UTF-16 code units,
@@ -22,7 +22,12 @@ export function canonicalJson(value: JsonValue): string {
     return JSON.stringify(value);
   }
   if (isJsonArray(value)) {
-    return `[${value.map(canonicalJson).join(',')}]`;
+    // An index loop, so a hole is read as `undefined` and refused like one; `map` skips holes.
+    const items: string[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      items.push(canonicalJson(elementOf(value, index)));
+    }
+    return `[${items.join(',')}]`;
   }
   const members = Object.keys(value)
     .sort(compareCodeUnits)
@@ -67,6 +72,14 @@ export function compareCodeUnits(a: string, b: string): number {
     return 0;
   }
   return a < b ? -1 : 1;
+}
+
+function elementOf(array: readonly JsonValue[], index: number): JsonValue {
+  const element = array[index];
+  if (element === undefined) {
+    throw new TypeError(`element ${String(index)} has no JSON value`);
+  }
+  return element;
 }
 
 function memberOf(object: JsonObject, key: string): JsonValue {

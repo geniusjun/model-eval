@@ -49,7 +49,6 @@ export default tseslint.config(
       'coverage/',
       'schemas/',
       'node_modules/',
-      '.omc/',
       'specs/',
       '.specify/',
       'test-results/',

@@ -1,9 +1,8 @@
 import { z } from 'zod';
 
-export type JsonValue = string | number | boolean | null | readonly JsonValue[] | JsonObject;
-export interface JsonObject {
-  readonly [key: string]: JsonValue;
-}
+import type { JsonObject, JsonValue } from './json-types.js';
+
+export { isJsonArray, isJsonObject, type JsonObject, type JsonValue } from './json-types.js';
 
 /** Finite numbers only, so every accepted value has a canonical JSON form. */
 export const jsonValueSchema: z.ZodType<JsonValue> = z
@@ -20,11 +19,3 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z
   .meta({ id: 'JsonValue' });
 
 export const jsonObjectSchema: z.ZodType<JsonObject> = z.record(z.string(), jsonValueSchema);
-
-export function isJsonArray(value: JsonValue | undefined): value is readonly JsonValue[] {
-  return Array.isArray(value);
-}
-
-export function isJsonObject(value: JsonValue | undefined): value is JsonObject {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}

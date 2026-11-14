@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 import traceback
+import weakref
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -41,7 +42,7 @@ PROTOCOL_VERSION = "1"
 JsonValue: TypeAlias = "None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]"
 JsonObject: TypeAlias = "dict[str, Any]"
 
-__all__ = ["Adapter", "Call", "Case", "Variant", "fallback"]
+__all__ = ["Adapter", "Call", "Case", "ModelCallError", "Result", "Variant", "fallback"]
 
 
 # --- stdout protection (helper-api §stdout Protection) -------------------------------------
@@ -403,7 +404,10 @@ MESSAGES: dict[str, str] = {
         "have the service pass the context)."
     ),
     "A11": ("Could not reach the render target request."),
-    "A12": ("`ModelCallError` takes exactly one of `status`, `kind` and `call`."),
+    "A12": (
+        "`ModelCallError` takes exactly one of `status` (an HTTP status code), `kind` "
+        "(`connect`, `tls`, `disconnect` or `timeout`) and `call` (a call of this trial)."
+    ),
     "A13": (
         "`call` takes only a failure the service received, and with `reply_call` only a "
         "failure of an answer call."
@@ -421,15 +425,26 @@ MESSAGES: dict[str, str] = {
         "Deciding the trial's outcome failed: <exception>. If `reply_call` or `discard_on` "
         "raised it, fix that function; otherwise report it as a helper defect."
     ),
+    "A17": ("The render function raised <exception>."),
+    "A18": (
+        "The render function returned a value that is not a render result. Return "
+        "`{messages, tools?, maxOutputTokens?}` with `messages` a non-empty list of message "
+        "objects, `tools` a list and `maxOutputTokens` a positive integer."
+    ),
+    "A19": (
+        "The render target request cannot be rendered: it has no message (a Responses request "
+        "continuing a conversation stored on the server), a message without a role, or `tools` "
+        "that is not a list. Return the assembled messages with `@adapter.render`."
+    ),
+    "F1": ("The response body is not a JSON object."),
+    "F2": ("The tool cancelled the trial."),
+    "F3": ("The request URL does not start with http:// or https://; check base_url."),
     "row9": (
         "The target function raised <exception>. If the service raises it when it discards "
         "an answer, add it to `discard_on` (a target function that gives raw catches it and "
         'returns `Result(raw=, kind="discarded", discard_reason=)`); if the service\'s time '
         'limit raised it, catch it and throw `ModelCallError(kind="timeout")`.'
     ),
-    "F1": "The response body is not a JSON object.",
-    "F2": "The tool cancelled the trial.",
-    "F3": "The request URL does not start with http:// or https://; check base_url.",
     "W1": (
         "In a trial that received an answer, a call to `<model>` failed transiently and the "
         "trial ended in a fallback or discard. If it was the regeneration request, this is "
@@ -577,7 +592,7 @@ MESSAGES: dict[str, str] = {
     ),
     "L1": ("Service version not reported: <reason>."),
     "L2": ("Unhandled exception in background work: <exception>."),
-    "L3": ("Blocked a request of an abandoned trial: <exception>."),
+    "L3": ("A request of an abandoned trial was cut or blocked: <exception>."),
 }
 
 
@@ -632,8 +647,20 @@ def as_str(value: Any) -> str | None:
 
 
 def as_count(value: Any) -> int | None:
-    """A token count: an integer that is not a bool."""
-    return value if isinstance(value, int) and not isinstance(value, bool) else None
+    """An integer of a body or a parameter (helper-api §Shared Conventions), JSON 2.0 included."""
+    return int(value) if whole_number(value) else None
+
+
+def text_of(value: Any, default: str = "") -> str:
+    """Text read from a field that should hold a string (helper-api §Shared Conventions): a
+    value that is not a string gives its canonical JSON; a missing field gives `default`."""
+    if value is MISSING:
+        return default
+    return value if isinstance(value, str) else canonical_json(value)
+
+
+# A field a body leaves out, apart from an explicit null.
+MISSING: Any = object()
 
 
 def read_json_or_none(text: str) -> JsonValue:
@@ -679,6 +706,75 @@ def fallback(text: str) -> Fallback:
     return Fallback(text)
 
 
+# Marks a `Result` field the target function left out, apart from an explicit None.
+OMITTED: Any = object()
+
+
+class Result:
+    """What the target function reports beyond the shipped text (helper-api §`Result`). Any
+    value is accepted here; the helper checks them when it decides the trial (A14). Fields other
+    than `final` that are None count as not given."""
+
+    def __init__(
+        self,
+        *,
+        final: Any = OMITTED,
+        kind: Any = None,
+        discard_reason: Any = None,
+        stages: Any = None,
+        raw: Any = None,
+        answers: Any = None,
+        finish_reason: Any = None,
+        stopped_early: Any = None,
+        usage: Any = None,
+        model: Any = None,
+        model_snapshot: Any = None,
+    ) -> None:
+        self.final = final
+        self.kind = kind
+        self.discard_reason = discard_reason
+        self.stages = stages
+        self.raw = raw
+        self.answers = answers
+        self.finish_reason = finish_reason
+        self.stopped_early = stopped_early
+        self.usage = usage
+        self.model = model
+        self.model_snapshot = model_snapshot
+
+    def __repr__(self) -> str:
+        return f"Result(kind={self.kind!r}, raw={self.raw!r})"
+
+
+class ModelCallError(Exception):
+    """A model call failure the target function reports (helper-api §`ModelCallError`). Any
+    value is accepted here; the helper checks them when it decides the trial (A12)."""
+
+    def __init__(
+        self,
+        message: Any = None,
+        *,
+        status: Any = None,
+        type: Any = None,
+        code: Any = None,
+        kind: Any = None,
+        retry_after_ms: Any = None,
+        model: Any = None,
+        usage: Any = None,
+        call: Any = None,
+    ) -> None:
+        super().__init__(message if isinstance(message, str) else "")
+        self.message = message
+        self.status = status
+        self.type = type
+        self.code = code
+        self.kind = kind
+        self.retry_after_ms = retry_after_ms
+        self.model = model
+        self.usage = usage
+        self.call = call
+
+
 @dataclass(frozen=True)
 class ToolCall:
     id: str
@@ -711,6 +807,8 @@ class Call:
         self.outcome = known.outcome
         self.error = None if known.error is None else dict(known.error)
         self.retried = known.retried
+        # The captured call this view shows, so that `ModelCallError(call=)` finds it.
+        self._source: CapturedCall | None = None
 
     def tool_args(self, name: str) -> JsonValue:
         """The parsed arguments of the first tool call with that name, or None when there is
@@ -911,8 +1009,17 @@ def read_number(value: str, scale: int) -> int | None:
     text = trim_header(value)
     if DECIMAL.fullmatch(text) is None:
         return None
-    scaled = float(text) * scale
-    return rounded(scaled) if math.isfinite(scaled) else None
+    return wait_ms(float(text) * scale)
+
+
+def wait_ms(value: float) -> int | None:
+    """helper-api §`retryAfterMs`: floor(x + 0.5) as the exact value (x itself from 2^52 on,
+    where a double is already an integer); None when x is negative or not finite, or the
+    value is above 2^53 - 1."""
+    if not math.isfinite(value) or value < 0:
+        return None
+    waited = int(value) if value >= 2.0**52 else rounded(value)
+    return waited if waited <= SAFE_INTEGER else None
 
 
 def trim_header(value: str) -> str:
@@ -1038,7 +1145,7 @@ def chat_message(item: JsonObject) -> JsonObject:
     lines.extend(canonical_json(call) for call in as_list(item.get("tool_calls")))
     if isinstance(item.get("function_call"), dict):
         lines.append(canonical_json(item["function_call"]))
-    return {"role": str(item.get("role", "")), "content": "\n".join(lines)}
+    return {"role": role_text(item.get("role")), "content": "\n".join(lines)}
 
 
 def responses_input(body: JsonObject) -> list[Any]:
@@ -1049,10 +1156,18 @@ def responses_input(body: JsonObject) -> list[Any]:
     return as_list(value)
 
 
+def role_text(role: Any) -> str:
+    """A message's role; a missing or null role is the empty one (adapter error A19)."""
+    return "" if role is None else text_of(role)
+
+
 def responses_item(item: JsonObject) -> JsonObject:
-    if "role" in item and item.get("type", "message") == "message":
-        return {"role": str(item["role"]), "content": parts_text(item.get("content"))}
-    return {"role": str(item.get("type", "")), "content": canonical_json(item)}
+    """A Responses input item: a message by its role, any other item (or one without a role)
+    by its type; null counts as missing for both."""
+    kind = item.get("type")
+    if item.get("role") is not None and kind in (None, "message"):
+        return {"role": text_of(item["role"]), "content": parts_text(item.get("content"))}
+    return {"role": role_text(kind), "content": canonical_json(item)}
 
 
 def render_messages(api: str, body: JsonObject) -> list[JsonObject]:
@@ -1078,7 +1193,7 @@ def render_messages(api: str, body: JsonObject) -> list[JsonObject]:
     for item in as_list(body.get("messages")):
         item = as_dict(item)
         messages.append(
-            {"role": str(item.get("role", "")), "content": parts_text(item.get("content"))}
+            {"role": role_text(item.get("role")), "content": parts_text(item.get("content"))}
         )
     return messages
 
@@ -1185,7 +1300,13 @@ class Parsed:
 
 def call_id_of(item: JsonObject) -> str:
     key = "id" if item.get("type") == "mcp_approval_request" else "call_id"
-    return str(item.get(key) or item.get("id") or "")
+    value = item.get(key)
+    return id_text(item.get("id") if value is None or value == "" else value)
+
+
+def id_text(value: Any) -> str:
+    """An ID: empty when missing, null or the empty string, else `text_of` (0 gives "0")."""
+    return "" if value is None or value == "" else text_of(value)
 
 
 def responses_tool_items(output: list[Any]) -> list[JsonObject]:
@@ -1202,11 +1323,9 @@ def responses_tool_items(output: list[Any]) -> list[JsonObject]:
         if kind not in RESULT_ITEMS:
             continue
         result_type, pointer = RESULT_ITEMS[str(kind)]
-        target = str(item.get("call_id") or "")
-        if kind == "mcp_approval_request":
-            target = str(item.get("id") or "")
-        answered = any(
-            other.get("type") == result_type and str(other.get(pointer) or "") == target
+        target = call_id_of(item)
+        answered = bool(target) and any(
+            other.get("type") == result_type and id_text(other.get(pointer)) == target
             for other in items
         )
         if not answered:
@@ -1221,7 +1340,9 @@ def tool_arguments(value: Any) -> str:
 def responses_tool_call(item: JsonObject) -> ToolCall:
     arguments = item.get("arguments", item.get("input", item.get("action")))
     return ToolCall(
-        call_id_of(item), str(item.get("name") or item.get("type")), tool_arguments(arguments)
+        call_id_of(item),
+        text_of(item.get("name") or item.get("type")),
+        tool_arguments(arguments),
     )
 
 
@@ -1239,15 +1360,19 @@ def parse_chat(body: JsonObject) -> list[Choice]:
             arguments = function.get("arguments", function.get("input"))
             calls.append(
                 ToolCall(
-                    str(call.get("id", "")),
-                    str(function.get("name", "")),
+                    text_of(call.get("id", MISSING)),
+                    text_of(function.get("name", MISSING)),
                     tool_arguments(arguments),
                 )
             )
         legacy = as_dict(message_body.get("function_call"))
         if legacy:
             calls.append(
-                ToolCall("", str(legacy.get("name", "")), tool_arguments(legacy.get("arguments")))
+                ToolCall(
+                    "",
+                    text_of(legacy.get("name", MISSING)),
+                    tool_arguments(legacy.get("arguments")),
+                )
             )
         finish = as_str(item.get("finish_reason"))
         limited = protocol_finish(finish) in ("length", "content_filter")
@@ -1263,7 +1388,7 @@ def parse_chat(body: JsonObject) -> list[Choice]:
 def parse_responses(body: JsonObject) -> list[Choice]:
     output = as_list(body.get("output"))
     texts = [
-        str(part.get("text", ""))
+        text_of(part.get("text", MISSING))
         for item in map(as_dict, output)
         if item.get("type") == "message"
         for part in map(as_dict, as_list(item.get("content")))
@@ -1280,11 +1405,13 @@ def parse_responses(body: JsonObject) -> list[Choice]:
 
 def parse_messages(body: JsonObject) -> list[Choice]:
     blocks = [as_dict(block) for block in as_list(body.get("content"))]
-    text = "".join(str(block.get("text", "")) for block in blocks if block.get("type") == "text")
+    text = "".join(
+        text_of(block.get("text", MISSING)) for block in blocks if block.get("type") == "text"
+    )
     calls = [
         ToolCall(
-            str(block.get("id", "")),
-            str(block.get("name", "")),
+            text_of(block.get("id", MISSING)),
+            text_of(block.get("name", MISSING)),
             canonical_json(block.get("input", {})),
         )
         for block in blocks
@@ -1408,9 +1535,15 @@ class SseReader:
         self.data: list[str] = []
         self.finished: dict[int, str] = {}
         self.decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        self.started = False
 
     def feed(self, data: bytes) -> None:
-        self.buffer += self.decoder.decode(data)
+        text = self.decoder.decode(data)
+        if not self.started and text:
+            # helper-api §Reading Response Bodies: one leading U+FEFF is removed.
+            self.started = True
+            text = text[1:] if text.startswith("\ufeff") else text
+        self.buffer += text
         for line in self.complete_lines():
             self.line(line)
 
@@ -1731,8 +1864,15 @@ class CapturedCall:
         self.parsed: Parsed | None = None
         self.failure: Failure | None = None
         self.cut = False
+        # The asyncio task awaiting the request or a read of its body, held weakly so that a
+        # finished task is still collected and its unhandled exception reported (L2, L3), and
+        # whether the helper cancelled that task to cut the call on the tool's `cancel`.
+        self.task: weakref.ref[asyncio.Task[Any]] | None = None
+        self.cutting = False
         self.ended_at: float | None = None
         self.record_sent = False
+        # Answered with the render-mode 400 instead of being sent.
+        self.render_only = False
 
     # Request side
 
@@ -1750,6 +1890,7 @@ class CapturedCall:
 
     def failed_before_headers(self, error: BaseException) -> None:
         with HUB.lock:
+            self.mark_abandoned(error)
             if self.ended():
                 return
             now = time.monotonic()
@@ -1861,7 +2002,7 @@ class CapturedCall:
 
     def body_complete(self, now: float) -> None:
         self.ended_at = now
-        body = read_json_or_none(self.copy.decode("utf-8", "replace")) if self.decoding else None
+        body = read_json_or_none(body_text(self.copy)) if self.decoding else None
         if self.decoding and not isinstance(body, dict):
             # helper-api §Reading Response Bodies, item 4: not an API response at all.
             self.fail(Failure(now, status=200, not_json=True, text=message("F1")))
@@ -1890,11 +2031,12 @@ class CapturedCall:
             return self.failure.error
         if not self.error_status() or not self.body_done or not self.decoding:
             return None
-        body = as_dict(read_json_or_none(self.copy.decode("utf-8", "replace")))
+        body = as_dict(read_json_or_none(body_text(self.copy)))
         return as_dict(body.get("error")) or body or None
 
     def read_failed(self, error: BaseException) -> None:
         with HUB.lock:
+            self.mark_abandoned(error)
             after_close = self.read_returned()
             if after_close or self.ended_by_body() or isinstance(error, GeneratorExit):
                 return
@@ -1911,8 +2053,14 @@ class CapturedCall:
     def closing(self) -> None:
         with HUB.lock:
             self.body_closed = True
-            if self.reading > 0:
+            if self.awaited_reads() > 0:
                 self.closed_during_read = True
+
+    def awaited_reads(self) -> int:
+        """Reads in progress that started before the body was closed or cancelled. A read
+        started after that and ended by it is not an awaited read (helper-api §Reading Response
+        Bodies)."""
+        return self.reading - self.reads_after_close
 
     # State
 
@@ -1939,7 +2087,7 @@ class CapturedCall:
             return True
         if self.sse and self.generation_end_at is not None:
             return False
-        return self.reading > 0 and not self.ended_by_body()
+        return self.awaited_reads() > 0 and not self.ended_by_body()
 
     def finished(self) -> bool:
         """Ended for a `calls` notification: failed, cut, read to its end, or an SSE copy with
@@ -1949,6 +2097,25 @@ class CapturedCall:
     def cut_now(self) -> None:
         self.cut = True
         self.ended_at = time.monotonic()
+
+    def awaited(self) -> None:
+        """Records the task about to await the request or a read of its body."""
+        task = asyncio.current_task()
+        with HUB.lock:
+            self.task = None if task is None else weakref.ref(task)
+
+    def mark_abandoned(self, error: BaseException) -> None:
+        """An exception of a request the helper cut on `cancel` is logged as L3 when it ends
+        background work (helper-api §Cancel)."""
+        if self.cut:
+            setattr(error, ABANDONED, True)
+
+
+def body_text(data: bytes | bytearray) -> str:
+    """A response body as text: UTF-8, then one leading U+FEFF removed (helper-api §Reading
+    Response Bodies)."""
+    text = bytes(data).decode("utf-8", "replace")
+    return text[1:] if text.startswith("\ufeff") else text
 
 
 def fresh_decoder(response: Any) -> Any:
@@ -1974,7 +2141,8 @@ def failure_text(error: JsonObject) -> str:
 
 TRANSPORT_MODULES = ("httpx", "httpx2")
 WRAPPED = "_model_eval_original"
-BLOCKED = "_model_eval_blocked"
+# Marks an exception of a request the helper cut on `cancel` or blocked after it (L3).
+ABANDONED = "_model_eval_abandoned"
 
 
 def captured_body(request: Any) -> tuple[str, JsonObject] | None:
@@ -1992,6 +2160,24 @@ def captured_body(request: Any) -> tuple[str, JsonObject] | None:
     if not isinstance(body, dict) or not isinstance(body.get("model"), str) or not body["model"]:
         return None
     return api, body
+
+
+RENDER_ONLY_TEXT = "Render mode sends no model request."
+
+
+def render_only_response(module: ModuleType, request: Any, api: str) -> Any:
+    """helper-api §Render Mode: the provider-shaped HTTP 400 `render_only` a captured request
+    gets instead of being sent. It has no `x-should-retry` header, and the SDKs do not resend
+    400."""
+    error = {"type": "render_only", "message": RENDER_ONLY_TEXT}
+    body: JsonObject = (
+        {"type": "error", "error": error}
+        if api == "messages"
+        else {"error": {**error, "param": None, "code": None}}
+    )
+    headers = {"content-type": "application/json"}
+    content = canonical_json(body).encode("utf-8")
+    return module.Response(400, headers=headers, content=content, request=request)
 
 
 def has_http_scheme(request: Any) -> bool:
@@ -2013,7 +2199,22 @@ def blocked_error(module: ModuleType, request: Any) -> BaseException:
     error: BaseException = module.ConnectError(
         "The tool cancelled this trial, so the request was not sent.", request=request
     )
-    setattr(error, BLOCKED, True)
+    setattr(error, ABANDONED, True)
+    return error
+
+
+def cut_error(module: ModuleType, request: Any) -> BaseException:
+    """helper-api §Cancel: the error the service's SDK gets for a request the helper cut in a
+    task other than the trial's own, which the helper cancelled for that. The cancellation is
+    the helper's, so it is taken back and the request fails like a dropped connection."""
+    task = asyncio.current_task()
+    uncancel = getattr(task, "uncancel", None)
+    if uncancel is not None:
+        uncancel()
+    error: BaseException = module.ReadError(
+        "The tool cancelled this trial, so the request was cut.", request=request
+    )
+    setattr(error, ABANDONED, True)
     return error
 
 
@@ -2063,6 +2264,7 @@ def stream_classes(module: ModuleType) -> tuple[type, type]:
             chunks = self.original.__aiter__()
             while True:
                 quietly(self.call.read_started)
+                quietly(self.call.awaited)
                 try:
                     chunk = await chunks.__anext__()
                 except StopAsyncIteration:
@@ -2070,6 +2272,8 @@ def stream_classes(module: ModuleType) -> tuple[type, type]:
                     return
                 except BaseException as error:
                     quietly(self.call.read_failed, error)
+                    if self.call.cutting and isinstance(error, asyncio.CancelledError):
+                        raise cut_error(module, None) from None
                     raise
                 quietly(self.call.received, chunk)
                 yield chunk
@@ -2091,6 +2295,8 @@ def sync_send(module: ModuleType, original: Callable[..., Any]) -> Callable[...,
         call = HUB.start(found[0], found[1])
         if call is None:
             raise blocked_error(module, request)
+        if call.render_only:
+            return render_only_response(module, request, call.api)
         if not has_http_scheme(request):
             raise scheme_error(module, request, call)
         try:
@@ -2122,12 +2328,17 @@ def async_send(module: ModuleType, original: Callable[..., Any]) -> Callable[...
         call = HUB.start(found[0], found[1])
         if call is None:
             raise blocked_error(module, request)
+        if call.render_only:
+            return render_only_response(module, request, call.api)
         if not has_http_scheme(request):
             raise scheme_error(module, request, call)
+        quietly(call.awaited)
         try:
             response = await original(client, request, stream=True, **options)
         except BaseException as error:
             quietly(call.failed_before_headers, error)
+            if call.cutting and isinstance(error, asyncio.CancelledError):
+                raise cut_error(module, request) from None
             raise
         quietly(call.got_headers, response)
         response.stream = copying(response.stream, call)
@@ -2228,6 +2439,8 @@ class Trial:
         self.asynchronous = target.is_async
         self.outside_context = False
         self.task: asyncio.Future[Any] | None = None
+        # A `render` request (helper-api §Render Mode): no captured request is sent.
+        self.rendering = case.rendering
 
     def deadline(self) -> float:
         """When the wait for unfinished calls ends: the tool's time limit minus the time spent,
@@ -2264,7 +2477,16 @@ class Hub:
                 return call
             trial = CURRENT_TRIAL.get()
             if trial is None:
-                trial = self.trial_without_context()
+                trial = self.trial_without_context(call)
+            if trial is not None and trial.rendering:
+                # Render mode: the request gets the render-mode 400 and, while the render runs,
+                # is one of its calls, a request outside every context that joined it included.
+                call.render_only = True
+                if trial.state == "running":
+                    trial.calls.append(call)
+                return call
+            if call.render_only:
+                return call
             if trial is not None and trial.cancelled:
                 return None
             call.trial = trial
@@ -2275,15 +2497,17 @@ class Hub:
                 self.notified.append(call)
             return call
 
-    def trial_without_context(self) -> Trial | None:
-        """data-model §Outside the Trial Context: the one trial in progress; with two or more,
-        all of them end as A10; with none, the one trial waiting to send its result."""
+    def trial_without_context(self, call: CapturedCall) -> Trial | None:
+        """data-model §Outside the Trial Context: the one trial in progress (a running render
+        included); with two or more, all of them end as A10, and the request gets the render-mode
+        400 when one is a render; with none, the one trial waiting to send its result."""
         running = [trial for trial in self.trials.values() if trial.state == "running"]
         if len(running) == 1:
             return running[0]
         if running:
             for trial in running:
                 trial.outside_context = True
+            call.render_only = any(trial.rendering for trial in running)
             return None
         waiting = [trial for trial in self.trials.values() if trial.state == "waiting"]
         return waiting[0] if len(waiting) == 1 else None
@@ -2339,6 +2563,8 @@ class Seen:
     stream_output: list[Any] | None
     response_id: str | None
     had_headers: bool
+    # When the service last read the body, else when the headers arrived.
+    read_at: float | None
     error: ErrorObject
 
     @property
@@ -2410,6 +2636,7 @@ def freeze(call: CapturedCall) -> Seen:
             stream_output=marks.output_items,
             response_id=(call.parsed.response_id if call.parsed else None) or marks.response_id,
             had_headers=call.headers_at is not None,
+            read_at=call.last_read_at or call.headers_at,
             error=ErrorObject.of(call.error_object()),
         )
 
@@ -2429,7 +2656,8 @@ def call_record(seen: Seen, branch: str | None, ended_by_return: bool = True) ->
             record["finishReason"] = finish
     if seen.state == FAILED and seen.failure is not None:
         record["errorKind"] = seen.kind
-        if seen.failure.retry_after_ms is not None:
+        # helper-api §`retryAfterMs`: only a `transient` call carries the wait.
+        if seen.failure.retry_after_ms is not None and seen.kind == "transient":
             record["retryAfterMs"] = seen.failure.retry_after_ms
         if seen.failure.usage is not None:
             record["usage"] = seen.failure.usage
@@ -2467,8 +2695,10 @@ def call_view(seen: Seen, retried: bool | None) -> Call:
     """The `Call` of a seen call; an unfinished call has no response fields."""
     call = seen.call
     tool_names = tool_names_of(call.body)
+    view = Call(call.model, call.messages, tool_names)
+    view._source = call
     if seen.state == UNFINISHED:
-        return Call(call.model, call.messages, tool_names)
+        return view
     first = seen.parsed.choices[0] if seen.parsed is not None and seen.parsed.choices else None
     usage = seen.parsed.usage if seen.parsed is not None else None
     if seen.failure is not None and seen.failure.usage is not None:
@@ -2482,7 +2712,9 @@ def call_view(seen: Seen, retried: bool | None) -> Call:
         error=call_error(seen),
         retried=retried if seen.state == FAILED else None,
     )
-    return Call(call.model, call.messages, tool_names, response)
+    view = Call(call.model, call.messages, tool_names, response)
+    view._source = call
+    return view
 
 
 class TrialCalls(Sequence[Call]):
@@ -2663,6 +2895,112 @@ def block_key(block: Any) -> str:
     return canonical_json(fields)
 
 
+# --- Reported values (helper-api §Return Values, §`Result`, §`ModelCallError`) -------------
+
+FINAL_KINDS = ("model", "fallback", "discarded")
+FINISH_REASONS = ("stop", "length", "content_filter", "other")
+USAGE_BUCKETS = ("input", "cachedInput", "cacheWrite", "output", "reasoning")
+# The largest integer a double holds exactly; protocol integers stay within it.
+SAFE_INTEGER = 2**53 - 1
+
+
+def whole_number(value: Any) -> bool:
+    """An integer (helper-api §Shared Conventions): a finite number that is not a bool, has no
+    fractional part and is at most 2^53 - 1 in absolute value (3 and 3.0, not True)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        number = float(value)
+    except OverflowError:
+        return False
+    return number.is_integer() and abs(number) <= SAFE_INTEGER
+
+
+def one_of(value: Any, names: tuple[str, ...]) -> bool:
+    return isinstance(value, str) and value in names
+
+
+def text_or_none(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def is_usage(value: Any) -> bool:
+    """Token buckets: keys among the five bucket names, values non-negative integers."""
+    if not isinstance(value, dict):
+        return False
+    return all(
+        one_of(name, USAGE_BUCKETS) and whole_number(count) and count >= 0
+        for name, count in value.items()
+    )
+
+
+def reported_usage(value: Any) -> dict[str, int] | None:
+    """The given usage, or None when it breaks the rules of `is_usage`."""
+    return {name: int(count) for name, count in value.items()} if is_usage(value) else None
+
+
+def is_stages(value: Any) -> bool:
+    return isinstance(value, list) and all(
+        isinstance(stage, dict)
+        and isinstance(stage.get("name"), str)
+        and isinstance(stage.get("text"), str)
+        for stage in value
+    )
+
+
+def valid_result(result: Result) -> bool:
+    """helper-api §Checking `Result` and `ModelCallError` Values: a `Result` the helper can
+    use; any other is adapter error A14. None stands for a field not given, apart from an
+    explicit `final=None`; a `final` with kind `discarded` is ignored."""
+    kind = "model" if result.kind is None else result.kind
+    if not one_of(kind, FINAL_KINDS):
+        return False
+    if kind != "discarded" and result.final is not OMITTED and not isinstance(result.final, str):
+        return False
+    texts = (result.raw, result.discard_reason, result.model, result.model_snapshot)
+    if any(text is not None and not isinstance(text, str) for text in texts):
+        return False
+    if result.model == "" or result.model_snapshot == "":
+        return False
+    if result.answers is not None and result.answers == 0 and kind == "model":
+        return False
+    checks = (
+        (result.answers, lambda value: whole_number(value) and value >= 0),
+        (result.finish_reason, lambda value: one_of(value, FINISH_REASONS)),
+        (result.stopped_early, lambda value: isinstance(value, bool)),
+        (result.usage, is_usage),
+        (result.stages, is_stages),
+    )
+    return all(value is None or check(value) for value, check in checks)
+
+
+def reported_status(value: Any) -> int | None:
+    """`ModelCallError(status=)`: an integer from 100 to 599, else not given."""
+    return int(value) if whole_number(value) and 100 <= value <= 599 else None
+
+
+def reported_wait(value: Any) -> int | None:
+    """`ModelCallError(retry_after_ms=)`: a number that is not a bool, read as a double and
+    converted as a header's wait is; not given otherwise."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        return wait_ms(float(value))
+    except OverflowError:
+        return None
+
+
+def reported_outcome(
+    usage: dict[str, int] | None, corrected: bool, status: int | None, kind: str | None
+) -> str:
+    """data-model §Matching Reported Failures: the `outcome` of a corrected or added call."""
+    if usage is not None:
+        return "failed"
+    if corrected or status == 200 or kind in (DISCONNECT, TIMEOUT):
+        return "unanswered"
+    return "failed"
+
+
 # --- Outcome (data-model §Answers, §Outcome Decision, §Raw Cannot Be Determined,
 # §Derived Result Fields; helper-api §Trial Warnings) --------------------------------------
 
@@ -2696,11 +3034,35 @@ class FunctionEnd:
     discarded: bool = False
     # A return value that is not text, `fallback(text)` or `Result` (adapter error A14).
     not_text: bool = False
+    # The `Result` the function returned, or the `ModelCallError` it raised.
+    result: Result | None = None
+    thrown: ModelCallError | None = None
+    # A `Result` without `final` and with kind `model` ships the raw answer.
+    final_is_raw: bool = False
 
     @property
     def raised(self) -> bool:
         """It raised an exception that is not in `discard_on`."""
         return self.error is not None and not self.discarded
+
+    def take_result(self) -> None:
+        """Ends the function as its valid `Result` says (data-model §Derived Result Fields,
+        `final`): kind `discarded` counts as a `discard_on` exception."""
+        result = self.result
+        assert result is not None
+        kind = "model" if result.kind is None else result.kind
+        self.is_fallback = kind == "fallback"
+        self.discarded = kind == "discarded"
+        if isinstance(result.final, str) and kind != "discarded":
+            self.value = result.final
+        self.final_is_raw = result.final is OMITTED and kind == "model"
+
+    def discard_text(self) -> str | None:
+        """`discardReason`: the given reason or the exception's, cut to 200 code points."""
+        if self.result is not None:
+            reason = self.result.discard_reason
+            return reason[:DISCARD_REASON_LIMIT] if isinstance(reason, str) else None
+        return discard_reason(self.error) if self.error is not None else None
 
     def with_exception(self, message_id: str, **placeholders: str) -> str:
         """The message, in its form naming the exception when the function raised one."""
@@ -2803,8 +3165,10 @@ class Analysis:
     def failures(self) -> list[int]:
         return [i for i, seen in enumerate(self.seens) if seen.state == FAILED]
 
-    def unrecovered(self) -> list[int]:
-        """data-model §Successful Calls and Unrecovered Failures."""
+    def unrecovered(self, strict: bool = False) -> list[int]:
+        """data-model §Successful Calls and Unrecovered Failures. `strict`: for the
+        matching-failure candidate and the `call` check, an SSE response that ended before a
+        generation-end marker is not a successful call."""
         found = []
         for index in self.failures():
             seen = self.seens[index]
@@ -2812,10 +3176,13 @@ class Analysis:
             for other, candidate in enumerate(self.seens):
                 if other == index or self.roots[other] != self.roots[index]:
                     continue
+                cut = strict and candidate.sse and not candidate.generation_end
                 if candidate.state == UNFINISHED and other > index:
                     recovered = True
-                elif candidate.successful() and (
-                    other > index or (candidate.ended_at or 0) > seen.call.sent_at
+                elif (
+                    candidate.successful()
+                    and not cut
+                    and (other > index or (candidate.ended_at or 0) > seen.call.sent_at)
                 ):
                     recovered = True
                 if recovered:
@@ -2940,11 +3307,20 @@ class Decision:
             data["capturedRaw"] = captured_raw
         return "error", {"message": text, "data": data}
 
-    def failure(self, kind: str, text: str, retry_after: int | None) -> tuple[str, JsonObject]:
+    def failure(
+        self,
+        kind: str,
+        text: str,
+        retry_after: int | None,
+        cost: JsonObject | None = None,
+    ) -> tuple[str, JsonObject]:
+        """A failure result; `retryAfterMs` only for a `transient` one (helper-api
+        §`retryAfterMs`). `cost` replaces the calls' own `calls` and `usage`."""
         error: JsonObject = {"kind": kind, "message": text}
-        if retry_after is not None:
+        if retry_after is not None and kind == "transient":
             error["retryAfterMs"] = retry_after
-        result: JsonObject = {"error": error, "latencyMs": self.latency_ms, **self.cost()}
+        fields = self.cost() if cost is None else cost
+        result: JsonObject = {"error": error, "latencyMs": self.latency_ms, **fields}
         self.add_usage_warning()
         if self.warnings:
             result["warnings"] = self.ordered_warnings()
@@ -2964,8 +3340,16 @@ class Decision:
         config = a.config_failure()
         if config is not None:
             return self.call_failure(config)
-        if end.not_text:
+        if end.thrown is not None:
+            return self.decide_thrown(end.thrown)
+        if end.not_text or (end.result is not None and not valid_result(end.result)):
             return self.adapter_error(message("A14"), self.captured_raw())
+        if end.result is not None:
+            end.take_result()
+            if end.result.raw is not None:
+                return RawDecision(self, end.result).decide()
+            if end.result.stopped_early is True:
+                self.warn("W7")
         if not a.seens:
             return "error", {"message": end.with_exception("A1"), "data": {}}
         unrecovered = a.unrecovered()
@@ -3001,6 +3385,135 @@ class Decision:
                 return self.adapter_error(message("A4"))
             return self.answered(self.last_candidate_text(), 0, "other")
         return self.answered_from_answers()
+
+    # A thrown `ModelCallError` (data-model §Matching Reported Failures)
+
+    def decide_thrown(self, thrown: ModelCallError) -> tuple[str, JsonObject]:
+        """After Outcome row 1: A12 unless exactly one of `status`, `kind` and `call` is given
+        and a given `status` or `kind` is one of its values, A13 for a `call` that is not a
+        failure of this trial the service received, else the trial is the failure of the
+        matched or added call."""
+        a = self.a
+        status = reported_status(thrown.status)
+        kind = thrown.kind if one_of(thrown.kind, tuple(TRANSPORT_KINDS)) else None
+        given = [value is not None for value in (thrown.status, thrown.kind, thrown.call)]
+        if sum(given) != 1 or (given[0] and status is None) or (given[1] and kind is None):
+            return self.adapter_error(message("A12"))
+        if thrown.call is not None:
+            source = thrown.call._source if isinstance(thrown.call, Call) else None
+            call = next((i for i, seen in enumerate(a.seens) if seen.call is source), None)
+            if call is None or not self.received_failure(call):
+                return self.adapter_error(message("A13"))
+            return self.matched_failure(call, None)
+        text = trim_text(thrown.message) if isinstance(thrown.message, str) else ""
+        if not text:
+            text = f"HTTP {status}" if status is not None else str(kind)
+        usage = reported_usage(thrown.usage)
+        wait = reported_wait(thrown.retry_after_ms)
+        error = ErrorObject(
+            text_or_none(thrown.type), text_or_none(thrown.code), text_or_none(thrown.message)
+        )
+        thrown_kind = classify(status, error, kind)
+        model = thrown.model if isinstance(thrown.model, str) and thrown.model else a.variant_model
+        searched = self.calls_to(model, a.chosen)
+        candidates: list[tuple[int, str]] = []
+        if status == 200 or kind in (DISCONNECT, TIMEOUT):
+            started = [i for i in searched if self.started_response(a.seens[i])]
+            candidates += [(started[-1], "started")] if started else []
+        unrecovered = set(a.unrecovered(strict=True))
+        failures = [
+            i for i in searched if i in unrecovered and self.matches(a.seens[i], status, kind)
+        ]
+        candidates += [(failures[-1], "failure")] if failures else []
+        if kind == TIMEOUT:
+            unfinished = [i for i in searched if a.seens[i].state == UNFINISHED]
+            candidates += [(unfinished[-1], "unfinished")] if unfinished else []
+        if candidates:
+            index, how = max(candidates)
+            if how == "failure":
+                return self.matched_failure(index, thrown_kind)
+        else:
+            index, how = -1, "none"
+            self.w10(model, status, kind)
+        records = self.records()
+        record: JsonObject = {"model": model, "errorKind": thrown_kind}
+        if how == "started":
+            record = records[index]
+            record["errorKind"] = thrown_kind
+            record.pop("finishReason", None)
+        if how in ("started", "none"):
+            record["outcome"] = reported_outcome(usage, how == "started", status, kind)
+            if wait is not None and thrown_kind == "transient":
+                record["retryAfterMs"] = wait
+            if usage is not None:
+                record["usage"] = usage
+        if how == "none" and a.seens:
+            records.append(record)
+        if not a.seens:
+            cost: JsonObject = {} if usage is None else {"usage": usage}
+        else:
+            cost = records_cost(records)
+        return self.failure(thrown_kind, text, wait, cost)
+
+    def received_failure(self, index: int) -> bool:
+        """helper-api §The `call` Check: an unrecovered failure, not resent, and with
+        `reply_call` one it is true for."""
+        a = self.a
+        if index not in a.unrecovered(strict=True):
+            return False
+        if retried(a.seens, a.roots, index):
+            return False
+        return a.chosen is None or a.chosen[index]
+
+    def matched_failure(self, index: int, thrown_kind: str | None) -> tuple[str, JsonObject]:
+        """The matching-failure candidate decides by its own kind and `retryAfterMs`, unless
+        the thrown value classifies as `config`, which makes the trial and the call `config`."""
+        seen = self.a.seens[index]
+        assert seen.failure is not None
+        records = self.records()
+        if thrown_kind == "config":
+            records[index]["errorKind"] = "config"
+            records[index].pop("retryAfterMs", None)
+            return self.failure("config", failure_message(seen), None, records_cost(records))
+        kind = seen.kind or "transient"
+        return self.failure(kind, failure_message(seen), seen.failure.retry_after_ms)
+
+    def calls_to(self, model: str, chosen: list[bool] | None) -> list[int]:
+        """The calls a thrown failure of `model` is matched among: to the variant model, only
+        those `reply_call` is true for (when `chosen` is given)."""
+        a = self.a
+        if model == a.variant_model:
+            return [
+                i for i in range(len(a.seens)) if a.is_variant[i] and (chosen is None or chosen[i])
+            ]
+        return [i for i, seen in enumerate(a.seens) if seen.call.model == model]
+
+    @staticmethod
+    def started_response(seen: Seen) -> bool:
+        """An unread response; an SSE one only without a generation-end marker."""
+        return seen.state == UNREAD and not (seen.sse and seen.generation_end)
+
+    @staticmethod
+    def matches(seen: Seen, status: int | None, kind: str | None) -> bool:
+        """A failure that matches the thrown value: an error response of that status, or with
+        `kind` a failure without an error response."""
+        if seen.state != FAILED or seen.failure is None:
+            return False
+        if status is not None:
+            return seen.failure.status == status
+        return kind is not None and seen.failure.status is None
+
+    def w10(self, model: str, status: int | None, kind: str | None) -> None:
+        """W10: no candidate, and every captured failure of that model matching a thrown
+        `status` or a `kind` other than `timeout` was resent."""
+        a = self.a
+        if status is None and kind == TIMEOUT:
+            return
+        if model == a.variant_model and a.chosen is not None and not any(a.chosen):
+            return
+        matching = [i for i in self.calls_to(model, None) if self.matches(a.seens[i], status, kind)]
+        if matching and all(retried(a.seens, a.roots, i) for i in matching):
+            self.warn("W10")
 
     def row6(self, unrecovered: list[int]) -> tuple[str, JsonObject] | None:
         a = self.a
@@ -3045,17 +3558,22 @@ class Decision:
     def answered_from_answers(self) -> tuple[str, JsonObject]:
         answers = self.a.answers
         first, last = answers[0], answers[-1]
-        if last.finish != "stop" and self.earlier_stop(last):
+        if self.finish_not_given() and last.finish != "stop" and self.earlier_stop(last):
             self.warn("W3")
         return self.answered(first.text, len(answers), last.finish, raw_index=first.index)
 
-    def earlier_stop(self, last: Answer) -> bool:
+    def finish_not_given(self) -> bool:
+        given = self.end.result
+        return given is None or given.finish_reason is None
+
+    def earlier_stop(self, last: Answer, answers: list[Answer] | None = None) -> bool:
         """W3: an earlier answer of the same request (an earlier `choices` item, an answer of
         a request with the same body) ended with `stop`."""
+        earlier = (self.a.answers if answers is None else answers)[:-1]
         key = self.a.seens[last.index].call.key
         return any(
             answer.finish == "stop" and self.a.seens[answer.index].call.key == key
-            for answer in self.a.answers[:-1]
+            for answer in earlier
         )
 
     def answered(
@@ -3066,7 +3584,39 @@ class Decision:
         raw_index: int | None = None,
         all_side: bool = False,
     ) -> tuple[str, JsonObject]:
-        end = self.end
+        a = self.a
+        snapshot, request = self.raw_sources(raw_index)
+        system = a.seens[a.roots[a.answers[0].index]].call.system if a.answers else None
+        return self.result_of(
+            raw,
+            answers,
+            finish,
+            records=self.records(all_side) if a.finals else None,
+            snapshot=snapshot,
+            usage_index=snapshot,
+            request=None if request is None else a.seens[request].call,
+            w2_system=system,
+            w2_text_only=False,
+            has_answer=answers > 0,
+        )
+
+    def result_of(
+        self,
+        raw: str,
+        answers: int,
+        finish: str,
+        *,
+        records: list[JsonObject] | None,
+        snapshot: int | None,
+        usage_index: int | None,
+        request: CapturedCall | None,
+        w2_system: list[str] | None,
+        w2_text_only: bool,
+        has_answer: bool,
+    ) -> tuple[str, JsonObject]:
+        """A result with the shipped text, the values a `Result` gives over the helper's
+        (data-model §Derived Result Fields) and the trial warnings."""
+        end, given = self.end, self.end.result
         result: JsonObject = {
             "raw": raw,
             "answers": answers,
@@ -3079,20 +3629,47 @@ class Decision:
             "finishReason": finish,
         }
         if end.discarded:
-            assert end.error is not None
-            result["discardReason"] = discard_reason(end.error)
+            reason = end.discard_text()
+            if reason is not None:
+                result["discardReason"] = reason
+        elif end.value is not None:
+            result["final"] = end.value
         else:
-            result["final"] = end.value if end.value is not None else ""
-        snapshot, request = self.raw_sources(raw_index)
+            result["final"] = raw if end.final_is_raw else ""
         if snapshot is not None:
             parsed = self.a.seens[snapshot].parsed
             if parsed is not None and parsed.response_model:
                 result["modelSnapshot"] = parsed.response_model
         if request is not None:
-            call = self.a.seens[request].call
-            result["fingerprint"] = render_fingerprint(call.messages, call.tools)
-        result.update(self.cost(all_side))
-        self.add_warnings(result, answers > 0)
+            result["fingerprint"] = render_fingerprint(request.messages, request.tools)
+        usage = None
+        if given is not None:
+            if given.answers is not None:
+                result["answers"] = int(given.answers)
+            if given.finish_reason is not None:
+                result["finishReason"] = given.finish_reason
+            if given.model_snapshot is not None:
+                result["modelSnapshot"] = given.model_snapshot
+            if given.stages is not None:
+                result["stages"] = [
+                    {"name": stage["name"], "text": stage["text"]} for stage in given.stages
+                ]
+            usage = reported_usage(given.usage)
+        if records is not None:
+            if usage is not None and usage_index is not None:
+                records[usage_index]["usage"] = usage
+                seens = self.a.seens
+                if usage_index < len(seens) and seens[usage_index].state == FAILED:
+                    records[usage_index]["outcome"] = "failed"
+            result.update(records_cost(records))
+        elif usage is not None:
+            result["usage"] = usage
+        if has_answer and result["finalKind"] in ("fallback", "discarded"):
+            self.w1()
+        if result["finalKind"] == "model" and (w2_system is not None or w2_text_only):
+            self.w2(str(result.get("final", "")), w2_system)
+        self.add_usage_warning()
+        result["warnings"] = self.ordered_warnings()
         return "result", result
 
     def raw_sources(self, raw_index: int | None) -> tuple[int | None, int | None]:
@@ -3115,14 +3692,6 @@ class Decision:
     def ordered_warnings(self) -> list[str]:
         return [text for _, text in sorted(self.warnings, key=lambda warning: warning[0])]
 
-    def add_warnings(self, result: JsonObject, has_answer: bool) -> None:
-        if has_answer and result["finalKind"] in ("fallback", "discarded"):
-            self.w1()
-        if result["finalKind"] == "model":
-            self.w2(str(result.get("final", "")))
-        self.add_usage_warning()
-        result["warnings"] = self.ordered_warnings()
-
     def add_usage_warning(self) -> None:
         if any(final.parsed is not None and final.parsed.negative_input for final in self.a.finals):
             self.warn("W9")
@@ -3142,19 +3711,425 @@ class Decision:
         else:
             self.warn("W1", model=a.seens[index].call.model)
 
-    def w2(self, shipped: str) -> None:
+    def w2(self, shipped: str, system: list[str] | None) -> None:
+        """W2: another model's answer with the shipped text, or from a branch whose first
+        request has the answer branch's system (`system` None: the text only)."""
         a = self.a
-        if not a.answers:
-            return
-        system = a.seens[a.roots[a.answers[0].index]].call.system
         for index, seen in enumerate(a.seens):
             if a.is_variant[index] or seen.state != OK:
                 continue
             for answer in a.answers_of(index):
                 same_text = trim_text(answer.text) == trim_text(shipped)
-                if same_text or a.seens[a.roots[index]].call.system == system:
+                same_system = system is not None and a.seens[a.roots[index]].call.system == system
+                if same_text or same_system:
                     self.warn("W2", model=seen.call.model)
                     return
+
+
+MATCHED, LAST_UNREAD = "matched", "unread"
+
+
+class RawDecision:
+    """data-model §When the Adapter Gives Raw: the trial of a valid `Result` with `raw`, after
+    Outcome row 1. Cut streams are taken by the view the given values choose (§Cut Streams)."""
+
+    def __init__(self, decision: Decision, given: Result) -> None:
+        self.d = decision
+        self.a = a = decision.a
+        self.given = given
+        self.raw = str(given.raw)
+        self.kind = "model" if given.kind is None else str(given.kind)
+        self.empty = is_empty_text(self.raw)
+        self.fallback = self.kind in ("fallback", "discarded")
+        self.stopped = given.stopped_early is True
+        self.honoured = self.stopped and not self.empty and self.kind == "model"
+        zero = given.answers is not None and given.answers == 0
+        if self.empty and zero and self.fallback:
+            self.view = 5
+        elif not self.empty and self.fallback:
+            self.view = 2
+        else:
+            self.view = 3 if self.honoured else 1
+        self.searched = list(a.candidates)
+        self.ignored = self.view_5_ignored() if self.view == 5 else set()
+        self.live = [i for i in self.searched if i not in self.ignored]
+        self.cut = {i for i in self.live if self.is_cut(a.seens[i])}
+        # Cut streams taken as `timeout` failures (view 1, and view 3 apart from unread ones).
+        self.cut_failures = {
+            i for i in self.cut if self.view == 1 or (self.view == 3 and a.seens[i].state != UNREAD)
+        }
+        # Unread responses after the failure check.
+        self.unread = {i for i in self.live if a.seens[i].state == UNREAD} | self.cut
+        if self.kind == "model":
+            self.unread |= {i for i in self.live if self.failed_after_marker(a.seens[i])}
+        self.answers = [answer for answer in a.answers if answer.index not in self.ignored]
+        failures = {
+            i: self.ended(i)
+            for i in self.live
+            if (a.seens[i].state == FAILED and i not in self.unread) or i in self.cut_failures
+        }
+        self.failure_ends = failures
+        self.unrecovered = self.unrecovered_of(failures, self.cut_failures | self.ignored)
+        self.unfinished = [
+            i for i in self.live if a.seens[i].state == UNFINISHED and i not in self.cut
+        ]
+
+    # Calls under the chosen view
+
+    @staticmethod
+    def is_cut(seen: Seen) -> bool:
+        """A searched SSE call that ended before its generation-end marker: failed with
+        `timeout`, left unread, or unfinished when the function returned."""
+        if not seen.sse or seen.generation_end:
+            return False
+        if seen.state in (UNREAD, UNFINISHED):
+            return True
+        return (
+            seen.state == FAILED and seen.failure is not None and seen.failure.transport == TIMEOUT
+        )
+
+    @staticmethod
+    def failed_after_marker(seen: Seen) -> bool:
+        """An SSE call that failed by a drop or time-out after its generation-end marker."""
+        failure = seen.failure
+        return (
+            seen.state == FAILED
+            and seen.sse
+            and seen.generation_end
+            and failure is not None
+            and failure.status is None
+        )
+
+    def ended(self, index: int) -> float:
+        """When the call ended; a cut stream still being read, when the service last read it."""
+        seen = self.a.seens[index]
+        if seen.ended_at is not None:
+            return seen.ended_at
+        return seen.read_at or self.a.trial.function_ended_at or time.monotonic()
+
+    def view_5_ignored(self) -> set[int]:
+        """View 5: cut streams, calls that failed with `timeout`, unfinished calls, and a
+        failure followed by another searched call sent after it ended."""
+        seens = self.a.seens
+        ignored = {
+            i
+            for i in self.searched
+            if self.is_cut(seens[i]) or seens[i].kind == "timeout" or seens[i].state == UNFINISHED
+        }
+        for i in self.searched:
+            if seens[i].state == FAILED and any(
+                seens[j].call.sent_at > self.ended(i) for j in self.searched
+            ):
+                ignored.add(i)
+        return ignored
+
+    def unrecovered_of(self, failures: dict[int, float], unsuccessful: set[int]) -> list[int]:
+        """data-model §Successful Calls and Unrecovered Failures over `failures`, where the
+        calls in `unsuccessful` are not successful calls."""
+        a = self.a
+        found = []
+        for index in sorted(failures):
+            sent = a.seens[index].call.sent_at
+            recovered = False
+            for other, seen in enumerate(a.seens):
+                if other == index or a.roots[other] != a.roots[index]:
+                    continue
+                if other in failures or other in unsuccessful:
+                    continue
+                if seen.state == UNFINISHED and other > index:
+                    recovered = True
+                elif (seen.successful() or other in self.unread) and (
+                    other > index or (seen.ended_at or 0) > sent
+                ):
+                    recovered = True
+                if recovered:
+                    break
+            if not recovered:
+                found.append(index)
+        return found
+
+    def received(self, index: int) -> bool:
+        """An answer, or a stream that received a generation-end marker (one that ended in a
+        tool call only with `answer_tool`)."""
+        if any(answer.index == index for answer in self.answers):
+            return True
+        seen = self.a.seens[index]
+        tool = self.a.target.answer_tool
+        return seen.sse and seen.generation_end and (tool is not None or not seen.stream_tool_end)
+
+    # The order of checks
+
+    def decide(self) -> tuple[str, JsonObject]:
+        d, a, given = self.d, self.a, self.given
+        if self.stopped and not self.honoured:
+            d.warn("W7")
+        if given.answers is not None and given.answers == 0:
+            if any(self.received(i) for i in self.live):
+                return d.adapter_error(message("A8"))
+        decided = self.failure_check() if self.live else self.no_searched_calls()
+        if decided is not None:
+            return decided
+        matching = [
+            answer for answer in self.answers if trim_text(answer.text) == trim_text(self.raw)
+        ]
+        if matching:
+            return self.checked(matching[0].index, MATCHED)
+        if self.unread:
+            return self.checked(max(self.unread), LAST_UNREAD)
+        exception = (
+            given.model is None
+            and self.empty
+            and self.fallback
+            and any(a.is_variant)
+            and not self.answers
+        )
+        if given.model is None and not exception:
+            models = model_list([seen.call.model for seen in a.seens])
+            return d.adapter_error(message("A7", model=a.variant_model, models=models))
+        if not self.result_model_is_variant():
+            return self.wrong_result_model()
+        return self.uncaptured(exception)
+
+    def result_model_is_variant(self) -> bool:
+        model = self.given.model
+        return model is None or is_variant_model(str(model), self.a.variant_model)
+
+    def wrong_result_model(self) -> tuple[str, JsonObject]:
+        """Outcome row 4 applied to `Result(model=)`."""
+        models = model_list([str(self.given.model)])
+        text = message("A2-result-model", model=self.a.variant_model, models=models)
+        return self.no_branch_error(text)
+
+    def no_branch_error(self, text: str) -> tuple[str, JsonObject]:
+        """An adapter error of Outcome row 4 or 5, whose calls carry no `branch`."""
+        a = self.a
+        records = [call_record(f, None, s.state != UNFINISHED) for f, s in zip(a.finals, a.seens)]
+        return "error", {"message": text, "data": records_cost(records) if records else {}}
+
+    def failure_check(self) -> tuple[str, JsonObject] | None:
+        """§Failure Check: an unrecovered failure or an unfinished call among the searched
+        calls, no unread response, and no answer the given raw can stand for."""
+        if not self.unrecovered and not self.unfinished:
+            return None
+        tool = self.a.target.answer_tool
+        for i in self.unread - self.cut_failures:
+            seen = self.a.seens[i]
+            if tool is not None or not (seen.sse and seen.stream_tool_end):
+                return None
+        if self.answers and not (
+            self.empty and not any(is_empty_text(answer.text) for answer in self.answers)
+        ):
+            return None
+        return self.failed(cut_last_answer=False)
+
+    def no_searched_calls(self) -> tuple[str, JsonObject] | None:
+        """§No Searched Calls: an empty raw without `Result(model=)` is the unrecovered
+        failure Outcome row 3 would take."""
+        a = self.a
+        if not self.empty or self.given.model is not None:
+            return None
+        failures = {
+            i: self.ended(i)
+            for i, seen in enumerate(a.seens)
+            if seen.state == FAILED and i not in self.ignored
+        }
+        pool = [i for i in self.unrecovered_of(failures, self.ignored) if not a.followed(i)]
+        if not pool:
+            return None
+        return self.d.call_failure(a.seens[a.deciding_failure(pool)])
+
+    def failed(self, cut_last_answer: bool) -> tuple[str, JsonObject]:
+        """The trial decided like Outcome row 6: `timeout` when an unfinished call exists,
+        else the latest-ended unrecovered failure, a cut stream being a `timeout` one; W6 when
+        a cut stream or an unfinished call decides, else W5."""
+        d, a = self.d, self.a
+        suffix = "-cut-last-answer" if cut_last_answer else ""
+        index = None
+        if not self.unfinished:
+            index = max(self.unrecovered, key=lambda i: (self.failure_ends[i], i))
+        if index is None or index in self.cut_failures:
+            if self.honoured:
+                suffix += "-stopped-early-honoured"
+            elif self.stopped:
+                suffix += "-stopped-early-ignored"
+            d.warn("W6" + suffix)
+        else:
+            d.warn("W5" + suffix)
+        seen = None if index is None else a.seens[index]
+        if seen is None or seen.state != FAILED:
+            return d.failure("timeout", NO_ANSWER_TEXT, None)
+        return d.call_failure(seen)
+
+    # A captured raw call
+
+    def checked(self, raw_index: int, source: str) -> tuple[str, JsonObject]:
+        """Outcome row 4 and row 5 when raw is given, §Cut Last Answer, the finish-reason
+        check, then the result."""
+        a, given = self.a, self.given
+        if not self.result_model_is_variant():
+            return self.wrong_result_model()
+        if a.chosen is not None:
+            accepted = set(self.searched) | {raw_index}
+        else:
+            branches = {a.roots[raw_index]} | {a.roots[i] for i in self.unread if i < raw_index}
+            accepted = {i for i in range(len(a.seens)) if a.roots[i] in branches}
+        branches = {a.roots[i] for i in accepted}
+        both = given.finish_reason is not None and given.answers is not None
+        raw_system = a.seens[a.roots[raw_index]].call.system
+        if a.chosen is None:
+            systems = {canonical_json(a.seens[root].call.system) for root in branches}
+            if len(systems) > 1:
+                return self.no_branch_error(message("A3-raw-unread-systems"))
+            if not both and any(a.roots[x.index] != a.roots[raw_index] for x in self.answers):
+                return self.no_branch_error(message("A3-raw-other-answer"))
+        cut_last_answer = self.cut_last_answer(raw_index, source)
+        if source == MATCHED:
+            recovered_cuts = self.cut_failures - set(self.unrecovered)
+            later = [i for i in self.unread if i > raw_index and i not in recovered_cuts]
+            if later:
+                differs = any(
+                    a.seens[a.roots[i]].call.system != raw_system for i in later if i in self.cut
+                )
+                if a.chosen is None and differs:
+                    return self.no_branch_error(message("A3-raw-unread-systems"))
+                if not cut_last_answer and not both:
+                    return self.no_branch_error(message("A3-raw-unread-follows"))
+        if cut_last_answer:
+            return self.failed(cut_last_answer=True)
+        return self.captured_result(raw_index, source, accepted, branches)
+
+    def cut_last_answer(self, raw_index: int, source: str) -> bool:
+        """§Cut Last Answer: the last call cut without `Result(answers=)`, or the raw call cut
+        with `Result(answers=1)`; only cut streams that stay unrecovered `timeout` failures."""
+        a, given = self.a, self.given
+        cuts = set(self.unrecovered) & self.cut_failures
+        if not cuts:
+            return False
+        answered = {answer.index for answer in self.answers} | self.unread
+        if given.answers is None and answered and max(answered) in cuts:
+            return True
+        if source != LAST_UNREAD or raw_index not in cuts or given.answers != 1:
+            return False
+        if a.chosen is None:
+            return True
+        sent = a.seens[raw_index].call.sent_at
+        return not any(
+            i != raw_index and self.received(i) and self.ended(i) > sent for i in self.live
+        )
+
+    def captured_result(
+        self, raw_index: int, source: str, accepted: set[int], branches: set[int]
+    ) -> tuple[str, JsonObject]:
+        """§Answer Candidate Calls When Raw Is Given: `answers`, the finish reason,
+        `fingerprint` and `branch`, with `Result(usage=)` on the raw call."""
+        d, a, given = self.d, self.a, self.given
+        answers = [answer for answer in self.answers if answer.index in accepted]
+        count = len(answers)
+        from_raw = False
+        raw_seen = a.seens[raw_index]
+        tool_end = raw_seen.sse and raw_seen.stream_tool_end
+        if source == LAST_UNREAD:
+            counts = not (tool_end and a.target.answer_tool is None and self.fallback)
+            count += 1 if counts else 0
+            from_raw = counts and (not answers or raw_index > answers[-1].index)
+        finish = given.finish_reason
+        if finish is None:
+            if from_raw and not tool_end:
+                return d.adapter_error(message("A9"))
+            if from_raw or not answers:
+                finish = "stop" if self.kind == "model" and tool_end else "other"
+            else:
+                last = answers[-1]
+                finish = last.finish
+                if last.finish != "stop" and d.earlier_stop(last, answers):
+                    d.warn("W3")
+        first = min([i for i in self.unread if i < raw_index] + [raw_index])
+        records = [
+            call_record(
+                final,
+                "answer" if a.roots[i] in branches else "side",
+                a.seens[i].state != UNFINISHED,
+            )
+            for i, final in enumerate(a.finals)
+        ]
+        return d.result_of(
+            self.raw,
+            count,
+            str(finish),
+            records=records,
+            snapshot=raw_index if source == MATCHED else None,
+            usage_index=raw_index,
+            request=a.seens[a.roots[first]].call,
+            w2_system=a.seens[a.roots[raw_index]].call.system,
+            w2_text_only=False,
+            has_answer=self.given.answers != 0,
+        )
+
+    # The uncaptured call
+
+    def uncaptured(self, exception: bool) -> tuple[str, JsonObject]:
+        """§Raw Call, the uncaptured call: added to `calls` with `Result(model=)`; under the
+        uncaptured-call exception nothing is added and `answers` is 0."""
+        d, a, given = self.d, self.a, self.given
+        records = [
+            call_record(final, None, s.state != UNFINISHED) for final, s in zip(a.finals, a.seens)
+        ]
+        if exception:
+            return d.result_of(
+                self.raw,
+                0,
+                str(given.finish_reason or "other"),
+                records=records if a.finals else None,
+                snapshot=None,
+                usage_index=None,
+                request=None,
+                w2_system=None,
+                w2_text_only=False,
+                has_answer=False,
+            )
+        if given.finish_reason is None:
+            return d.adapter_error(message("A9"))
+        if self.answers:
+            d.warn("W4")
+        self.w8()
+        if a.finals:
+            added: JsonObject = {"model": str(given.model), "outcome": "ok"}
+            if given.model_snapshot is not None:
+                added["responseModel"] = given.model_snapshot
+            records.append(added)
+        return d.result_of(
+            self.raw,
+            1,
+            str(given.finish_reason),
+            records=records if a.finals else None,
+            snapshot=None,
+            usage_index=len(records) - 1 if a.finals else None,
+            request=None,
+            w2_system=None,
+            w2_text_only=True,
+            has_answer=given.answers != 0,
+        )
+
+    def w8(self) -> None:
+        """W8: a captured call to another model looks like the source of the raw answer."""
+        a = self.a
+        raw = trim_text(self.raw)
+        for i, seen in enumerate(a.seens):
+            if a.is_variant[i] or (a.chosen is not None and not a.chosen[i]):
+                continue
+            looks = seen.state in (UNREAD, UNFINISHED) or (
+                seen.state == FAILED
+                and seen.sse
+                and not seen.generation_end
+                and seen.failure is not None
+                and seen.failure.transport == TIMEOUT
+            )
+            if not looks and raw:
+                texts = [trim_text(answer.text) for answer in a.answers_of(i)]
+                looks = any(raw in text and 2 * len(raw) >= len(text) for text in texts)
+            if looks:
+                self.d.warn("W8", model=seen.call.model)
+                return
 
 
 def failure_message(seen: Seen) -> str:
@@ -3610,14 +4585,80 @@ class Server:
     # generate
 
     async def render(self, request_id: int, params: JsonObject) -> None:
-        """A `render` for a target without render mode is adapter error A15."""
+        """helper-api §Render Mode: runs the target with `case.rendering`, or the adapter's
+        render function, and answers with the render result. A target without render mode is
+        adapter error A15."""
         target = self.adapter.targets.get(str(params.get("target")))
         if target is None:
             self.send_error(request_id, INVALID_PARAMS, f"Unknown target {params.get('target')}.")
-        elif not self.adapter.renders(target):
+            return
+        if not self.adapter.renders(target):
             self.send_error(request_id, ADAPTER_ERROR, message("A15"), {})
+            return
+        case = Case(
+            id=str(params.get("caseId", "")),
+            lang=as_str(params.get("lang")),
+            input=as_dict(params.get("input")),
+            repeat=0,
+            seed=as_count(params.get("seed")) or 0,
+            rendering=True,
+        )
+        function = target.render if callable(target.render) else None
+        function = self.adapter.render_functions.get(target.name, function)
+        trial = Trial(request_id, target, case, self.variant, self.timeout_ms)
+        with HUB.lock:
+            HUB.trials[request_id] = trial
+        try:
+            if function is not None:
+                kind, payload = await self.render_by_function(trial, function)
+            else:
+                await self.run_function(trial)
+                kind, payload = render_decision(trial)
+        finally:
+            with HUB.lock:
+                trial.state = "sent"
+                HUB.trials.pop(request_id, None)
+        if kind == "result":
+            self.send_result(request_id, payload)
         else:
-            self.send_error(request_id, METHOD_NOT_FOUND, "This helper has no render mode.")
+            self.send_error(request_id, ADAPTER_ERROR, payload["message"], {})
+
+    async def render_by_function(
+        self, trial: Trial, function: Callable[..., Any]
+    ) -> tuple[str, JsonObject]:
+        """A render function run like the service function in render mode, in the render's
+        trial context (a sync one in a worker thread), its captured requests answered with the
+        render-mode 400. Its result is normalised as a captured request is: A17 when it raises,
+        A18 when its value is not a render result."""
+        arguments = (trial.case, trial.variant)
+
+        async def in_context() -> Any:
+            CURRENT_TRIAL.set(trial)
+            try:
+                if inspect.iscoroutinefunction(function):
+                    value = await function(*arguments)
+                else:
+                    value = await in_daemon_thread(function, *arguments)
+                return await value if inspect.isawaitable(value) else value
+            except asyncio.CancelledError as error:
+                if self.stopped.is_set():
+                    raise
+                return RaisedCancel(error)
+
+        try:
+            value = await asyncio.ensure_future(in_context())
+        except Exception as error:
+            return "error", {"message": message("A17", exception=exception_text(error))}
+        finally:
+            with HUB.lock:
+                trial.state = "waiting"
+        if isinstance(value, RaisedCancel):
+            return "error", {"message": message("A17", exception=exception_text(value.error))}
+        if trial.outside_context:
+            return "error", {"message": message("A10")}
+        if not is_render_result(value):
+            return "error", {"message": message("A18")}
+        return "result", normalised_render(value)
 
     async def generate(self, request_id: int, params: JsonObject) -> None:
         target = self.adapter.targets.get(str(params.get("target")))
@@ -3678,6 +4719,8 @@ class Server:
             if not trial.cancelled:
                 raise
             return FunctionEnd(error=asyncio.CancelledError())
+        except ModelCallError as error:
+            return FunctionEnd(thrown=error)
         except Exception as error:
             return FunctionEnd(error=error)
         finally:
@@ -3691,6 +4734,8 @@ class Server:
             return FunctionEnd(value=value.text, is_fallback=True)
         if isinstance(value, str):
             return FunctionEnd(value=value)
+        if isinstance(value, Result):
+            return FunctionEnd(result=value)
         return FunctionEnd(not_text=True)
 
     async def finish(self, trial: Trial, end: FunctionEnd) -> None:
@@ -3733,18 +4778,28 @@ class Server:
 
     def cancel(self, request_id: Any) -> None:
         """helper-api §Cancel: later requests of the trial are not sent; an asynchronous
-        function is cancelled and its calls in flight are cut as `unanswered`."""
+        function is cancelled and its calls in flight are cut as `unanswered`, those awaited in
+        other tasks too."""
         with HUB.lock:
             trial = HUB.trials.get(request_id) if isinstance(request_id, int) else None
             if trial is None or trial.state not in ("running", "waiting"):
                 return
             trial.cancelled = True
+            others: set[asyncio.Task[Any]] = set()
             if trial.asynchronous:
                 for call in trial.calls:
                     if call.in_flight():
                         call.cut_now()
+                        task = None if call.task is None else call.task()
+                        if task is not None and task is not trial.task and not task.done():
+                            call.cutting = True
+                            others.add(task)
         if trial.asynchronous and trial.task is not None and not trial.task.done():
             trial.task.cancel()
+        # Calls awaited in other tasks (background work of the trial) are cut by cancelling
+        # those tasks; their wrappers turn the cancellation into a dropped request.
+        for task in others:
+            task.cancel()
 
     def send_decision_failure(
         self,
@@ -3791,14 +4846,19 @@ class Server:
     def background_exception(
         self, loop: asyncio.AbstractEventLoop, context: dict[str, Any]
     ) -> None:
-        """L2 for an unhandled exception in an asyncio task; L3 when a blocked request of an
-        abandoned trial caused it."""
+        """L3 when a request of an abandoned trial that the helper cut or blocked caused the
+        exception, a cancellation included; else L2 for an unhandled exception in an asyncio
+        task."""
         error = context.get("exception")
-        if not isinstance(error, Exception):
+        if not isinstance(error, BaseException):
             loop.default_exception_handler(context)
             return
-        blocked = any(getattr(item, BLOCKED, False) for item in exception_chain(error))
-        self.log(message("L3" if blocked else "L2", exception=exception_text(error)))
+        if any(getattr(item, ABANDONED, False) for item in exception_chain(error)):
+            self.log(message("L3", exception=exception_text(error)))
+        elif isinstance(error, Exception):
+            self.log(message("L2", exception=exception_text(error)))
+        else:
+            loop.default_exception_handler(context)
 
     # shutdown
 
@@ -3814,6 +4874,102 @@ class Server:
         self.flush_notifications(force=True)
         self.send_result(request_id, None)
         self.stopped.set()
+
+
+def render_decision(trial: Trial) -> tuple[str, JsonObject]:
+    """The answer to a `render` once the function has ended: A10 when an out-of-context
+    request met two trials in progress, A16 when `reply_call` raised, the render result of
+    the render target, else A11 (helper-api §When Render Fails)."""
+    if trial.outside_context:
+        return "error", {"message": message("A10")}
+    reply_call = trial.target.reply_call
+    with HUB.lock:
+        calls = in_send_order(trial.calls)
+    try:
+        for call in calls:
+            if not is_variant_model(call.model, trial.variant.model):
+                continue
+            view = Call(call.model, call.messages, tool_names_of(call.body))
+            if reply_call is None or reply_call(view):
+                if not renderable(call):
+                    return "error", {"message": message("A19")}
+                return "result", rendered_request(call)
+    except Exception as error:
+        return "error", {"message": message("A16", exception=exception_text(error))}
+    return "error", {"message": message("A11")}
+
+
+OUTPUT_LIMITS = ("max_tokens", "max_completion_tokens", "max_output_tokens")
+
+
+def renderable(call: CapturedCall) -> bool:
+    """helper-api §Render Mode, A19: the render target request gives at least one message,
+    every message has a role (an item with neither `role` nor `type` has none), and its
+    `tools`, when given, is a list."""
+    messages = call.messages
+    if not messages or any(not item["role"] for item in messages):
+        return False
+    return call.tools is None or isinstance(call.tools, list)
+
+
+def rendered_request(call: CapturedCall) -> JsonObject:
+    """The render result of the render target request."""
+    tools = call.tools
+    limits = (as_count(call.body.get(name)) for name in OUTPUT_LIMITS)
+    limit = next((value for value in limits if value is not None and value > 0), None)
+    return render_result(call.messages, tools, limit)
+
+
+def is_render_result(value: Any) -> bool:
+    """helper-api §Render Mode, render function: an object whose `messages` is a non-empty list
+    of objects with a non-empty string `role`, whose `tools`, when given, is a list and whose
+    `maxOutputTokens`, when given, is a positive integer."""
+    if not isinstance(value, dict):
+        return False
+    messages = value.get("messages")
+    if not isinstance(messages, list) or not messages:
+        return False
+    for item in messages:
+        if not isinstance(item, dict) or not isinstance(item.get("role"), str) or not item["role"]:
+            return False
+    if value.get("tools") is not None and not isinstance(value["tools"], list):
+        return False
+    limit = value.get("maxOutputTokens")
+    if limit is not None and (as_count(limit) is None or limit <= 0):
+        return False
+    return is_json(messages) and is_json(value.get("tools")) and is_json(limit)
+
+
+def is_json(value: Any) -> bool:
+    """A value JSON can carry: no object of another class, NaN, infinity, integer too large for
+    a double (number_text refuses the same numbers) or non-string key."""
+    if value is None or isinstance(value, (bool, str)):
+        return True
+    if isinstance(value, (int, float)):
+        try:
+            return math.isfinite(float(value))
+        except OverflowError:
+            return False
+    if isinstance(value, list):
+        return all(is_json(item) for item in value)
+    if isinstance(value, dict):
+        return all(isinstance(key, str) and is_json(item) for key, item in value.items())
+    return False
+
+
+def normalised_render(value: JsonObject) -> JsonObject:
+    """A render function's result, its `messages` read as Chat Completions messages."""
+    messages = [chat_message(as_dict(item)) for item in as_list(value.get("messages"))]
+    return render_result(messages, value.get("tools"), as_count(value.get("maxOutputTokens")))
+
+
+def render_result(messages: list[JsonObject], tools: Any, limit: int | None) -> JsonObject:
+    result: JsonObject = {"messages": messages, "fingerprint": render_fingerprint(messages, tools)}
+    if tools is not None:
+        result["tools"] = tools
+    if limit is not None:
+        result["maxOutputTokens"] = limit
+    return result
 
 
 @dataclass(frozen=True)
@@ -3868,10 +5024,7 @@ def config_result(
     if not configs:
         return None
     config = max(configs, key=lambda seen: seen.ended_at or 0)
-    assert config.failure is not None
     failure: JsonObject = {"kind": "config", "message": failure_message(config)}
-    if config.failure.retry_after_ms is not None:
-        failure["retryAfterMs"] = config.failure.retry_after_ms
     return {"error": failure, "latencyMs": latency, **cost_of(finals, returned)}
 
 
@@ -3881,7 +5034,11 @@ def cost_of(finals: list[Seen], returned: list[Seen] | None = None) -> JsonObjec
     if not finals:
         return {}
     ended = [True] * len(finals) if returned is None else [s.state != UNFINISHED for s in returned]
-    records = [call_record(final, None, done) for final, done in zip(finals, ended)]
+    return records_cost([call_record(final, None, done) for final, done in zip(finals, ended)])
+
+
+def records_cost(records: list[JsonObject]) -> JsonObject:
+    """`calls` and the `usage` summed over them."""
     usage: dict[str, int] = {}
     for record in records:
         for name, value in as_dict(record.get("usage")).items():
