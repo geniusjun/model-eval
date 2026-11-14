@@ -4,7 +4,7 @@ schemas/
 pnpm-lock.yaml
 test/fixtures/
 specs/
-.specify/
-.omc/
+/.*/
+!/.github/
 # The data block stays `<script …>__MODEL_EVAL_DATA__</script>` on one line (002 page-data).
 viewer/index.html

@@ -7,5 +7,4 @@ coverage/
 .env.*
 !.env.example
 .model-eval/
-.omc/
 test-results/
