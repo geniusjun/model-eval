@@ -1,0 +1,32 @@
+/* The tables scroll sideways inside the region on a narrow screen, so the page itself never
+   does. Every surface's table shares the rule column width and the language column width, so
+   the columns line up. A focused cell scrolls clear of the sticky rule column. */
+.grids {
+  --rule-column: 10rem;
+  --language-column: 8.5rem;
+
+  /* A shadow on the right edge while more columns wait off screen; it scrolls away at the end. */
+  background:
+    linear-gradient(to left, var(--color-background) 40%, transparent) right / 2rem 100% no-repeat
+      local,
+    radial-gradient(farthest-side at 100% 50%, var(--color-border-strong), transparent) right /
+      0.75rem 100% no-repeat scroll;
+  overflow-x: auto;
+  scroll-padding-left: var(--rule-column);
+}
+
+@media (max-width: 40rem) {
+  .grids {
+    --rule-column: 6.5rem;
+    --language-column: 7rem;
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}

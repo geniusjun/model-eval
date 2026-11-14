@@ -1,13 +1,15 @@
-import { useEffect, useId, useRef } from 'react';
+import { Fragment, useEffect, useId, useRef } from 'react';
 
 import type { Lang } from '../../../../src/config/schema.js';
 import type { RuleSummary, Samples, SampleText } from '../../../../src/report/schema.js';
 import { SampleAnswer } from '../../components/SampleAnswer.js';
+import { Shape } from '../../components/Shape.js';
 import { pageMessages, type Messages } from '../../i18n/useMessages.js';
-import { ROLES, type Role, type VariantIds } from '../../report/variants.js';
+import { ROLES, type Role } from '../../report/variants.js';
 import type { SideView } from '../../utils/hash.js';
 import styles from './SideBySide.module.css';
 import {
+  sampleCursor,
   samplePositions,
   useSampleCursor,
   type SampleCursor,
@@ -19,18 +21,20 @@ interface SideBySideProps {
   readonly samples: Samples;
   /** The position the location hash names, if it names one. */
   readonly view: SideView | undefined;
-  readonly variants: VariantIds;
   readonly lang: Lang;
+  /** Rules with a regressed cell, marked in the rule chooser. */
+  readonly regressedRuleIds?: ReadonlySet<string>;
 }
 
 interface RuleChooserProps {
   readonly ruleIds: readonly string[];
+  readonly regressedRuleIds: ReadonlySet<string>;
   readonly chosen: string | undefined;
   readonly onChoose: (ruleId: string) => void;
   readonly messages: Messages;
 }
 
-function RuleChooser({ ruleIds, chosen, onChoose, messages }: RuleChooserProps) {
+function RuleChooser({ ruleIds, regressedRuleIds, chosen, onChoose, messages }: RuleChooserProps) {
   const headingId = useId();
   return (
     <>
@@ -48,6 +52,7 @@ function RuleChooser({ ruleIds, chosen, onChoose, messages }: RuleChooserProps) 
                 onChoose(ruleId);
               }}
             >
+              {regressedRuleIds.has(ruleId) && <Shape kind="triangle" />}
               {ruleId}
             </button>
           </li>
@@ -85,24 +90,63 @@ function MoveButton({ label, target, onMove }: MoveButtonProps) {
   );
 }
 
+/**
+ * The evidence of the failing examples of the rule's cells at a position for one variant, or
+ * undefined when none of them failed there.
+ */
+function failingEvidence(
+  samples: Samples,
+  ruleId: string,
+  role: Role,
+  position: SamplePosition,
+): string[] | undefined {
+  const keys = samples.failing
+    .filter((entry) => entry.ruleId === ruleId)
+    .flatMap((entry) => entry.keys)
+    .filter(
+      (key) =>
+        key.variant === role && key.caseId === position.caseId && key.repeat === position.repeat,
+    );
+  return keys.length === 0 ? undefined : [...new Set(keys.flatMap((key) => key.evidence ?? []))];
+}
+
 interface AnswerColumnProps {
   readonly role: Role;
   readonly text: SampleText | undefined;
-  readonly variants: VariantIds;
+  /** The evidence when the rule failed this answer; undefined when it is not a failing example. */
+  readonly evidence: readonly string[] | undefined;
   readonly messages: Messages;
 }
 
-function AnswerColumn({ role, text, variants, messages }: AnswerColumnProps) {
+/** One variant's answer; a failing example says so and shows its evidence before the answer. */
+function AnswerColumn({ role, text, evidence, messages }: AnswerColumnProps) {
   const headingId = useId();
   return (
     <div role="group" aria-labelledby={headingId} className={styles.column}>
       <h4 id={headingId} className={styles.columnHeading}>
-        {messages.text(`role.${role}`, { variant: variants[role] })}
+        {messages.text(`role.${role}`)}
       </h4>
+      {evidence !== undefined && (
+        <p className={styles.failed}>
+          <Shape kind="triangle" />
+          <span className={styles.failedWord}>{messages.text('sample.failed')}</span>
+          {evidence.length > 0 && (
+            <span>
+              {` · ${messages.text('grid.sample.evidence')} `}
+              {evidence.map((item, index) => (
+                <Fragment key={index}>
+                  {index > 0 && ', '}
+                  <span className={styles.evidence}>{item}</span>
+                </Fragment>
+              ))}
+            </span>
+          )}
+        </p>
+      )}
       {text === undefined ? (
         <p className={styles.none}>{messages.text('side.noText')}</p>
       ) : (
-        <SampleAnswer text={text} lang={messages.lang} />
+        <SampleAnswer text={text} lang={messages.lang} marks={evidence ?? []} />
       )}
     </div>
   );
@@ -110,21 +154,25 @@ function AnswerColumn({ role, text, variants, messages }: AnswerColumnProps) {
 
 interface PositionPanelProps {
   readonly cursor: SampleCursor;
+  readonly samples: Samples;
   readonly onMove: (position: SamplePosition) => void;
-  readonly variants: VariantIds;
+  /** Whether the heading takes focus on opening: when the reader opened it, not by default. */
+  readonly focusOnOpen: boolean;
   readonly messages: Messages;
 }
 
 /** The answers at one position. Its heading takes focus when a rule opens, as a cell detail's does. */
-function PositionPanel({ cursor, onMove, variants, messages }: PositionPanelProps) {
+function PositionPanel({ cursor, samples, onMove, focusOnOpen, messages }: PositionPanelProps) {
   const headingId = useId();
   const navigationId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const { position } = cursor;
 
   useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
+    if (focusOnOpen) {
+      headingRef.current?.focus();
+    }
+  }, [focusOnOpen]);
 
   return (
     <section aria-labelledby={headingId} className={styles.panel}>
@@ -174,7 +222,7 @@ function PositionPanel({ cursor, onMove, variants, messages }: PositionPanelProp
             key={role}
             role={role}
             text={cursor[role]}
-            variants={variants}
+            evidence={failingEvidence(samples, cursor.ruleId, role, position)}
             messages={messages}
           />
         ))}
@@ -185,34 +233,58 @@ function PositionPanel({ cursor, onMove, variants, messages }: PositionPanelProp
 
 /**
  * The baseline's and the candidate's answers to the same case and repeat, next to each other, for
- * `review` rules and rules with failing examples (FR-005). The position lives in the hash.
+ * `review` rules and rules with failing examples (FR-005). The position lives in the hash; with
+ * none there, the first position of the first regressed rule shows without touching the hash or
+ * taking focus.
  */
-export function SideBySide({ rules, samples, view, variants, lang }: SideBySideProps) {
+export function SideBySide({
+  rules,
+  samples,
+  view,
+  lang,
+  regressedRuleIds = new Set(),
+}: SideBySideProps) {
   const messages = pageMessages(lang);
-  const { cursor, go, chooseRule } = useSampleCursor(samples, view);
+  const { cursor, go, chooseRule, open } = useSampleCursor(samples, view);
   const ruleIds = rules
     .map((rule) => rule.id)
     .filter((ruleId) => samplePositions(samples, ruleId).length > 0);
+  const firstRegressed = ruleIds.find((ruleId) => regressedRuleIds.has(ruleId));
+  const firstPosition =
+    firstRegressed === undefined ? undefined : samplePositions(samples, firstRegressed)[0];
+  const shown =
+    cursor ??
+    (firstRegressed === undefined || firstPosition === undefined
+      ? undefined
+      : sampleCursor(samples, { kind: 'side', ruleId: firstRegressed, ...firstPosition }));
+  const fromHash = cursor !== undefined;
   if (ruleIds.length === 0) {
-    return <p>{messages.text('side.noRules')}</p>;
+    return <p className={styles.none}>{messages.text('side.noRules')}</p>;
   }
   return (
     <>
-      <p>{messages.text('side.intro')}</p>
       <RuleChooser
         ruleIds={ruleIds}
-        chosen={cursor?.ruleId}
+        regressedRuleIds={regressedRuleIds}
+        chosen={shown?.ruleId}
         onChoose={chooseRule}
         messages={messages}
       />
-      {cursor === undefined ? (
-        <p>{messages.text('side.choose')}</p>
+      {shown === undefined ? (
+        <p className={styles.none}>{messages.text('side.choose')}</p>
       ) : (
         <PositionPanel
-          key={cursor.ruleId}
-          cursor={cursor}
-          onMove={go}
-          variants={variants}
+          key={`${shown.ruleId}/${String(fromHash)}`}
+          cursor={shown}
+          samples={samples}
+          onMove={
+            fromHash
+              ? go
+              : (position) => {
+                  open(shown.ruleId, position);
+                }
+          }
+          focusOnOpen={fromHash}
           messages={messages}
         />
       )}

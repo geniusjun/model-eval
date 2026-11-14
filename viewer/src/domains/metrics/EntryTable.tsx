@@ -19,10 +19,10 @@ interface EntryTableProps {
 export function EntryTable({ title, columns, rows, emptyText }: EntryTableProps) {
   const headingId = useId();
   return (
-    <>
+    <div className={styles.entry}>
       <h3 id={headingId}>{title}</h3>
       {rows.length === 0 ? (
-        <p>{emptyText}</p>
+        <p className={styles.empty}>{emptyText}</p>
       ) : (
         <table className={styles.table} aria-labelledby={headingId}>
           <thead>
@@ -45,6 +45,6 @@ export function EntryTable({ title, columns, rows, emptyText }: EntryTableProps)
           </tbody>
         </table>
       )}
-    </>
+    </div>
   );
 }

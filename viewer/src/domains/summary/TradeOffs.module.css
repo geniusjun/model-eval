@@ -1,0 +1,202 @@
+.table {
+  border-collapse: collapse;
+  font-size: var(--font-size-small);
+  table-layout: fixed;
+  width: 100%;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 0;
+}
+
+.table thead th {
+  border-bottom-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  vertical-align: bottom;
+}
+
+.table tbody th {
+  font-weight: 500;
+}
+
+.measure {
+  width: 24%;
+}
+
+.table .values {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  width: 30%;
+}
+
+.table .change {
+  text-align: right;
+  white-space: nowrap;
+  width: 8.5rem;
+}
+
+.chartHead {
+  font-weight: 400;
+}
+
+/* Which dot is which, in the chart column's head. */
+.legend {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.legendBaseline::before,
+.legendCandidate::before {
+  border-radius: 50%;
+  content: '';
+  display: inline-block;
+  height: 0.6em;
+  margin-right: 0.35em;
+  width: 0.6em;
+}
+
+.legendBaseline::before {
+  background: var(--color-chart-baseline);
+}
+
+.legendCandidate::before {
+  background: var(--color-chart-candidate);
+}
+
+/* A measure that did not move gets words, not a lone dot on an empty line. */
+.unchanged {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.dumbbell {
+  display: block;
+  height: 0.75rem;
+  overflow: visible;
+  width: 100%;
+}
+
+.track {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.span {
+  stroke: var(--color-text-faint);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.baseline,
+.candidate {
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.baseline {
+  stroke: var(--color-chart-baseline);
+}
+
+.candidate {
+  stroke: var(--color-chart-candidate);
+}
+
+.change svg {
+  height: 0.7em;
+  margin-right: 0.4em;
+  vertical-align: 0.05em;
+  width: 0.7em;
+}
+
+tr[data-direction='up'] .change svg {
+  color: var(--color-regressed);
+}
+
+tr[data-direction='down'] .change svg {
+  color: var(--color-improved);
+}
+
+.changeValue {
+  font-size: var(--font-size-body);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* A measure that did not move steps back. */
+tr[data-direction='same'] .changeValue {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: 500;
+}
+
+.warning {
+  color: var(--color-text);
+  display: block;
+  font-size: var(--font-size-xs);
+  margin-top: 0.15rem;
+}
+
+.warning svg {
+  color: var(--color-warning-line);
+  height: 0.65em;
+  margin-right: 0.35em;
+  width: 0.65em;
+}
+
+.quiet {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin: var(--space-2) 0 0;
+}
+
+/* Read by assistive technology only. */
+.hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+@media (max-width: 40rem) {
+  /* The dots repeat the values beside them; on a narrow screen the values alone stay. */
+  .chartHead,
+  .chartCell {
+    display: none;
+  }
+
+  .measure {
+    width: 34%;
+  }
+
+  .table .values {
+    width: 34%;
+  }
+
+  .table .change {
+    width: 5.5rem;
+  }
+
+  .table th,
+  .table td {
+    padding-inline: var(--space-1);
+  }
+}

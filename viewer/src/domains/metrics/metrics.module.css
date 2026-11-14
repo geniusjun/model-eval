@@ -1,10 +1,23 @@
 .block {
-  margin: 0 0 var(--space-6);
+  margin: 0 0 var(--space-8);
 }
 
+.intro,
+.empty {
+  color: var(--color-text-muted);
+}
+
+.empty {
+  font-size: var(--font-size-small);
+  margin: 0;
+}
+
+/* Tables: a hairline under each row, labels left, numbers right in tabular figures. */
 .table {
   border-collapse: collapse;
+  font-size: var(--font-size-small);
   margin: 0 0 var(--space-4);
+  max-width: 52rem;
   width: 100%;
 }
 
@@ -22,12 +35,83 @@
   vertical-align: top;
 }
 
-.table thead th {
-  font-size: var(--font-size-small);
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
 }
 
-.number {
+.table th:last-child,
+.table td:last-child {
+  padding-right: 0;
+}
+
+.table thead th {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  vertical-align: bottom;
+}
+
+.table tbody th {
+  font-weight: 400;
+  position: relative;
+}
+
+.table .number {
   font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* The figures per variant: two value columns of equal width beside the labels. */
+.figures td {
+  width: 30%;
+}
+
+@media (max-width: 40rem) {
+  .figures td {
+    width: auto;
+  }
+
+  .figures svg {
+    width: 2.5rem;
+  }
+
+  .rateLine {
+    gap: var(--space-1);
+  }
+}
+
+.groupRow th {
+  border-bottom-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding-top: var(--space-6);
+}
+
+tbody:first-of-type .groupRow th {
+  padding-top: var(--space-2);
+}
+
+/* A row that is 0 for both variants: still there, one step quieter. */
+.zero th,
+.zero td {
+  color: var(--color-text-muted);
+}
+
+.code {
+  font-family: var(--font-code);
+  font-size: var(--font-size-code);
+}
+
+/* Read by assistive technology only. */
+.hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 .muted {
@@ -35,12 +119,107 @@
 }
 
 .rate {
-  display: flex;
+  align-items: flex-end;
+  display: inline-flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 0.1rem;
+}
+
+.rateLine {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.rateValue {
+  min-width: 3.5em;
+  text-align: right;
 }
 
 .count {
   color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* Top messages, side-call failures and response models side by side when there is room. */
+.entries {
+  column-gap: var(--space-8);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+}
+
+.entry {
+  min-width: 0;
+}
+
+.entry h3 {
+  margin-top: var(--space-6);
+}
+
+/* Post-processing: the masked table, then each variant's figures side by side. */
+.variants {
+  column-gap: var(--space-8);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 48rem) {
+  .variants {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.variant {
+  min-width: 0;
+}
+
+.variantHeading {
+  border-bottom: 2px solid var(--color-border-strong);
+  font-family: var(--font-code);
+  font-size: var(--font-size-code);
+  margin: var(--space-4) 0 0;
+  padding-bottom: var(--space-1);
+}
+
+.variant:last-child .variantHeading {
+  border-bottom-color: var(--color-text-faint);
+}
+
+.figureList {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.figureList li {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
   font-size: var(--font-size-small);
+  gap: var(--space-4);
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+}
+
+/* Warnings: each one on a pale amber ground with the warning square. */
+.warnings {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.warnings li {
+  background: var(--color-warning-background);
+  border-left: 3px solid var(--color-warning-line);
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+  font-size: var(--font-size-small);
+  padding: var(--space-2) var(--space-3);
+}
+
+.warnings svg {
+  color: var(--color-warning-line);
+  margin-right: 0.5em;
+  vertical-align: -0.05em;
 }

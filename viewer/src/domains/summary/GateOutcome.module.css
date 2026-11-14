@@ -1,0 +1,61 @@
+.outcome {
+  align-items: center;
+  display: inline-flex;
+  font-weight: var(--font-weight-strong);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.large {
+  color: var(--color-text);
+  font-size: var(--font-size-outcome);
+  gap: 0.3em;
+  line-height: var(--line-height-tight);
+}
+
+.large svg {
+  height: 0.6em;
+  width: 0.6em;
+}
+
+.small {
+  border-radius: var(--radius-small);
+  font-size: var(--font-size-xs);
+  gap: 0.35em;
+  padding: 0.1rem 0.45rem;
+}
+
+/* The large outcome keeps body-coloured text; its shape carries the status colour. */
+.large.block svg {
+  color: var(--color-regressed);
+}
+
+.large.pass svg {
+  color: var(--color-improved);
+}
+
+.large.undecided svg,
+.large.no-gate svg {
+  color: var(--color-text-muted);
+}
+
+.small.block {
+  background: var(--verdict-regressed-background);
+  color: var(--verdict-regressed-text);
+}
+
+.small.pass {
+  background: var(--verdict-improved-background);
+  color: var(--verdict-improved-text);
+}
+
+.small.undecided {
+  background: var(--verdict-inconclusive-background);
+  color: var(--verdict-inconclusive-text);
+}
+
+.small.no-gate {
+  background: var(--verdict-not-applicable-background);
+  border: 1px solid var(--color-border-strong);
+  color: var(--verdict-not-applicable-text);
+}

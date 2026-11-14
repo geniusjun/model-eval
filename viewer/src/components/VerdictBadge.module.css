@@ -1,8 +1,13 @@
 .badge {
-  border-radius: var(--radius);
-  display: inline-block;
-  font-size: var(--font-size-small);
-  padding: 0 var(--space-2);
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  gap: 0.3em;
+  line-height: 1.5;
+  padding: 0 0.4rem;
   white-space: nowrap;
 }
 
@@ -11,14 +16,18 @@
   color: var(--verdict-improved-text);
 }
 
+/* Held is the quiet default: the word alone, small and muted, with no outline, fill or shape. */
 .non-inferior {
   background: var(--verdict-non-inferior-background);
   color: var(--verdict-non-inferior-text);
+  font-weight: 400;
+  padding: 0;
 }
 
 .regressed {
   background: var(--verdict-regressed-background);
   color: var(--verdict-regressed-text);
+  font-weight: var(--font-weight-strong);
 }
 
 .inconclusive {
@@ -34,4 +43,22 @@
 .not-applicable {
   background: var(--verdict-not-applicable-background);
   color: var(--verdict-not-applicable-text);
+}
+
+/* Quiet: the word and shape in muted text on the page, so only a drop carries colour. */
+.quiet {
+  background: var(--color-background);
+  color: var(--color-text-muted);
+  font-weight: 400;
+  padding: 0;
+}
+
+/* Read by assistive technology only. */
+.hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }

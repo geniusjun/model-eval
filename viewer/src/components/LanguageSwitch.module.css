@@ -11,3 +11,21 @@
   color: var(--color-text);
   padding: var(--space-1) var(--space-2);
 }
+
+/* On a narrow screen the menu's options name the languages; its label stays for assistive
+   technology only. */
+@media (max-width: 48rem) {
+  .label {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  .select {
+    font-size: var(--font-size-small);
+    padding: 0.1rem var(--space-1);
+  }
+}

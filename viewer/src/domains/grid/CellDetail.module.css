@@ -1,58 +1,144 @@
+/* The open cell, in place under its table: a raised panel with the verdict's colour on its
+   left edge. */
 .detail {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border-strong);
   border-radius: var(--radius);
-  margin: 0 0 var(--space-6);
-  padding: var(--space-4);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-8);
+  padding: var(--space-4) var(--space-4) var(--space-6);
+}
+
+@media (min-width: 48rem) {
+  .detail {
+    padding-inline: var(--space-6);
+  }
+}
+
+.detail[data-verdict='regressed'] {
+  border-left-color: var(--color-regressed);
+}
+
+.detail[data-verdict='improved'] {
+  border-left-color: var(--color-improved);
 }
 
 .header {
-  align-items: baseline;
+  align-items: center;
   display: flex;
   gap: var(--space-4);
   justify-content: space-between;
+  margin: 0 0 var(--space-4);
 }
 
 .heading {
   font-family: var(--font-code);
   font-size: var(--font-size-body);
-  margin: 0 0 var(--space-3);
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .close {
   background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
   color: var(--color-text);
   cursor: pointer;
+  flex: none;
+  font-size: var(--font-size-small);
   padding: var(--space-1) var(--space-3);
 }
 
-.facts {
+.close:hover {
+  border-color: var(--color-text-faint);
+}
+
+.body {
   display: grid;
-  gap: var(--space-2) var(--space-6);
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-  margin: 0 0 var(--space-4);
+  gap: var(--space-6) var(--space-8);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 56rem) {
+  .body {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+}
+
+.body table {
+  align-self: start;
+  margin: 0;
+  width: 100%;
+}
+
+/* The per-variant table names measures, not rules, so its row labels read in the body face. */
+.body tbody th {
+  font-family: var(--font-body);
+  font-size: var(--font-size-small);
+}
+
+.facts {
+  align-content: start;
+  display: grid;
+  gap: var(--space-3) var(--space-6);
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  margin: 0;
 }
 
 .fact dt {
   color: var(--color-text-muted);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-xs);
 }
 
 .fact dd {
-  margin: 0;
+  font-variant-numeric: tabular-nums;
+  margin: var(--space-1) 0 0;
+}
+
+.wideFact {
+  grid-column: 1 / -1;
+}
+
+.wideFact svg {
+  margin-top: var(--space-1);
+}
+
+.context {
+  border-top: 1px solid var(--color-border);
+  column-gap: var(--space-8);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 48rem) {
+  .context {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .subheading {
-  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
   margin: var(--space-4) 0 var(--space-2);
 }
 
+.missing {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  margin: 0;
+}
+
 .plainList {
+  font-size: var(--font-size-small);
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.plainList li + li {
+  margin-top: var(--space-1);
 }
 
 .part {
@@ -65,26 +151,53 @@
 
 .partLabel {
   color: var(--color-text-muted);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-xs);
 }
 
 .examples {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
+.examples > li {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+}
+
 .exampleKey {
+  font-size: var(--font-size-small);
   font-weight: 600;
   margin: 0 0 var(--space-2);
+  max-width: none;
+}
+
+.exampleKey a {
+  font-weight: 400;
+  margin-left: var(--space-2);
 }
 
 .evidence {
+  font-size: var(--font-size-small);
   margin: 0 0 var(--space-2);
 }
 
 .evidenceItem + .evidenceItem::before {
   content: ', ';
+}
+
+.counts,
+.aside {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.differenceChart {
+  display: block;
+  margin-top: var(--space-1);
+  max-width: 16rem;
 }

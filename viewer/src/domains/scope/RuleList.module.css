@@ -1,33 +1,71 @@
 .list {
-  margin: 0 0 var(--space-6);
+  margin: var(--space-8) 0 0;
 }
 
 .rules {
-  display: grid;
-  gap: var(--space-4);
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .rule {
-  border-left: 3px solid var(--color-border);
-  padding-left: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: var(--space-1) var(--space-6);
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--space-3) 0;
+}
+
+@media (min-width: 48rem) {
+  .rule {
+    grid-template-columns: 14rem minmax(0, 1fr);
+  }
+
+  .details {
+    grid-column: 2;
+  }
 }
 
 .id {
   font-family: var(--font-code);
-  font-size: var(--font-size-body);
+  font-size: var(--font-size-small);
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .summary {
+  font-size: var(--font-size-small);
+  margin: 0;
+  max-width: none;
+}
+
+/* The rule's title is a sentence, so it reads in the body face. */
+.summary > :last-child {
+  font-family: var(--font-body);
+  font-size: inherit;
+}
+
+.severity {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
   color: var(--color-text-muted);
-  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-xs);
+  padding: 0 0.35rem;
 }
 
 .details {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  list-style: none;
   margin: 0;
   overflow-wrap: anywhere;
-  padding-left: var(--space-6);
+  padding: 0;
+}
+
+.details li + li {
+  margin-top: 0.15rem;
+}
+
+.missing {
+  color: var(--color-text-faint);
 }

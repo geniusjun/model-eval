@@ -1,6 +1,6 @@
 .text {
   font-family: var(--font-code);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-code);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }

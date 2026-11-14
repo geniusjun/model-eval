@@ -32,11 +32,14 @@ function surfaceGrid(
   surface: Surface,
   cells: readonly Cell[],
   rules: readonly RuleSummary[],
+  order: readonly string[],
 ): SurfaceGrid {
   const surfaceCells = cells.filter((cell) => cell.surface === surface);
   // Columns come from the cells, not from `rule.languages`, which is empty for a rule that
-  // applies to every language.
-  const languages = unique(surfaceCells.map((cell) => cell.lang));
+  // applies to every language. Every surface has a column for every language of the comparison,
+  // in one order, so a column position means the same language in every table; a language the
+  // surface has no cell in is a column of empty positions.
+  const languages = order;
   const rows = rowRuleIds(surfaceCells, rules).map((ruleId) => ({
     ruleId,
     positions: languages.map(
@@ -46,12 +49,16 @@ function surfaceGrid(
   return { surface, languages, rows };
 }
 
-/** One grid per surface present in `cells`, surfaces and languages in order of first appearance. */
+/**
+ * One grid per surface present in `cells`, surfaces in order of first appearance. Every grid
+ * has the same language columns: each language of `cells`, in order of its first appearance.
+ */
 export function buildGrid(
   cells: readonly Cell[],
   rules: readonly RuleSummary[],
 ): readonly SurfaceGrid[] {
+  const order = unique(cells.map((cell) => cell.lang));
   return unique(cells.map((cell) => cell.surface)).map((surface) =>
-    surfaceGrid(surface, cells, rules),
+    surfaceGrid(surface, cells, rules, order),
   );
 }

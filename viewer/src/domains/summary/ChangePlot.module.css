@@ -1,0 +1,324 @@
+/* The change chart: a table whose middle column is a chart on one scale for every row. */
+.plot {
+  border-collapse: collapse;
+  font-size: var(--font-size-small);
+  table-layout: fixed;
+  width: 100%;
+}
+
+.plot th,
+.plot td {
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.plot th:first-child,
+.plot td:first-child {
+  padding-left: 0;
+}
+
+.plot th:last-child,
+.plot td:last-child {
+  padding-right: 0;
+}
+
+.plot thead th {
+  border-bottom-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  vertical-align: bottom;
+}
+
+.cellHead {
+  font-weight: 400;
+}
+
+.cellColumn {
+  width: 42%;
+}
+
+.differenceColumn {
+  width: 8.5rem;
+}
+
+.plot .difference {
+  text-align: right;
+}
+
+.axisHead {
+  position: relative;
+}
+
+/* Axis labels over the chart column, placed by their value on the shared scale. */
+.ticks {
+  display: block;
+  height: 1.1em;
+  position: relative;
+}
+
+.tick {
+  font-variant-numeric: tabular-nums;
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* The end labels stay inside the axis instead of hanging past it. */
+.tick:first-child {
+  transform: none;
+}
+
+.tick:last-child {
+  transform: translateX(-100%);
+}
+
+.groupRow th,
+.emptyGroups th {
+  border-bottom: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding-bottom: var(--space-1);
+  padding-top: var(--space-4);
+}
+
+.groupRow[data-group='worse'] .groupTitle {
+  color: var(--verdict-regressed-text);
+}
+
+.count {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  margin-left: 0.25em;
+}
+
+.emptyGroups th {
+  font-weight: 400;
+}
+
+.emptyGroups .count {
+  color: var(--color-text-muted);
+}
+
+.toggle {
+  background: none;
+  border: 0;
+  border-radius: var(--radius-small);
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  margin-left: var(--space-3);
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.row th,
+.row .difference {
+  padding-bottom: var(--space-3);
+  padding-top: var(--space-3);
+}
+
+.row .chartCell {
+  padding-block: 0;
+}
+
+.cellLink {
+  color: var(--color-text);
+  font-family: var(--font-code);
+  font-size: var(--font-size-code);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-decoration-color: var(--color-border-strong);
+}
+
+.cellLink:hover {
+  color: var(--color-accent);
+  text-decoration-color: currentColor;
+}
+
+.blockingTag {
+  background: var(--verdict-regressed-background);
+  border-radius: var(--radius-small);
+  color: var(--verdict-regressed-text);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  margin-left: var(--space-2);
+  padding: 0 0.35rem;
+  white-space: nowrap;
+}
+
+.groupNote {
+  font-weight: 400;
+}
+
+/* Passes of trials, behind each rate and quieter than it. */
+.counts {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+}
+
+.notGated {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin-left: var(--space-2);
+  padding: 0 0.3rem;
+  white-space: nowrap;
+}
+
+.facts {
+  align-items: baseline;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  gap: 0.15rem var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.rates {
+  color: var(--color-text);
+  font-size: var(--font-size-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.to {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.more:empty {
+  display: none;
+}
+
+/* The zero line and the margin line run the full height of each row, so down the chart they
+   read as one line each. */
+.chartCell,
+.narrowChart {
+  background-clip: content-box;
+  background-image:
+    linear-gradient(var(--color-text-faint), var(--color-text-faint)),
+    repeating-linear-gradient(var(--color-text-faint) 0 3px, transparent 3px 6px);
+  background-origin: content-box;
+  background-position:
+    var(--zero) 0,
+    var(--margin) 0;
+  background-repeat: no-repeat;
+  background-size:
+    1px 100%,
+    1px 100%;
+  padding-inline: var(--space-3);
+}
+
+.value {
+  display: block;
+  font-size: var(--font-size-title);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.row[data-tone='regressed'] .value {
+  font-size: var(--font-size-cell);
+}
+
+@media (max-width: 40rem) {
+  .row[data-tone='regressed'] .value,
+  .value {
+    font-size: var(--font-size-body);
+  }
+
+  .cellLink {
+    font-size: var(--font-size-xs);
+  }
+}
+
+.interval {
+  color: var(--color-text-muted);
+  display: block;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Read by assistive technology only. */
+.hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* The full-width chart row and its axis show only on a narrow screen. */
+.narrowRow,
+.narrowAxis {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  /* Each cell takes two lines: its name, verdict and figures, then its chart across the width.
+     The chart column stays in the table with no width, so the difference keeps the last column
+     at the right edge. */
+  .axisHead .ticks,
+  .chartCell > * {
+    display: none;
+  }
+
+  .narrowAxis,
+  .narrowRow {
+    display: table-row;
+  }
+
+  .narrowAxis td {
+    border-bottom: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    padding: var(--space-1) var(--space-3) 0;
+  }
+
+  .row th,
+  .row td {
+    border-bottom: 0;
+    padding-bottom: var(--space-1);
+  }
+
+  .narrowChart {
+    padding: 0 var(--space-3) var(--space-3);
+  }
+
+  .narrowChart svg {
+    height: 1rem;
+  }
+
+  /* The top line and its head take the full width, so the difference sits at the right edge. */
+  .cellColumn {
+    width: auto;
+  }
+
+  .chartColumn {
+    width: 0;
+  }
+
+  .differenceColumn {
+    width: 6rem;
+  }
+
+  .plot th,
+  .plot td {
+    padding-inline: var(--space-1);
+  }
+
+  .plot .axisHead,
+  .plot .chartCell {
+    background: none;
+    padding: 0;
+  }
+}

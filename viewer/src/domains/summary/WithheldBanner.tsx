@@ -2,6 +2,7 @@ import { useId } from 'react';
 
 import type { Lang } from '../../../../src/config/schema.js';
 import type { Comparison } from '../../../../src/report/schema.js';
+import { Shape } from '../../components/Shape.js';
 import { pageMessages } from '../../i18n/useMessages.js';
 import styles from './WithheldBanner.module.css';
 
@@ -27,6 +28,7 @@ export function WithheldBanner({ comparison, lang }: WithheldBannerProps) {
   return (
     <section className={styles.banner} aria-labelledby={titleId}>
       <p id={titleId} className={styles.title}>
+        <Shape kind="square" />
         {messages.text('summary.withheld')}
       </p>
       {reason !== undefined && <p className={styles.reason}>{messages.reason(reason)}</p>}

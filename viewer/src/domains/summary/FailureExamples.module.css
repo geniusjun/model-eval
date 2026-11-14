@@ -1,0 +1,50 @@
+.intro {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  margin: 0 0 var(--space-3);
+}
+
+.examples {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.example {
+  border-left: 3px solid var(--color-regressed);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) 0 var(--space-1) var(--space-4);
+}
+
+/* The answer as the reader would see it: body face, larger, quoted. */
+.quote {
+  font-size: var(--font-size-title);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.quote > span {
+  font-family: var(--font-body);
+  font-size: inherit;
+}
+
+.source {
+  align-items: baseline;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  max-width: none;
+}
+
+.evidence {
+  color: var(--color-text);
+}
