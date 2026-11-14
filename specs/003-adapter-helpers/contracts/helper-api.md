@@ -71,6 +71,8 @@ defineAdapter({
 
 - Names follow each language's convention (Python snake_case, TypeScript camelCase); meanings are the same.
 - Values that both languages must produce identically (the values of [spec FR-024](../spec.md#functional-requirements)) are written as the same bytes. Both helpers write canonical JSON per [001 data-model §Canonical JSON](../../001-swap-check/data-model.md#canonical-json), and read JSON text (request and response bodies, `answer_tool` arguments) with its reading rules.
+- An integer is a finite number that is not a bool, has no fractional part and has an absolute value of at most 2^53 − 1, so JSON `2.0` and Python `3.0` are integers and `True` is not. The definition holds for the values `Result` and `ModelCallError` take (§Checking `Result` and `ModelCallError` Values) and for the integers the helper reads from request and response bodies, such as the request's `n`, its output limit (`max_tokens`, `max_completion_tokens`, `max_output_tokens`) and the response's usage values.
+- Where the helper reads text from a field that should hold a string, a value that is not a string gives its canonical JSON: `null` gives `null`, `1.0` gives `1`. Examples are a message's `role`, a tool call's `id` and `name`, the `name` of a legacy `function_call`, the `text` of a response text block or `output_text` part, and the `type` of a Responses tool item without a `name`. The rule reaches raw text too, so both helpers produce the same bytes ([spec FR-024](../spec.md#functional-requirements)). Rules that choose a row by whether a field is a string (the "Any part with a string `text` field" row of §Render Mode) are not affected.
 
 ### Adapter Options
 
@@ -139,6 +141,27 @@ The target function returns the shipped text, `fallback(text)` or a `Result`. Ty
 | `model` | `model` | Model name of the call that produced the raw answer. Given when raw came through an uncaptured transport; required when the raw call is the uncaptured call (data-model §Raw Call). The helper trusts it and checks only that it is the variant model (data-model Outcome row 4). The helper cannot verify that the service really called it, so take it from the response the service received or the setting the service used |
 | `model_snapshot` | `modelSnapshot` | Model (snapshot) of the response that produced raw; overrides the helper's value. Give it when the helper did not see that response (uncaptured transport, unread response) and the service knows the response's model. Without it the trial takes no part in the response-model warnings (`response-model-changed`, `same-response-model`; 001 FR-010) |
 
+#### Checking `Result` and `ModelCallError` Values
+
+`Result(...)` (TypeScript `result()`) and `ModelCallError(...)` never fail because of their values; the helper checks the values when it decides the trial. An unknown field name is a `TypeError` when the value is created, in both languages.
+
+- A field given as None (TypeScript `null` or `undefined`) counts as not given, except `final` (§`Result`).
+- Integers are as §Shared Conventions defines them.
+- A `Result` is adapter error A14 when:
+  - `kind` is not `model`, `fallback` or `discarded` (case-sensitive);
+  - `raw`, `final` or `discard_reason` is not text, or `model` or `model_snapshot` is not text or is empty;
+  - `answers` is not a non-negative integer, or is 0 with kind `model`;
+  - `finish_reason` is not `stop`, `length`, `content_filter` or `other`;
+  - `stopped_early` is not a bool (`False` is the same as not giving it);
+  - `usage` has a key other than the five bucket names (§Target Function, `usage`), or a value that is not a non-negative integer;
+  - `stages` is not a list of objects that each have a text `name` and a text `text`.
+- A `final` given with kind `discarded` is ignored.
+- `discard_reason` is not trimmed and is cut to its first 200 code points, as in data-model Outcome row 8. Without it, no `discardReason` is sent.
+- `ModelCallError` `status` must be an integer from 100 to 599, and `kind` one of `connect`, `tls`, `disconnect` and `timeout`; any other value of either is adapter error A12. A `call` that is not None counts as given, and one that is not a call of this trial (a call of another trial, an object the adapter built) is adapter error A13.
+- A `ModelCallError` `type`, `code`, `message` or `model` that is not text, or a `usage` that a `Result` could not carry, counts as not given; a `usage` not given is charged a reservation as the `usage` row of §`ModelCallError` says.
+- `retry_after_ms` is read only from a number that is not a bool. It is read as a double x and converted to an integer as in §`retryAfterMs` (floor(x + 0.5), x itself when x ≥ 2^52); it is dropped when x is negative or not finite, or when the value is above 2^53 − 1.
+- The `message` of the failure result a `ModelCallError` decides (`error.message`, [001 adapter-protocol §Reporting Model Failures](../../001-swap-check/contracts/adapter-protocol.md#reporting-model-failures)) is the matching-failure candidate's message when there is one ([data-model §Matching Reported Failures](../data-model.md#matching-reported-failures)); otherwise the thrown `message`, trimmed as in [data-model §Comparing Text](../data-model.md#comparing-text); when that is empty, `HTTP <status>`, or the `kind`.
+
 #### When to Give `raw`
 
 1. Give it when the service changes the system to regenerate, or receives the answer as a stream or through an uncaptured transport.
@@ -163,13 +186,14 @@ Failure end events of streams (for example Anthropic `overloaded_error`) are cap
 | `type` | `type` | `type` of the provider's error object (§Error Classification), for example `insufficient_quota`, `billing_error`, `overloaded_error` |
 | `code` | `code` | Code of that error object (OpenAI `code`, Anthropic `details.error_code`), for example `insufficient_quota`, `enforced_spend_limit_reached`. Kept apart from `type` ([research R9](../research.md#r9-classify-errors-by-status-and-code-at-the-http-layer)) |
 | `kind` | `kind` | A failure without a status code. `connect`: the request never arrived (no connection, connection-pool wait time-out, request not fully sent). `tls`: TLS certificate verification failed. `disconnect`: the connection dropped after sending, or a read time-out while receiving a non-stream body. `timeout`: a time limit before the response headers, a time limit waiting for the next stream event, or the service cancelled the request or stopped waiting before the full response |
-| `retry_after_ms` | `retryAfterMs` | Wait before retry that the provider gave, in ms. Converted to a non-negative integer as in §`retryAfterMs`; dropped when negative or not finite |
-| `model` | `model` | Model of the failed call. Default: the variant model |
+| `retry_after_ms` | `retryAfterMs` | Wait before retry that the provider gave, in ms. Read and rounded as in §Checking `Result` and `ModelCallError` Values |
+| `model` | `model` | Model of the failed call. Default: the variant model; an empty string counts as not given |
 | `usage` | `usage` | Same meaning as `Result(usage=)`. With no captured call, the sum over all calls of the trial; without it the tool charges the attempt reservation. With captured calls, the value of the failed call (usually absent) |
 | `call` | `call` | The captured call (an element of the third argument) whose failure the service swallowed, given to report it as the trial's failure. It is used as the matching-failure candidate of [data-model §Matching Reported Failures](../data-model.md#matching-reported-failures) without searching, and `model` is that call's model (a `model` given with it is ignored). Adapter error A13 when that call is not an unrecovered failure (a successful call, an unfinished call, a recovered failure, a failure while a resent request was awaited), when its `retried` is true, or when `reply_call` exists and is not true for it (§The `call` Check) |
 
-- Exactly one of `status`, `kind` and `call` is given. With two or more, or none, the helper decides adapter error A12 after Outcome row 1, so a captured `config` failure still makes the trial `config` ([research R14](../research.md#r14-outcome-decision-trade-offs)).
+- Exactly one of `status`, `kind` and `call` is given; a field that is not None counts as given (§Checking `Result` and `ModelCallError` Values). With two or more, none, or a `status` or `kind` outside its values, the helper decides adapter error A12 after Outcome row 1, so a captured `config` failure still makes the trial `config` ([research R14](../research.md#r14-outcome-decision-trade-offs)).
 - `discard_on` is never consulted for a `ModelCallError`, well-formed or not: it is the adapter's report of a call failure, not a service exception.
+- Only a `ModelCallError` the target function raises itself counts. One wrapped in another exception (a Python `ExceptionGroup`, a Node `AggregateError` or `cause`) is an ordinary exception of the service.
 - The error kind comes from §Error Classification. `status`, `type`, `code` and `message` take the places of the response's status, error type, code and message; providers are not distinguished, because the table's type and code names do not collide across providers. `kind` `connect` and `disconnect` map to the connection row, `tls` to the certificate row and `timeout` to the time-limit row. A thrown failure is thus classified on the same terms as a captured call.
 - In a service without captured calls, when one unbilled failure ended the trial (an error response with a non-200 `status`, `connect`, `tls`), give `usage` 0 (`{"input": 0, "output": 0}`). Otherwise every trial of a candidate rejected every time piles up a reservation and the run stops on the cap instead of blocking ([001 adapter-protocol §Reporting Model Failures](../../001-swap-check/contracts/adapter-protocol.md#reporting-model-failures)).
 
@@ -220,6 +244,7 @@ Calls are kept per trial in a context (Python `contextvars`, Node `AsyncLocalSto
 ### Both Languages
 
 - The copy is handled as bytes after removing `Content-Encoding`. Node's `fetch` already decodes the body. The byte stream the Python helper wraps is still compressed, so the helper decodes it with a new decoder of the same kind the response object uses; the decoder attached to the response belongs to the SDK, and sharing it would give the SDK an empty body. httpx and httpx2 advertise br and zstd when their decoder modules are installed, and the standard library alone cannot decode br, or zstd on Python 3.13 and earlier (research R4).
+- The helper decodes a body, non-stream JSON and SSE alike, as UTF-8 and then removes one leading U+FEFF. Both SDKs read a non-stream JSON body the same way (Node `Response.json()` through `TextDecoder`, Python `json` detecting `utf-8-sig`), and Node's `TextDecoder` removes the U+FEFF from SSE too. The Python SDKs' SSE decoders do not remove it, so they cannot read the field name of the first line: an openai-python stream whose only event ends the answer loses that event, and the service receives an empty answer. The helper does not change the bytes the SDK reads, so the result follows what the service received.
 - Calls are split as follows:
   1. An error-status response (4xx, 5xx) is a failed call even when its body was not read; the kind comes from the status code and as much of the body as was read (§Error Classification). The official SDKs close error responses they will resend (429, 5xx and others) without reading the body: Python for `stream=True` requests, Node for all requests.
   2. A request that ended before the response headers, and a call whose awaited body read on a 2xx response ended by a drop, time-out or cancel, are failed calls. When the awaited read ended because other service work closed the body, it is a cancel even if the transport raises a connection error (Python httpcore raises `ReadError`). The helper wraps body closing to see this, so it decides the same as a Node `AbortController` cut.
@@ -292,7 +317,7 @@ The classes of the SDK-facing exceptions (`httpx`, `httpx2`, `openai`, `anthropi
   - An exception whose class or a base class is `ConnectError`, `ConnectTimeout`, `PoolTimeout` or `WriteTimeout` of httpcore or httpcore2, `ClientConnectorError` or `ConnectionTimeoutError` of aiohttp, `ConnectionRefusedError` or `socket.gaierror` means the request never arrived.
   - Otherwise `TimeoutError` (`asyncio.TimeoutError`, `socket.timeout`) in the chain means a time-out: before headers and between stream events the time-limit row, while receiving a non-stream body a read time-out.
   - A failure while writing the request body cannot be told apart from a connection closed before headers, on the httpx and httpx2 default transports or on aiohttp (K36 of [data-model §Known Limits](../data-model.md#known-limits)).
-- **Node**: follow the error's `cause` to the end and look at `code` and `syscall`.
+- **Node**: follow the error's `cause` to the end, and for each `AggregateError` in the chain also look at the errors in its `errors` (Node puts the `syscall` of a refused localhost connection there, one per address tried); look at `code` and `syscall`.
 
   | undici code | Kind |
   |---|---|
@@ -305,14 +330,14 @@ The classes of the SDK-facing exceptions (`httpx`, `httpx2`, `openai`, `anthropi
 
 ### `retryAfterMs`
 
-`retryAfterMs` of `transient` results and call records is:
+`retryAfterMs` is present on a `transient` result and on the record of a call whose kind is `transient`; a failure of any other kind carries none. The value is:
 
 1. the response's `retry-after-ms` header in ms when readable; else
 2. the `retry-after` header read as seconds or as an HTTP date (RFC 9110; the difference to now, 0 for a past date).
 
 - Each header value is first trimmed of leading and trailing SP and HTAB only, the optional whitespace of RFC 9110. Other code points stay, because the two runtimes decode header bytes differently (UTF-8 in httpx, Latin-1 in `fetch`), so a wider trim would read the same bytes differently.
 - A number is read only when, after that trim, it has the form `[0-9]+(\.[0-9]+)?`. `retry-after: 1.5` is 1500 ms; `-1`, `30s` and `1e3` are not read.
-- The number is read as a double and converted to ms x (seconds times 1000); the value is floor(x + 0.5), a non-negative integer. When x is not finite, nothing is read.
+- The number is read as a double and converted to ms x (seconds times 1000); the value is floor(x + 0.5), a non-negative integer. floor(x + 0.5) is the exact mathematical value: when x ≥ 2^52, the double sum x + 0.5 can come out 1 higher, and a double in that range is already an integer, so the value is x itself. When x is not finite, or the value is above 2^53 − 1 (the protocol's integer range), nothing is read. `ModelCallError` `retry_after_ms` is converted the same way (§Checking `Result` and `ModelCallError` Values).
 - HTTP dates are read in all three RFC 9110 forms as GMT; the standard functions of both languages read the asctime form as local time. A date that does not exist (30 February, second 60) is not read, because `Date.UTC` would roll it into the next month. The weekday name is not checked against the date. A two-digit year of the RFC 850 form is the year with those last two digits that lies more than 50 years before now and at most 50 years after it, compared by instant, as RFC 9110 §5.6.7 says; 50 years before or after 29 February is 28 February.
 - When neither header is readable, nothing is recorded. Both helpers follow this rule rather than their SDK's reading ([research R13](../research.md#r13-make-both-helpers-produce-the-same-bytes)).
 
@@ -325,7 +350,7 @@ Call `outcome` for failed calls: [data-model §Call Outcome](../data-model.md#ca
 - Every cancelled trial gets one response, sent as soon as the function has ended, and at once when the `cancel` arrives after the function returned while the helper waits for unfinished calls: a failure result with the trial's `calls` and `usage`. Its kind is `config` with that call's failure when a call failed with `config` (data-model Outcome row 1), else `timeout` with message F2. Calls that have not ended then join as at the end of the wait ([data-model §Late and Later Requests](../data-model.md#late-and-later-requests) item 2) and are charged the call reservation, so nothing is counted short. The tool never grades the response ([001 adapter-protocol §`cancel`](../../001-swap-check/contracts/adapter-protocol.md#cancel-notification-tool--adapter-optional)).
 - After that, requests from that trial context are not sent: they fail at once as if the request never arrived, and are not recorded as calls. An abandoned trial then costs nothing more, and where service code keeps running after the cut (Python synchronous functions, Node), a request the SDK resends after waiting does not enter the late response.
 - Only captured requests (§Which Requests) are blocked; other transports are not seen. Blocked requests are not reported as calls after the result (`calls` notifications) either.
-- Exceptions in background work caused by a blocked request are logged with log warning L3, so they are told apart from environment problems.
+- Exceptions in background work caused by a request the helper cut on `cancel` or blocked after it are logged with log warning L3, so they are told apart from environment problems.
 
 ## Render Mode
 
@@ -338,7 +363,7 @@ With `render=True` on a target, the helper runs the same service function in ren
 The render result:
 
 - `messages`: the request's system as the first `system` message, followed by the conversation items in order. Anthropic `system` and Responses `instructions` become that first `system` message; the `system` and `developer` messages at the start of Chat Completions and in Responses `input` keep their roles.
-  - Role names stay as in the request (`developer`, and Chat Completions `tool`, included). `content` is always a string: each part gives one line by the table below, and the lines join with `\n` in the parts' order. A string `content` is kept as it is; a missing, null or empty `content` gives no line.
+  - Role names stay as in the request (`developer`, and Chat Completions `tool`, included). A `role` that is not a string is written as §Shared Conventions says. A `role` that is missing or `null` counts as no role: it gives the empty string, and the render fails with A19 (below). `content` is always a string: each part gives one line by the table below, and the lines join with `\n` in the parts' order. A string `content` is kept as it is; a missing, null or empty `content` gives no line.
   - A Chat Completions message gives the lines of its `content` first, then one line per element of its `tool_calls` field in order, then one line for a legacy `function_call` field, each element or field as canonical JSON. A message with an empty or null `content` and `tool_calls` thus holds only the tool-call lines.
 
     | Part (by `type`, the first matching row) | Line |
@@ -350,14 +375,18 @@ The render result:
     | `file`, `input_file`, `document` | `[file]` |
     | `input_audio`, `audio` | `[audio]` |
     | Any other part | Its `type` in brackets, `[]` when it has none |
-  - Input items that are not messages (Responses `reasoning` items, the tool-call and result items of [data-model §Finish Reasons](../data-model.md#finish-reasons)) become `{role: <the item's type>, content: <the item's canonical JSON>}`.
+  - A Responses item is a message when its `role` is present and not `null` and its `type` is missing, `null` or `message`; `{role: "user", type: null}` is a `user` message. Input items that are not messages (Responses `reasoning` items, the tool-call and result items of [data-model §Finish Reasons](../data-model.md#finish-reasons)) become `{role: <the item's type>, content: <the item's canonical JSON>}`. A Responses item whose `role` is missing or `null` but whose `type` is present and not `null` takes its `type` as `role` the same way; a `type` that is missing or `null` counts as no type.
   - A Responses `input` that is a string is one `user` message. An Anthropic `system` block list is one `system` message of its text blocks joined with newlines. Several `system` or `developer` messages at the start of Chat Completions stay separate, in order.
   - A Responses `prompt` (a reference to a stored prompt) becomes `{role: "prompt", content: <its canonical JSON>}`, placed right after the leading `system` and `developer` messages (those built from `instructions` included), or first when there are none. The prompt body is not in the request, so anchors cannot be checked against it ([spec §Assumptions](../spec.md#assumptions)), and the tool's input token estimate takes this into account ([001 data-model §Cost](../../001-swap-check/data-model.md#cost)).
 - `tools`: the request's tool definitions; omitted when absent.
 - `fingerprint`: the render fingerprint of `{messages, tools}` ([001 data-model §Identifiers and Hashing](../../001-swap-check/data-model.md#identifiers-and-hashing)).
-- `maxOutputTokens`: the request's output limit, whichever of `max_tokens`, `max_completion_tokens` and `max_output_tokens` is present.
+- `maxOutputTokens`: the request's output limit, the first of `max_tokens`, `max_completion_tokens` and `max_output_tokens` that is a positive integer; omitted when none is.
 
-A render function given by the adapter (`@adapter.render`) has its result normalised the same way before the fingerprint is computed ([research R7](../research.md#r7-render-by-running-the-service-in-render-mode)). Its `messages` are read as Chat Completions messages (roles kept, leading `system` and `developer` messages kept separate, `content` a string or a part list, `tool_calls`, `function_call`), and a part list may hold any part of the table above, whichever API it comes from, since the type names do not collide.
+When the render target request gives no message (a Responses request with an empty `input`, no `instructions` and no `prompt`, continuing a conversation stored on the server), gives a message without a role (an item whose `role` is missing or `null` and whose `type` is missing or `null`), or has `tools` that is not a list, the render fails with adapter error A19, which lint reports as `render-failed`, as it does A11. The API would refuse the last two requests anyway.
+
+A render function given by the adapter (`@adapter.render`) runs like the service function in render mode: inside the render's trial context, a sync function in a worker thread, and every captured request it sends gets the render-mode 400. Its result is normalised the same way before the fingerprint is computed ([research R7](../research.md#r7-render-by-running-the-service-in-render-mode)). Its `messages` are read as Chat Completions messages (roles kept, leading `system` and `developer` messages kept separate, `content` a string or a part list, `tool_calls`, `function_call`), and a part list may hold any part of the table above, whichever API it comes from, since the type names do not collide.
+
+When the render function raises, a cancellation included, the render fails with adapter error A17; when it returns a value that is not an object, or whose `messages` is not a non-empty list of objects with a non-empty string `role`, `tools` not a list or `maxOutputTokens` not a positive integer (001 adapter-protocol §`render`), or that holds a value JSON cannot carry (an object of another class, NaN, an infinity, an integer too large for a double, a non-string key), with A18. `tools` and `maxOutputTokens` that are None (`null` in TypeScript) count as not given. In TypeScript, an object property whose value is `undefined` counts as absent, as in `JSON.stringify`; an `undefined` array element is a value JSON cannot carry, so A18. Lint reports both as `render-failed`, as it does A11.
 
 ### When Render Fails
 
@@ -525,11 +554,14 @@ Sentences are identical in both helpers and use the Python names (`reply_call`, 
 | A9 | data-model §Answer Candidate Calls When Raw Is Given, finish-reason check | "`Result(finish_reason=)` is required: the answer that decides the finish reason is an unread response or an uncaptured call." |
 | A10 | data-model §Outside the Trial Context | "A model request was made outside any trial context (run with `--concurrency 1`, or have the service pass the context)." |
 | A11 | §When Render Fails | "Could not reach the render target request." |
-| A12 | `ModelCallError` | "`ModelCallError` takes exactly one of `status`, `kind` and `call`." |
+| A12 | `ModelCallError` | "`ModelCallError` takes exactly one of `status` (an HTTP status code), `kind` (`connect`, `tls`, `disconnect` or `timeout`) and `call` (a call of this trial)." |
 | A13 | §The `call` Check | "`call` takes only a failure the service received, and with `reply_call` only a failure of an answer call." |
 | A14 | §Return Values; data-model §Outcome Decision, non-text return | "The target function returned a value that is not text, `fallback(text)` or a valid `Result`. Return the shipped text; a missing `return` gives None, and only a discarded `Result` may have `final=None`." |
 | A15 | §Target Options, `render` | "This target has no render mode. Set `render` on it, or move targets without render mode to a separate adapter, which then does not declare `render`." |
 | A16 | data-model §Outcome Decision, decision failure | "Deciding the trial's outcome failed: <exception>. If `reply_call` or `discard_on` raised it, fix that function; otherwise report it as a helper defect." |
+| A17 | §Render Mode, render function | "The render function raised <exception>." |
+| A18 | §Render Mode, render function | "The render function returned a value that is not a render result. Return `{messages, tools?, maxOutputTokens?}` with `messages` a non-empty list of message objects, `tools` a list and `maxOutputTokens` a positive integer." |
+| A19 | §Render Mode, render result | "The render target request cannot be rendered: it has no message (a Responses request continuing a conversation stored on the server), a message without a role, or `tools` that is not a list. Return the assembled messages with `@adapter.render`." |
 
 - An adapter error that data-model Outcome row 9 decides has the message "The target function raised <exception>. If the service raises it when it discards an answer, add it to `discard_on` (a target function that gives raw catches it and returns `Result(raw=, kind=\"discarded\", discard_reason=)`); if the service's time limit raised it, catch it and throw `ModelCallError(kind=\"timeout\")`."
 - Placeholders are filled the same way in both helpers:
@@ -575,7 +607,7 @@ Sent as `log` with level `warn` ([001 adapter-protocol §`log`](../../001-swap-c
 |---|---|---|
 | L1 | git, `lstat` or a file read failed while computing the service version | "Service version not reported: <reason>." |
 | L2 | An unhandled exception in a Python asyncio task or a Node promise of background work | "Unhandled exception in background work: <exception>." |
-| L3 | Background work raised because a request of an abandoned trial was blocked (§Cancel) | "Blocked a request of an abandoned trial: <exception>." |
+| L3 | Background work raised because a request of an abandoned trial was cut or blocked (§Cancel) | "A request of an abandoned trial was cut or blocked: <exception>." |
 
 ## Supported SDKs
 

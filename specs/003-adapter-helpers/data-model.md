@@ -90,7 +90,7 @@ A later call joins an earlier call's branch only in the two cases below; any oth
 2. **Tool loop**: the earlier response ended in a tool call or Anthropic `pause_turn`; the later request has the same system and tool definitions; its message list starts with the earlier request's message list; and what follows is only the earlier response's output items, copied, and tool results.
    - Responses chained with `previous_response_id`: that ID names the earlier response. Chained with `conversation`: the earlier response is the latest call sent earlier in the same conversation. Either way the system (`instructions`) and tool definitions must equal the earlier request's, and the input must be only tool results (the result items of §Finish Reasons).
    - Output items include reasoning items next to text and tool calls (Anthropic `thinking` and `redacted_thinking` blocks, Responses `reasoning` items).
-   - An item is copied when its kind and position, text, tool-call ID, name and arguments, and reasoning `signature`, `data` and `encrypted_content` are equal. The ID of a Responses tool call is `call_id`, not the item `id` (only `mcp_approval_request` uses `id`); `id` is optional and hand-written loops drop it when copying. Other fields that SDKs drop or add when copying are ignored.
+   - An item is copied when its kind and position, text, tool-call ID, name and arguments, and reasoning `signature`, `data` and `encrypted_content` are equal. The ID of a Responses tool call is `call_id`, not the item `id` (only `mcp_approval_request` uses `id`, and an item whose `call_id` is missing, `null` or empty uses `id` as in §Finish Reasons); `id` is optional and hand-written loops drop it when copying. Other fields that SDKs drop or add when copying are ignored.
 
 A request that continues the conversation after a call that ended in text (answer validation, memory writes) is a new branch.
 
@@ -238,7 +238,7 @@ The protocol counts a cut stream by the reason it was cut ([001 adapter-protocol
 When the adapter gives the raw answer and the answer count, they carry the protocol meaning of `raw` and `answers` ([001 adapter-protocol §Answers](../001-swap-check/contracts/adapter-protocol.md#answers)): the first answer, and a count that includes cut answers (any number of cut answer streams count as one; cut streams that are not answers are left out).
 
 1. **Cut late** (the default, when 2, 3 and 5 do not apply).
-   - In the failure check, the cut stream is a call that failed with `timeout`; one that became unread ended per §When a Call Ended. After the failure check it is an unread response.
+   - In the failure check, the cut stream is a call that failed with `timeout`; one that became unread ended per §When a Call Ended. One still being read when the function returned ended when the service last read it, or when its headers arrived if it read nothing (K38). After the failure check it is an unread response.
    - It is not a successful call when deciding whether another call's failure was recovered.
    - Without raw from the adapter, a stream cut without an awaited read is a successful call (K7).
    - When the failure check does not run, §Cut Last Answer looks at the stream.
@@ -375,7 +375,7 @@ When this section decides the trial, the warning carries the regeneration senten
   - A failure that may have been billed for an unknown amount (§Call Outcome) stays `outcome: unanswered`, so the tool charges the call reservation.
   - Stream and background calls have unknown usage and are recorded without `usage`; the tool charges the call reservation ([001 data-model §Cost](../001-swap-check/data-model.md#cost)). `Result(usage=)` becomes the raw call's `usage`. Other stream calls, such as earlier calls of a streaming tool loop, stay at their reservation.
 - **`calls`**: when calls were captured, they go in send order into normal results, model failure results and the `data` of adapter errors alike ([001 adapter-protocol §`generate`](../001-swap-check/contracts/adapter-protocol.md#generate-required)).
-  - Every call has `model` and `outcome`. `branch` is present only when the answer branch was decided, so it is absent with Outcome rows 4 and 5, except in the Outcome row 5 exception, where every call is `side`. When the trial has no variant model call, no call carries `branch`, whichever Outcome row decides. `retryAfterMs` is present when the failed response said how long to wait ([helper-api §`retryAfterMs`](contracts/helper-api.md#retryafterms)).
+  - Every call has `model` and `outcome`. `branch` is present only when the answer branch was decided, so it is absent with Outcome rows 4 and 5, except in the Outcome row 5 exception, where every call is `side`. When the trial has no variant model call, no call carries `branch`, whichever Outcome row decides. `retryAfterMs` is present when the failed response said how long to wait and the call's kind is `transient` ([helper-api §`retryAfterMs`](contracts/helper-api.md#retryafterms)).
   - With no captured call (Outcome row 2, or calls made by other means than helper-api §Captured Requests), `calls` is omitted. The tool then prices `usage`, or charges the reservation without it.
 - **`latencyMs`**: the duration of the whole service function.
 - **`fingerprint`**: the first request of the branch that produced the first answer is converted to the render shape (`messages`, `tools`, [helper-api §Render Mode](contracts/helper-api.md#render-mode)) and hashed as the render fingerprint ([001 data-model §Identifiers and Hashing](../001-swap-check/data-model.md#identifiers-and-hashing)). With no answer, the first answer candidate request; with raw given, §Answer Candidate Calls When Raw Is Given. When that request is the render target, the value equals the render fingerprint.
@@ -397,12 +397,12 @@ With several candidates, the latest-sent is used.
 | Candidate | Record | Trial result |
 |---|---|---|
 | Started response | That call is corrected; no call is added | The thrown value |
-| Matching failure | Unchanged | That call's own kind, not the thrown value |
+| Matching failure | Unchanged, except that a `config` thrown value makes its kind `config` | That call's own kind, not the thrown value |
 | Unfinished call | Unchanged, as the call ended; no call is added | The thrown value |
 | None | A new call is appended to `calls`; with no captured call at all, no `calls` (§Derived Result Fields) | The thrown value |
 
 - When the thrown value classifies as `config`, the trial and the call's kind are `config` even with the matching-failure candidate. An error response closed before the SDK resent has an unread body, so its quota code is unknown ([helper-api §Reading Response Bodies](contracts/helper-api.md#reading-response-bodies)).
-- `retryAfterMs` of the trial's failure belongs to the call whose kind decides it ([001 adapter-protocol §Reporting Model Failures](../001-swap-check/contracts/adapter-protocol.md#reporting-model-failures)). With the matching-failure candidate it is that call's own value from the response headers, and the thrown `retry_after_ms` is not used. Otherwise it is the thrown `retry_after_ms`, which a corrected or added call carries too. Either way it is present only for a `transient` result ([helper-api §`retryAfterMs`](contracts/helper-api.md#retryafterms)).
+- `retryAfterMs` of the trial's failure belongs to the call whose kind decides it ([001 adapter-protocol §Reporting Model Failures](../001-swap-check/contracts/adapter-protocol.md#reporting-model-failures)). With the matching-failure candidate it is that call's own value from the response headers, and the thrown `retry_after_ms` is not used. Otherwise it is the thrown `retry_after_ms`, which a corrected or added call carries too. Either way it is present only when the kind is `transient`, on the trial's result and on every call record alike (§Derived Result Fields, `calls`).
 - With no candidate, warning W10 is attached when the thrown value is a `status` or a `kind` other than `timeout`, and the only captured calls to that model (regardless of `reply_call`) with a failure matching it in the matching-failure sense have `retried` true. Not when that model is the variant model, `reply_call` exists, and no captured call is true for it. The outcome does not change.
 - A corrected or added call has the `errorKind` from [helper-api §Error Classification](contracts/helper-api.md#error-classification). Its `outcome`: `failed`, priced at the usage, when `usage` was given. Without `usage`, a corrected call and `status` 200, `disconnect` and `timeout` are `unanswered` and charged the call reservation; a non-200 `status`, `connect` and `tls` are `failed`.
 
@@ -410,7 +410,7 @@ With several candidates, the latest-sent is used.
 
 The wrappers sit at class level, so requests to captured paths without a trial context are seen too. When the service hands work to a thread that does not carry the context (Python `loop.run_in_executor`, a thread it creates), the request cannot be tied to a trial.
 
-1. A trial whose service function has ended and that waits before sending its result is not counted as in progress (§After the Function Returned). A `render` whose service function is running counts as a trial in progress.
+1. A trial whose service function has ended and that waits before sending its result is not counted as in progress (§After the Function Returned). A `render` whose service function or render function is running counts as a trial in progress.
 2. With exactly one trial in progress, the request joins that trial and is handled like a request of its context (waiting at function end, unfinished calls); when that is a render, it gets the render-mode 400 ([helper-api §Render Mode](contracts/helper-api.md#render-mode)). So such services run with concurrency 1. A request a background thread sends after the previous trial ended then joins the next trial in progress (K26).
 3. With two or more trials in progress, all of them end as adapter error A10, a render included. The request is not blocked, except that it gets the render-mode 400 when one of them is a render, since it may be that render's request.
 4. With no trial in progress, only the call's cost is reported, as a `calls` notification: with the `id` of the one trial waiting to send its result if there is exactly one, otherwise without `id`.
@@ -536,6 +536,7 @@ The response content is checked before the provider value. A response ended by t
 | `mcp_approval_request` | `mcp_approval_response` | its `approval_request_id` equals the request's `id` |
 | `tool_search_call` | `tool_search_output` | Not used; decided by `execution` (below) |
 
+- In this pairing a `call_id` that is missing, `null` or the empty string counts as not given, and the item's `id` is used in its place. Any other non-string `call_id` is its canonical JSON (helper-api §Shared Conventions).
 - A tool-call item that a result item of the same response already points to was run by the provider on the spot (a `shell_call` in a container environment) and is not a tool call.
 - `tool_search_call` is decided by `execution`, because both items can arrive with an empty `call_id`: `server` means the provider ran it; `client` means it is a tool call.
 - Items of tools the provider runs (`web_search_call`, `file_search_call`, `code_interpreter_call`, `mcp_call` and others) are not tool calls.
@@ -587,3 +588,4 @@ Cases where the fixed rules decide differently from what the service did, becaus
 | K35 | A client created with `azure_deployment` has the path's deployment fixed and goes to that deployment whatever the body's `model` says; the variant model check reads only the body's `model` and does not catch it |
 | K36 | A failure while writing the request body cannot be told apart from a connection closed before headers: on the httpx and httpx2 default transports httpcore swallows the write error, and aiohttp raises the same `ClientOSError` for both, with a broken pipe or a reset depending on timing. Such a call is `unanswered` and the trial `transient`. |
 | K37 | A request the HTTP client refuses while sending the request for a reason other than its URL scheme (a header value it refuses) is not told apart from a drop before headers: the call is `unanswered` and charged its reservation, and the trial is `transient`, so every trial is retried and the run stops on the transient rate |
+| K38 | The SDK can keep reading a stream after the service stopped waiting for it, so its end time comes out later than when the service stopped, and a failure that ended in between can be taken as ending first (§Cut Streams) |

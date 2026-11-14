@@ -21,7 +21,7 @@ Both helpers give the same values in every row ([spec FR-024](../spec.md#functio
 | S-PAR-04 | An object whose keys are U+FF01 alone and U+1F600 alone | Key order (the U+1F600 key first) |
 | S-PAR-05 | Object values and keys with lone surrogates | Raw |
 | S-PAR-06 | Arguments containing `NaN` or `1e400` | Not JSON, so the raw answer is empty |
-| S-PAR-07 | JSON, SSE and `with_streaming_response` responses compressed with each advertised encoding (gzip, br, zstd) | Raw, usage and end events |
+| S-PAR-07 | JSON, SSE and `with_streaming_response` responses compressed with each advertised encoding (gzip, br, zstd); a body that starts with a UTF-8 BOM, non-stream JSON and SSE (also a first event with `finish_reason` and no `[DONE]`) | Raw, usage and end events; with the BOM, one leading U+FEFF removed and the body read as normal. Python, an SSE body whose only event ends the answer: the openai-python SSE decoder keeps the U+FEFF and drops that event, so the service receives an empty answer, while the helper reads that event from its copy |
 | S-PAR-08 | Usage whose input minus cache writes is negative | 0 and warning W9 |
 | S-PAR-09 | `retry-after-ms` and `retry-after` together | The first |
 | S-PAR-10 | `retry-after: 1.5`; `30s`, `-1`, `1e3`; `0.5005`; a number of 400 nines | 1500; not recorded; 500; not recorded |
@@ -57,7 +57,7 @@ Rules: [data-model §Captured Call](../data-model.md#captured-call), [data-model
 | S-RESP-06 | Stream response | data-model §Raw Cannot Be Determined row 2 unless raw is given |
 | S-RESP-07 | Discard exception; undeclared exception | Outcome row 8; Outcome row 9 |
 | S-RESP-08 | Variant model mismatch | Outcome row 4 |
-| S-RESP-09 | Render mode; `print` in the service | Render result, no request sent; output on stderr |
+| S-RESP-09 | Render mode; `print` in the service; a request message whose `role` is `{"a":1}`, and, Python only, `1.0` (`JSON.stringify` writes 1.0 as `1`) | Render result, no request sent; output on stderr; the roles `1` and `{"a":1}` ([helper-api §Shared Conventions](helper-api.md#shared-conventions)) |
 | S-RESP-10 | Four concurrent requests | Contexts kept apart |
 | S-RESP-11 | Cancel: of an asynchronous function in flight; of a synchronous function, which runs to its end; after the function returned while the helper waits for an unfinished call; each also after a captured 401 | One failure result each, sent as soon as the function has ended (at once in the third case): `timeout` with F2, or `config` with the 401's failure when a `config` failure was seen. Cut calls `unanswered` without `errorKind`; the unfinished call of the third case joins as `unanswered` and is charged the call reservation |
 | S-RESP-12 | Background mode: the first response has `status` `queued` and the target function returns text without raw | data-model §Raw Cannot Be Determined row 3, adapter error A6 |
@@ -91,7 +91,7 @@ Rules: [data-model §Call Branches](../data-model.md#call-branches), [data-model
 | S-ANS-15 | The same request sent in parallel, first answer used and the rest cancelled | Normal; the cancel is a recovered failure; `answers` 1 |
 | S-ANS-16 | The same, both succeed | The first sent is raw; `answers` 2 |
 | S-ANS-17 | A non-stream request first and the same request as a stream; the finished non-stream answer is used, the stream cut, that answer given as raw | One branch, so the cut stream is a recovered failure; neither Outcome row 5 nor the cut last answer applies; normal, `answers` 1 |
-| S-ANS-18 | Chat Completions `n` = 3 | First `choices` item is raw, `answers` 3, finish reason of the last item. Last item not `stop` and an earlier one `stop` without `Result(finish_reason=)`: W3; with it, that value. A regeneration with a modified request that was cut: no warning |
+| S-ANS-18 | Chat Completions `n` = 3; Python only, a request with `n: 2.0` (`JSON.stringify` writes 2.0 as `2`) | First `choices` item is raw, `answers` 3, finish reason of the last item. Last item not `stop` and an earlier one `stop` without `Result(finish_reason=)`: W3; with it, that value. A regeneration with a modified request that was cut: no warning. `n: 2.0` is the same as `n: 2` |
 | S-ANS-19 | A forced `reply` tool with `answer_tool` | Raw is the argument, finish reason `stop`. Called again after validation: `answers` 2. Argument cut at the output limit: empty raw, `length`. The service sends a tool result and continues the branch: `answers` 1 |
 | S-ANS-20 | A regeneration with a changed system, `reply_call` true for both branches, first answer as `Result(raw=)` | No Outcome row 5, `answers` 2, finish reason of the regenerated answer; the raw call is the first answer's response with the same text. Without `reply_call`, `Result(raw=)` alone is Outcome row 5 (answer outside the raw call's branch); with `Result(finish_reason=, answers=)` too, normal with those values |
 | S-ANS-21 | Same request to two models at once, the candidate loses | Outcome row 6, `timeout` |
@@ -402,7 +402,7 @@ Rules: [data-model §Outside the Trial Context](../data-model.md#outside-the-tri
 | S-CTX-22 | A request sent after the result | A `calls` notification |
 | S-CTX-23 | Background requests left at `shutdown` | Waited for and reported before the response |
 | S-CTX-24 | An exception in background work | Log warning L2 |
-| S-CTX-25 | A request from a thread without the context while only a render runs; while a render and a `generate` run | The render-mode 400 and a normal render; both end as A10 and the request gets the render-mode 400. The mock server receives no request in either case |
+| S-CTX-25 | A request from a thread without the context while only a render runs, also when it is the render target request; while a render and a `generate` run | The render-mode 400 and a normal render; both end as A10 and the request gets the render-mode 400. The mock server receives no request in either case |
 
 ## Render and Version
 
@@ -431,3 +431,8 @@ Rules: [helper-api §Render Mode](helper-api.md#render-mode), [data-model §Serv
 | S-RV-19 | An untracked nested repository removed while `treeHash` is computed, so its git fails | That folder left out, no failure |
 | S-RV-20 | A Chat Completions assistant message with text `content` and two `tool_calls`; one with `content` null and with `""`, and `tool_calls`; an Anthropic assistant message with `redacted_thinking`, `text` and `tool_use` blocks | The text line first, then one canonical JSON line per tool call in order; only the tool-call lines when `content` is null or empty; one line per block in block order, the `redacted_thinking` block as its canonical JSON |
 | S-RV-21 | A render function whose part lists hold Responses `input_text`, `input_image` and `refusal` parts and Anthropic `image`, `document`, `tool_use`, `server_tool_use` and `web_search_tool_result` blocks, and a message with a legacy `function_call` | Normalised as Chat Completions messages with those parts: text joined, the refusal text, `[image]`, `[file]`, a canonical JSON line for each tool block and for `function_call` |
+| S-RV-22 | A render function that raises, sync and async; an async one that raises a cancellation | Render fails (A17 with the exception); the mock server receives no request |
+| S-RV-23 | A render function that returns None, a string, a list, a dict without `messages`, a dict whose `messages` is a string, empty, or holds a string or a message without `role`; `tools` a dict; `maxOutputTokens` 0 or a string; a value JSON cannot carry in `tools` or in a message part (an object, NaN); `maxOutputTokens` an integer too large for a double | Render fails (A18); `tools: None` and `maxOutputTokens: None` render as not given |
+| S-RV-24 | A render function that sends a variant model request and a request to another model, sync and async; a sync render function that sleeps while a `generate` runs | Each request gets the render-mode 400 and the mock server receives none; the render result is the function's; the `generate` answers before the render ends |
+| S-RV-25 | A Responses render target request with `input: []`, no `instructions` and no `prompt`; a Chat Completions render target request with a message without `role`, or with a message whose `role` is null; one whose `tools` is an object; a Responses item whose `role` and `type` are both null; a Responses item whose `role` is null and that has a `type` (a `function_call`) | Render fails (A19); that item renders with its `type` as role, no A19 |
+| S-RV-26 | A render target request with `max_tokens: 0`; with `max_tokens: null` and `max_completion_tokens: 300`; Python only, with `max_tokens: 300.0` (`JSON.stringify` writes 300.0 as `300`) | No `maxOutputTokens`; `maxOutputTokens` 300; `maxOutputTokens` 300 |
