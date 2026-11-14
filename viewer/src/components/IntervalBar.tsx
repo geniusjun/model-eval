@@ -16,6 +16,8 @@ interface IntervalBarProps {
   readonly low: number | null;
   readonly high: number | null;
   readonly kind?: IntervalKind;
+  /** `compact` sits beside a number in a table row; `regular` stands under one. */
+  readonly size?: 'regular' | 'compact';
 }
 
 /** Where `value` sits on the chart, as a share of its width. */
@@ -33,11 +35,18 @@ function titleText({ label, value, low, high, kind = 'rate' }: IntervalBarProps)
 }
 
 /** A rate or a difference with its interval, as an image whose title states both (plan D6). */
-export function IntervalBar({ label, value, low, high, kind = 'rate' }: IntervalBarProps) {
+export function IntervalBar({
+  label,
+  value,
+  low,
+  high,
+  kind = 'rate',
+  size = 'regular',
+}: IntervalBarProps) {
   const x = (point: number) => shareX(share(point, kind), WIDTH);
   return (
     <svg
-      className={styles.chart}
+      className={[styles.chart, styles[size]].filter(Boolean).join(' ')}
       role="img"
       viewBox={`0 0 ${String(WIDTH)} ${String(HEIGHT)}`}
       preserveAspectRatio="none"
@@ -48,7 +57,7 @@ export function IntervalBar({ label, value, low, high, kind = 'rate' }: Interval
         <rect
           className={styles.interval}
           x={x(low)}
-          width={x(high) - x(low)}
+          width={Math.max(x(high) - x(low), 1)}
           y={HEIGHT / 4}
           height={HEIGHT / 2}
         />

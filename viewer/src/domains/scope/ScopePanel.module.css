@@ -1,9 +1,17 @@
 .panel {
-  margin: 0 0 var(--space-8);
+  margin: 0 0 var(--space-12);
 }
 
 .completion {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* The lists with nothing in them, in one sentence under the others. */
+.empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  margin: calc(var(--space-2) - var(--space-6)) 0 var(--space-6);
+  max-width: none;
 }

@@ -1,38 +1,117 @@
+/* The decision summary, in the order a reader asks: the verdict, what changed, what the
+   candidate wrote, what it costs, what it rests on. */
 .summary {
-  margin: 0 0 var(--space-8);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0 0 var(--space-12);
+  row-gap: var(--space-8);
 }
 
 .heading {
-  margin: 0 0 var(--space-3);
+  border-top: 0;
+  margin: 0 0 calc(-1 * var(--space-4));
+  padding-top: 0;
 }
 
-.section {
-  margin-top: var(--space-4);
+/* The verdict: the outcome large, the sentence beneath, the gate's facts one click away. */
+.verdict {
+  border-left: 6px solid var(--color-text-faint);
+  padding: var(--space-1) 0 0 var(--space-6);
 }
 
-.title {
-  font-size: var(--font-size-body);
-  margin: 0 0 var(--space-2);
+.verdict[data-outcome='block'] {
+  border-left-color: var(--color-regressed);
 }
 
-.facts {
-  display: grid;
-  gap: var(--space-1) var(--space-4);
-  grid-template-columns: max-content 1fr;
+.verdict[data-outcome='pass'] {
+  border-left-color: var(--color-improved);
+}
+
+.verdict > details {
+  margin: var(--space-3) 0 0;
+}
+
+.gate {
   margin: 0;
 }
 
-.facts dt {
+.gate dt,
+.gateFacts dt {
   color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
 }
 
-.facts dd {
+.gate dd,
+.gateFacts dd {
   margin: 0;
 }
 
-.list {
+.outcomeFact dd:first-of-type {
+  margin-top: var(--space-1);
+}
+
+.gate .conclusion {
+  font-size: var(--font-size-title);
+  line-height: 1.45;
+  margin-top: var(--space-2);
+  max-width: 46rem;
+}
+
+.gateFacts {
+  column-gap: var(--space-8);
+  display: grid;
+  font-size: var(--font-size-code);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   margin: 0;
-  padding-left: var(--space-6);
+  max-width: 52rem;
+  row-gap: var(--space-2);
+}
+
+.countFact,
+.wideFact {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.countFact dt,
+.wideFact dt {
+  flex: none;
+  padding-top: 0.1rem;
+}
+
+.countFact dd {
+  font-weight: 600;
+}
+
+.wideFact {
+  grid-column: 1 / -1;
+}
+
+.wideFact dt {
+  width: 9rem;
+}
+
+.reasons {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.reasons li + li {
+  margin-top: var(--space-1);
+}
+
+.blocking {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cell {
+  font-family: var(--font-code);
+  font-size: var(--font-size-code);
 }
 
 .none {
@@ -40,33 +119,69 @@
   margin: 0;
 }
 
-.cell {
-  font-family: var(--font-code);
+/* Each question below the verdict: a small title, then its answer. */
+.section {
+  min-width: 0;
 }
 
-.outcome {
-  border-radius: var(--radius);
-  display: inline-block;
+.sectionHead {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  margin: 0 0 var(--space-2);
+}
+
+.title {
+  font-size: var(--font-size-body);
+  margin: 0;
+}
+
+.aside {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.legend {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin: var(--space-2) 0 0;
+  max-width: 46rem;
+}
+
+/* The judged scope as one line of small facts. */
+.scope {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-small);
+  gap: var(--space-1) var(--space-6);
+  margin: 0;
+}
+
+.scope div {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.scope dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.scope dd {
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
-  padding: 0 var(--space-2);
+  margin: 0;
 }
 
-.pass {
-  background: var(--verdict-improved-background);
-  color: var(--verdict-improved-text);
-}
+@media (max-width: 30rem) {
+  .verdict {
+    padding-left: var(--space-4);
+  }
 
-.block {
-  background: var(--verdict-regressed-background);
-  color: var(--verdict-regressed-text);
-}
-
-.undecided {
-  background: var(--verdict-inconclusive-background);
-  color: var(--verdict-inconclusive-text);
-}
-
-.no-gate {
-  background: var(--verdict-not-applicable-background);
-  color: var(--verdict-not-applicable-text);
+  .wideFact {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
 }

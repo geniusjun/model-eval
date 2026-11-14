@@ -3,6 +3,7 @@ import { Fragment, useId, type ReactNode } from 'react';
 import type { Anchor, Lang, Origin } from '../../../../src/config/schema.js';
 import type { RuleSummary } from '../../../../src/report/schema.js';
 import { CodeText } from '../../components/CodeText.js';
+import { Disclosure } from '../../components/Disclosure.js';
 import { pageMessages, type Messages } from '../../i18n/useMessages.js';
 import styles from './RuleList.module.css';
 
@@ -102,20 +103,20 @@ function RuleEntry({
     <li className={styles.rule}>
       <h4 className={styles.id}>{rule.id}</h4>
       <p className={styles.summary}>
-        <span>{rule.severity}</span>
+        <span className={styles.severity}>{rule.severity}</span>
         {SEPARATOR}
         <CodeText text={rule.title} />
       </p>
       <ul className={styles.details}>
         {rule.anchors.length === 0 ? (
-          <li>{messages.text('scope.rules.noAnchor')}</li>
+          <li className={styles.missing}>{messages.text('scope.rules.noAnchor')}</li>
         ) : (
           rule.anchors.map((anchor, index) => (
             <AnchorItem key={index} anchor={anchor} messages={messages} />
           ))
         )}
         {rule.origin.length === 0 ? (
-          <li>{messages.text('scope.rules.noOrigin')}</li>
+          <li className={styles.missing}>{messages.text('scope.rules.noOrigin')}</li>
         ) : (
           rule.origin.map((origin, index) => (
             <OriginItem key={index} origin={origin} messages={messages} />
@@ -131,7 +132,7 @@ interface RuleListProps {
   readonly rules: readonly RuleSummary[];
 }
 
-/** Every rule of the comparison with its anchors and origins (FR-016). */
+/** Every rule of the comparison with its anchors and origins (FR-016), closed until opened. */
 export function RuleList({ lang, rules }: RuleListProps) {
   const headingId = useId();
   const messages = pageMessages(lang);
@@ -141,11 +142,13 @@ export function RuleList({ lang, rules }: RuleListProps) {
       {rules.length === 0 ? (
         <p>{messages.text('scope.rules.none')}</p>
       ) : (
-        <ul className={styles.rules}>
-          {rules.map((rule) => (
-            <RuleEntry key={rule.id} rule={rule} messages={messages} />
-          ))}
-        </ul>
+        <Disclosure label={messages.text('scope.rules.show', { count: rules.length })}>
+          <ul className={styles.rules}>
+            {rules.map((rule) => (
+              <RuleEntry key={rule.id} rule={rule} messages={messages} />
+            ))}
+          </ul>
+        </Disclosure>
       )}
     </section>
   );

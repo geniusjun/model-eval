@@ -1,7 +1,8 @@
+/* Tables: a hairline under each row and nothing else; numbers right-aligned in tabular figures. */
 .table {
   border-collapse: collapse;
   font-size: var(--font-size-small);
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-6);
 }
 
 .table caption {
@@ -18,17 +19,87 @@
   vertical-align: top;
 }
 
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+}
+
 .table thead th {
   color: var(--color-text-muted);
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  vertical-align: bottom;
 }
 
 .table tbody th {
   font-family: var(--font-code);
+  font-size: var(--font-size-code);
   font-weight: 400;
 }
 
 .number {
   font-variant-numeric: tabular-nums;
+  text-align: right;
   white-space: nowrap;
+}
+
+.table th.number,
+.table td.number {
+  text-align: right;
+}
+
+/* On a narrow screen the reference tables wrap instead of widening the page. */
+@media (max-width: 40rem) {
+  .number {
+    white-space: normal;
+  }
+
+  .table th,
+  .table td {
+    padding-inline: var(--space-2) 0;
+  }
+}
+
+/* The grid of one surface: the rule column stays put while the language columns scroll. */
+.grid {
+  font-size: var(--font-size-small);
+  table-layout: fixed;
+  width: 100%;
+}
+
+.grid caption {
+  font-size: var(--font-size-body);
+}
+
+.grid td {
+  padding: var(--space-1);
+  vertical-align: middle;
+}
+
+.grid thead th {
+  padding-inline: calc(var(--space-1) + var(--space-3));
+}
+
+.grid thead th:first-child {
+  width: var(--rule-column);
+}
+
+/* The rule column covers the cells that scroll under it, edge to edge. */
+.grid thead th:first-child,
+.grid tbody th {
+  background: var(--color-background);
+  left: 0;
+  padding-left: 0;
+  position: sticky;
+  z-index: 1;
+}
+
+.grid tbody th {
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+
+/* A table for reference, a step below the grid. */
+.minor {
+  font-size: var(--font-size-code);
 }

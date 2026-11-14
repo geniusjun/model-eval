@@ -95,6 +95,8 @@ export interface SampleCursorState {
   readonly go: (position: SamplePosition) => void;
   /** Opens a rule at its first position. */
   readonly chooseRule: (ruleId: string) => void;
+  /** Opens a position of a rule. */
+  readonly open: (ruleId: string, position: SamplePosition) => void;
 }
 
 /** The side-by-side position the page resolved from the hash, moved through the hash. */
@@ -129,5 +131,5 @@ export function useSampleCursor(samples: Samples, view: SideView | undefined): S
     },
     [open, samples],
   );
-  return { cursor, go, chooseRule };
+  return { cursor, go, chooseRule, open };
 }

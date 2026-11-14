@@ -1,7 +1,7 @@
+import { percent, percentInterval } from '../../../../src/report/format.js';
 import type { MetricRate } from '../../../../src/report/schema.js';
 import { IntervalBar } from '../../components/IntervalBar.js';
 import type { Messages } from '../../i18n/useMessages.js';
-import { rateText } from '../../utils/cell.js';
 import styles from './metrics.module.css';
 
 interface MetricRateValueProps {
@@ -11,15 +11,26 @@ interface MetricRateValueProps {
   readonly messages: Messages;
 }
 
-/** An operational rate with its interval bar, its interval and its count of total. */
+/**
+ * An operational rate: the rate with a small interval bar beside it, then its interval and its
+ * count of total in a quieter line below.
+ */
 export function MetricRateValue({ label, rate, messages }: MetricRateValueProps) {
+  const counts = messages.text('metrics.countOf', { count: rate.count, total: rate.total });
+  const below = [percentInterval(rate.low, rate.high), counts].filter((part) => part !== '');
   return (
     <span className={styles.rate}>
-      <IntervalBar label={label} value={rate.rate} low={rate.low} high={rate.high} />
-      <span>{rateText(rate)}</span>
-      <span className={styles.count}>
-        {messages.text('metrics.countOf', { count: rate.count, total: rate.total })}
+      <span className={styles.rateLine}>
+        <IntervalBar
+          label={label}
+          value={rate.rate}
+          low={rate.low}
+          high={rate.high}
+          size="compact"
+        />
+        <span className={styles.rateValue}>{percent(rate.rate)}</span>
       </span>
+      <span className={styles.count}>{below.join(' · ')}</span>
     </span>
   );
 }

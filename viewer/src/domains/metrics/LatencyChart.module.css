@@ -1,32 +1,64 @@
 .block {
-  margin: 0 0 var(--space-6);
+  margin: 0 0 var(--space-8);
+}
+
+.note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
 }
 
 .row {
   align-items: end;
   display: grid;
   gap: var(--space-3);
-  grid-template-columns: minmax(4rem, max-content) 1fr;
+  grid-template-columns: 8.5rem minmax(0, 40rem);
   margin: 0 0 var(--space-2);
 }
 
 .variant {
+  display: flex;
+  flex-direction: column;
   font-size: var(--font-size-small);
+}
+
+.marks {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .chart {
   display: block;
   height: 3rem;
-  max-width: 32rem;
   width: 100%;
 }
 
 .bin {
   fill: var(--color-chart-interval);
+  stroke: var(--color-background);
+  stroke-width: 0.4;
+}
+
+.baseline {
+  fill: var(--color-chart-baseline);
+}
+
+.candidate {
+  fill: var(--color-chart-candidate);
 }
 
 .axis {
-  stroke: var(--color-chart-mark);
+  stroke: var(--color-text-faint);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
+}
+
+.axisLabels {
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  justify-content: space-between;
+  max-width: 40rem;
 }

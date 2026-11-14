@@ -10,7 +10,6 @@ import type {
   Scope,
 } from '../../../../src/report/schema.js';
 import { pageMessages, type Messages } from '../../i18n/useMessages.js';
-import type { VariantIds } from '../../report/variants.js';
 import { Detail, DetailList } from './Detail.js';
 import { RuleList } from './RuleList.js';
 import styles from './ScopePanel.module.css';
@@ -25,8 +24,8 @@ interface ScopePanelProps {
   readonly excluded: Gate['excluded'];
   readonly coverage: Coverage;
   readonly completion: Completion;
-  /** The variant IDs, which name the run holding the cases the other run lacks. */
-  readonly variantIds: VariantIds;
+  /** The ID of the region's heading, for the page's section buttons; one is made if absent. */
+  readonly headingId?: string;
 }
 
 function idList(messages: Messages, ids: readonly string[]): string {
@@ -38,7 +37,39 @@ function completionText(messages: Messages, entry: Completion[number]): string {
   return `${entry.lang} ${percent(entry.rate)} (${counts})`;
 }
 
-/** The judged scope with the rule list: what the comparison judged and on which cases (FR-007). */
+interface CompletionValueProps {
+  readonly completion: Completion;
+  readonly messages: Messages;
+}
+
+/** Each language's completion rate, or one line when every language completed fully. */
+function CompletionValue({ completion, messages }: CompletionValueProps) {
+  if (completion.length === 0) {
+    return <>{messages.text('scope.none')}</>;
+  }
+  if (completion.every((entry) => entry.rate === 1)) {
+    return (
+      <>
+        {messages.text('scope.completionAll', {
+          rate: percent(1),
+          langs: completion.map((entry) => entry.lang).join(', '),
+        })}
+      </>
+    );
+  }
+  return (
+    <ul className={styles.completion}>
+      {completion.map((entry) => (
+        <li key={entry.lang}>{completionText(messages, entry)}</li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The judged scope with the rule list: what the comparison judged and on which cases (FR-007).
+ * Lists with something in them get a row each; the empty ones share one sentence under them.
+ */
 export function ScopePanel({
   lang,
   scope,
@@ -46,51 +77,54 @@ export function ScopePanel({
   excluded,
   coverage,
   completion,
-  variantIds,
+  headingId,
 }: ScopePanelProps) {
-  const headingId = useId();
+  const ownHeadingId = useId();
+  const titleId = headingId ?? ownHeadingId;
   const messages = pageMessages(lang);
   const excludedRules = excluded.map((rule) => `${rule.ruleId} (${rule.cause})`);
+  const lists = [
+    { key: 'review', ids: scope.reviewRules },
+    { key: 'notJudged', ids: scope.notJudgedRules },
+    { key: 'excluded', ids: excludedRules },
+    { key: 'onlyInBaseline', ids: coverage.baselineOnly },
+    { key: 'onlyInCandidate', ids: coverage.candidateOnly },
+    { key: 'changedHash', ids: coverage.changedHash },
+  ] as const;
+  // The lists with nothing in them share one sentence, so the scope reads as what is there.
+  const emptyKeys = lists.filter((list) => list.ids.length === 0).map((list) => list.key);
+  const oneSide = emptyKeys.includes('onlyInBaseline') && emptyKeys.includes('onlyInCandidate');
+  const empty = emptyKeys.flatMap((key) => {
+    if (oneSide && key === 'onlyInBaseline') {
+      return [messages.text('scope.empty.oneSide')];
+    }
+    return oneSide && key === 'onlyInCandidate' ? [] : [messages.text(`scope.empty.${key}`)];
+  });
   return (
-    <section className={styles.panel} aria-labelledby={headingId}>
-      <h2 id={headingId}>{messages.text('scope.heading')}</h2>
+    <section className={styles.panel} aria-labelledby={titleId}>
+      <h2 id={titleId} tabIndex={-1}>
+        {messages.text('scope.heading')}
+      </h2>
       <DetailList>
         <Detail term={messages.text('scope.targets')}>{idList(messages, scope.targets)}</Detail>
-        <Detail
-          term={messages.text('scope.judged', {
-            judged: scope.judgedRules.length,
-            total: rules.length,
-          })}
-        >
+        <Detail term={messages.text('scope.judged', { judged: scope.judgedRules.length })}>
           {idList(messages, scope.judgedRules)}
         </Detail>
-        <Detail term={messages.text('scope.notJudged')}>
-          {idList(messages, scope.notJudgedRules)}
-        </Detail>
-        <Detail term={messages.text('scope.review')}>{idList(messages, scope.reviewRules)}</Detail>
-        <Detail term={messages.text('scope.excluded')}>{idList(messages, excludedRules)}</Detail>
         <Detail term={messages.text('scope.commonCases')}>{String(coverage.commonCases)}</Detail>
-        <Detail term={messages.text('scope.onlyIn', { variant: variantIds.baseline })}>
-          {idList(messages, coverage.baselineOnly)}
-        </Detail>
-        <Detail term={messages.text('scope.onlyIn', { variant: variantIds.candidate })}>
-          {idList(messages, coverage.candidateOnly)}
-        </Detail>
-        <Detail term={messages.text('scope.changedHash')}>
-          {idList(messages, coverage.changedHash)}
-        </Detail>
+        {lists
+          .filter((list) => list.ids.length > 0)
+          .map((list) => (
+            <Detail key={list.key} term={messages.text(`scope.${list.key}`)}>
+              {list.ids.join(', ')}
+            </Detail>
+          ))}
         <Detail term={messages.text('scope.completion')}>
-          {completion.length === 0 ? (
-            messages.text('scope.none')
-          ) : (
-            <ul className={styles.completion}>
-              {completion.map((entry) => (
-                <li key={entry.lang}>{completionText(messages, entry)}</li>
-              ))}
-            </ul>
-          )}
+          <CompletionValue completion={completion} messages={messages} />
         </Detail>
       </DetailList>
+      {empty.length > 0 && (
+        <p className={styles.empty}>{messages.text('scope.empty', { lists: empty.join(', ') })}</p>
+      )}
       <RuleList lang={lang} rules={rules} />
     </section>
   );

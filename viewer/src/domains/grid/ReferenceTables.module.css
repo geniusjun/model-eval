@@ -1,0 +1,14 @@
+/* Pooled rates and low-baseline cells: for reference, one step below the grid. */
+.reference {
+  margin-top: var(--space-6);
+}
+
+.reference h3 {
+  margin: 0 0 var(--space-1);
+}
+
+.intro {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  margin-bottom: var(--space-1);
+}

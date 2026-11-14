@@ -1,18 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { Comparison } from '../../../src/report/schema.js';
 import en from '../../../viewer/src/i18n/en.json';
 import { LowBaselineCells } from '../../../viewer/src/domains/grid/LowBaselineCells.js';
 import { PooledRates } from '../../../viewer/src/domains/grid/PooledRates.js';
 import { loadComparison } from '../fixtures.js';
-
-function variantsOf(comparison: Comparison) {
-  return {
-    baseline: comparison.baseline.variant.id,
-    candidate: comparison.candidate.variant.id,
-  };
-}
 
 function rowTexts(table: HTMLElement): string[][] {
   return within(table)
@@ -24,19 +16,13 @@ function rowTexts(table: HTMLElement): string[][] {
 describe('002 PooledRates', () => {
   it('002 FR-016 shows each aggregate with both pooled rates, passes and trials, and the difference', () => {
     const comparison = loadComparison('block');
-    render(
-      <PooledRates
-        aggregates={comparison.aggregates}
-        variants={variantsOf(comparison)}
-        lang="en"
-      />,
-    );
+    render(<PooledRates aggregates={comparison.aggregates} lang="en" />);
     const table = screen.getByRole('table');
     expect(
       within(table)
         .getAllByRole('columnheader')
         .map((header) => header.textContent),
-    ).toEqual(['Rule', 'Surface', 'Baseline (current)', 'Candidate (next)', 'Difference']);
+    ).toEqual(['Rule', 'Surface', 'Baseline', 'Candidate', 'Difference']);
     expect(rowTexts(table)).toEqual([
       ['script-ja', 'raw', '99.3% (149 of 150)', '70.0% (105 of 150)', '-29.3pp'],
       ['completed', 'trial', '99.7% (299 of 300)', '95.7% (287 of 300)', '-4.0pp'],
@@ -45,13 +31,7 @@ describe('002 PooledRates', () => {
 
   it('002 FR-016 shows no verdict for pooled rates', () => {
     const comparison = loadComparison('block');
-    render(
-      <PooledRates
-        aggregates={comparison.aggregates}
-        variants={variantsOf(comparison)}
-        lang="en"
-      />,
-    );
+    render(<PooledRates aggregates={comparison.aggregates} lang="en" />);
     const text = screen.getByRole('table').textContent;
     for (const verdict of ['Better', 'Held', 'Regressed', 'Inconclusive', 'Too few samples']) {
       expect(text).not.toContain(verdict);
@@ -68,7 +48,6 @@ describe('002 PooledRates', () => {
     render(
       <PooledRates
         aggregates={[{ ...first, baseline: { trials: 0, passes: 0, rate: null }, diff: null }]}
-        variants={variantsOf(comparison)}
         lang="en"
       />,
     );
@@ -96,7 +75,6 @@ describe('002 LowBaselineCells', () => {
       <LowBaselineCells
         cells={comparison.cells}
         lowBaseline={comparison.config.report.lowBaseline}
-        variants={variantsOf(comparison)}
         lang="en"
       />,
     );
@@ -106,7 +84,7 @@ describe('002 LowBaselineCells', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((header) => header.textContent),
-    ).toEqual(['Rule', 'Language', 'Surface', 'Baseline (current)', 'Candidate (next)', 'Verdict']);
+    ).toEqual(['Rule', 'Language', 'Surface', 'Baseline', 'Candidate', 'Verdict']);
     expect(rowTexts(table)).toEqual([
       ['no-emoji', 'ko', 'raw', '85.0% [80.0, 90.0]', '98.0% [92.0, 100.0]', 'Held'],
     ]);
@@ -118,7 +96,6 @@ describe('002 LowBaselineCells', () => {
       <LowBaselineCells
         cells={comparison.cells}
         lowBaseline={comparison.config.report.lowBaseline}
-        variants={variantsOf(comparison)}
         lang="en"
       />,
     );

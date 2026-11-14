@@ -1,33 +1,51 @@
-/* Colours, spacing and type of the page (plan D9). Each verdict has a text and a background
-   colour; every pair keeps a contrast ratio of at least 4.5:1 in both schemes. Chart intervals
-   keep at least 3:1 against the chart track (WCAG 1.4.11). */
+/* Colours, spacing and type of the page (plan D12). Every colour is opaque. Text keeps a contrast
+   ratio of at least 4.5:1 on the surfaces it sits on, and each verdict's text and background
+   colours keep at least 4.5:1 in both schemes. Chart intervals and marks keep at least 3:1
+   against the chart track, and status shapes and the chart axis keep at least 3:1 against what
+   they sit on (WCAG 1.4.11). Status colours mark shapes, lines and badges only;
+   numbers and sentences stay in the text colours. */
 
 :root {
   color-scheme: light dark;
 
+  /* Neutrals, by role: page, raised surface, lines, then three text strengths. */
   --color-background: #ffffff;
-  --color-surface: #f5f6f8;
-  --color-border: #d4d8de;
-  --color-text: #1b1f24;
-  --color-text-muted: #545c66;
-  --color-accent: #0b5cad;
-  --color-focus: #0b5cad;
-  --color-chart-track: #e3e6ea;
-  --color-chart-interval: #4f73a0;
-  --color-chart-mark: #1b1f24;
+  --color-surface: #fafaf9;
+  --color-border: #e7e5e4;
+  --color-border-strong: #d6d3d1;
+  --color-text: #1c1917;
+  --color-text-muted: #57534e;
+  --color-text-faint: #78716c;
 
-  --verdict-improved-text: #0f5323;
-  --verdict-improved-background: #dcf2e1;
-  --verdict-non-inferior-text: #24415e;
-  --verdict-non-inferior-background: #e2ebf5;
-  --verdict-regressed-text: #8a1622;
-  --verdict-regressed-background: #fbe0e2;
-  --verdict-inconclusive-text: #6b4500;
-  --verdict-inconclusive-background: #fbefd6;
-  --verdict-insufficient-text: #5a3d7a;
-  --verdict-insufficient-background: #efe5f8;
-  --verdict-not-applicable-text: #474e57;
-  --verdict-not-applicable-background: #eceef1;
+  /* The one accent: links, focus, selection, the current section. Nothing else is blue; the
+     candidate's chart colour is teal. */
+  --color-accent: #1f6fd1;
+  --color-focus: #1f6fd1;
+
+  /* Status lines and fills, never text. */
+  --color-regressed: #d03b3b;
+  --color-improved: #3d9a3d;
+  --color-warning-line: #a66d00;
+  --color-warning-background: #fef4df;
+
+  --color-chart-track: #e7e5e4;
+  --color-chart-interval: #57534e;
+  --color-chart-mark: #1c1917;
+  --color-chart-baseline: #8a8984;
+  --color-chart-candidate: #0f7b74;
+
+  --verdict-improved-text: #146c14;
+  --verdict-improved-background: #e7f6e7;
+  --verdict-non-inferior-text: #57534e;
+  --verdict-non-inferior-background: #ffffff;
+  --verdict-regressed-text: #a12626;
+  --verdict-regressed-background: #faebeb;
+  --verdict-inconclusive-text: #4d4c48;
+  --verdict-inconclusive-background: #f1f1f0;
+  --verdict-insufficient-text: #4d4c48;
+  --verdict-insufficient-background: #f1f1f0;
+  --verdict-not-applicable-text: #78716c;
+  --verdict-not-applicable-background: #ffffff;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -35,45 +53,73 @@
   --space-4: 1rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+  --space-12: 3rem;
 
+  --radius-small: 0.25rem;
   --radius: 0.375rem;
 
+  /* The sticky top bar's height, which in-page scrolling keeps clear. The page replaces it with
+     the bar's measured height, so a title on several lines is covered too. */
+  --topbar-height: 6.5rem;
+
   --font-body:
-    system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans KR',
-    'Apple SD Gothic Neo', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR',
+    'Malgun Gothic', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', system-ui, sans-serif;
   --font-code:
     ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'Noto Sans Mono CJK KR',
     monospace;
+
+  /* 12 labels and secondary numbers, 13 IDs and code, 14 tables, 15 text, 18 titles, 20 a moved
+     cell's rate, 28 the cost ratio, 44 the gate outcome. */
+  --font-size-xs: 0.75rem;
+  --font-size-code: 0.8125rem;
   --font-size-small: 0.875rem;
-  --font-size-body: 1rem;
-  --font-size-heading: 1.5rem;
+  --font-size-body: 0.9375rem;
+  --font-size-title: 1.125rem;
+  --font-size-heading: 1.75rem;
+  --font-size-figure: 1.75rem;
+  --font-size-cell: 1.25rem;
+  --font-size-outcome: 2.75rem;
+  --line-height-tight: 1.25;
   --line-height: 1.5;
+  --font-weight-strong: 650;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: #15181c;
-    --color-surface: #1f2329;
-    --color-border: #3a4049;
-    --color-text: #e6e9ed;
-    --color-text-muted: #a9b1bb;
-    --color-accent: #7cb4f0;
-    --color-focus: #7cb4f0;
-    --color-chart-track: #2e333b;
-    --color-chart-interval: #5f86b3;
-    --color-chart-mark: #e6e9ed;
+    --color-background: #111110;
+    --color-surface: #1a1a19;
+    --color-border: #2e2d2b;
+    --color-border-strong: #3d3c39;
+    --color-text: #f0efec;
+    --color-text-muted: #c3c2b7;
+    --color-text-faint: #8f8e88;
 
-    --verdict-improved-text: #9fe0ae;
-    --verdict-improved-background: #133820;
-    --verdict-non-inferior-text: #b5cde8;
-    --verdict-non-inferior-background: #1b2a3b;
-    --verdict-regressed-text: #ffb3ba;
-    --verdict-regressed-background: #4a1419;
-    --verdict-inconclusive-text: #f3cf86;
-    --verdict-inconclusive-background: #3d2d0c;
-    --verdict-insufficient-text: #d8c0f0;
-    --verdict-insufficient-background: #33224a;
-    --verdict-not-applicable-text: #c3c9d1;
-    --verdict-not-applicable-background: #2b3038;
+    --color-accent: #3987e5;
+    --color-focus: #3987e5;
+
+    --color-regressed: #e66767;
+    --color-improved: #5cbf5c;
+    --color-warning-line: #c98500;
+    --color-warning-background: #362b11;
+
+    --color-chart-track: #2e2d2b;
+    --color-chart-interval: #a8a69f;
+    --color-chart-mark: #f0efec;
+    --color-chart-baseline: #77766f;
+    --color-chart-candidate: #2fb3a8;
+
+    --verdict-improved-text: #9fe39f;
+    --verdict-improved-background: #193018;
+    --verdict-non-inferior-text: #c3c2b7;
+    --verdict-non-inferior-background: #111110;
+    --verdict-regressed-text: #ffb3b0;
+    --verdict-regressed-background: #3c2221;
+    --verdict-inconclusive-text: #d4d3cc;
+    --verdict-inconclusive-background: #2b2a28;
+    --verdict-insufficient-text: #d4d3cc;
+    --verdict-insufficient-background: #2b2a28;
+    --verdict-not-applicable-text: #8f8e88;
+    --verdict-not-applicable-background: #111110;
   }
 }
