@@ -192,6 +192,8 @@ export async function openEveryCellByKeyboard(
   surfaceCaption: RegExp,
   tabKey: string,
 ): Promise<string[]> {
+  // The reads below do not wait, so the page must have rendered first.
+  await expect(page.getByRole('main').locator('h1')).toBeVisible();
   const cells = await cellButtons(page, surfaceCaption).allTextContents();
   // Each focusable element is reached once; the extra presses cover the browser's own stops.
   const limit = (await page.locator('button, select, a[href]').count()) + 10;
@@ -223,6 +225,8 @@ export async function openEveryCellByKeyboard(
 
 /** Presses `tabKey` until the focused element's text is `text`, as a keyboard user would. */
 export async function tabTo(page: Page, text: string, tabKey: string): Promise<void> {
+  // The count below does not wait, so the page must have rendered first.
+  await expect(page.getByRole('main').locator('h1')).toBeVisible();
   const limit = (await page.locator('button, select, a[href]').count()) + 10;
   for (let press = 0; press < limit; press += 1) {
     await page.keyboard.press(tabKey);

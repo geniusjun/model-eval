@@ -21,6 +21,11 @@ export interface SectionLink {
 interface SectionNavProps {
   readonly label: string;
   readonly sections: readonly SectionLink[];
+  /**
+   * Runs before a button scrolls, so the space kept clear above the region heading matches the
+   * top bar as it is now, also when the bar has just grown.
+   */
+  readonly beforeMove?: () => void;
 }
 
 /** The part of the viewport whose top edge decides the current section. */
@@ -48,7 +53,7 @@ function currentHeadingId(headingIds: readonly string[]): string | undefined {
  * hash links, because the hash holds the reader's view (page-data §Location Hash). The section
  * in view is marked with `aria-current`.
  */
-export function SectionNav({ label, sections }: SectionNavProps) {
+export function SectionNav({ label, sections, beforeMove }: SectionNavProps) {
   const headingKey = sections.map((section) => section.headingId).join(' ');
   const [current, setCurrent] = useState<string | undefined>(sections[0]?.headingId);
 
@@ -76,6 +81,7 @@ export function SectionNav({ label, sections }: SectionNavProps) {
 
   const goTo = (headingId: string) => {
     const heading = document.getElementById(headingId);
+    beforeMove?.();
     sectionOf(headingId)?.scrollIntoView({ block: 'start' });
     heading?.focus({ preventScroll: true });
     setCurrent(headingId);
