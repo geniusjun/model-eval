@@ -16,21 +16,48 @@ jobs:
       matrix:
         node: [22, 24, 26]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+          cache: pip
+          cache-dependency-path: |
+            adapters/python/tests/requirements/openai-2.txt
+            adapters/python/tests/requirements/anthropic-2.txt
+            examples/python-service/requirements.txt
       - run: pnpm install --frozen-lockfile
+      # The Python of the mock API server, the Python adapters and the parity drivers.
+      - name: Python environment with the openai 2 and anthropic 2 SDKs
+        run: |
+          python3 -m venv "$RUNNER_TEMP/helper-python"
+          "$RUNNER_TEMP/helper-python/bin/python" -m pip install \
+            -r adapters/python/tests/requirements/openai-2.txt \
+            -r adapters/python/tests/requirements/anthropic-2.txt
+          echo "MODEL_EVAL_PYTHON=$RUNNER_TEMP/helper-python/bin/python" >> "$GITHUB_ENV"
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm build
+      # Every SDK alias on Node 22; the newest major of each SDK on the other versions.
       - run: pnpm exec vitest run --project unit --project contract --project viewer
+        env:
+          MODEL_EVAL_NODE_SDKS: ${{ matrix.node != 22 && 'openai-7,anthropic-sdk-1' || '' }}
       - name: Example swap check against the mock adapter (SC-001)
         timeout-minutes: 3
         run: pnpm exec vitest run --project e2e test/e2e/example-pogo.test.ts
+      - name: Example Python service environment
+        run: |
+          cd examples/python-service
+          python3 -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+      - name: Example Python service against the mock API server (003 SC-001, SC-004)
+        timeout-minutes: 5
+        run: pnpm exec vitest run --project example
       - name: End-to-end tests against the mock adapter
         timeout-minutes: 10
         run: pnpm exec vitest run --project e2e --exclude test/e2e/example-pogo.test.ts
@@ -48,9 +75,9 @@ jobs:
   browser:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -84,10 +111,66 @@ jobs:
           done
           find "$pages" -type f
       # The pages of this commit's example, for a reviewer to download and open (002 plan D11).
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: example-pages
           path: ${{ runner.temp }}/example-pages
           retention-days: 14
           if-no-files-found: error
       - run: pnpm test:browser --pass-with-no-tests
+
+  python-requirements:
+    runs-on: ubuntu-latest
+    outputs:
+      files: ${{ steps.list.outputs.files }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: list
+        run: |
+          cd adapters/python/tests/requirements
+          echo "files=$(ls *.txt | sed 's/\.txt$//' | jq -Rcn '[inputs]')" >> "$GITHUB_OUTPUT"
+
+  python:
+    needs: python-requirements
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.x']
+        requirements: ${{ fromJSON(needs.python-requirements.outputs.files) }}
+    defaults:
+      run:
+        working-directory: adapters/python
+    env:
+      MODEL_EVAL_REQUIREMENTS: ${{ matrix.requirements }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ matrix.python }}
+          check-latest: true
+          cache: pip
+          cache-dependency-path: adapters/python/tests/requirements/${{ matrix.requirements }}.txt
+      - run: python3 -m pip install -r tests/requirements/${{ matrix.requirements }}.txt
+      - run: python3 -m pytest --junitxml="$RUNNER_TEMP/pytest.xml"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: pytest-${{ steps.python.outputs.python-version }}-${{ matrix.requirements }}
+          path: ${{ runner.temp }}/pytest.xml
+          retention-days: 7
+          if-no-files-found: error
+
+  python-scenarios:
+    needs: python
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: pytest-*
+          path: ${{ runner.temp }}/pytest
+      - name: Every scenario with a Python case ran in some entry
+        run: python3 scripts/check-python-scenarios.py "$RUNNER_TEMP/pytest"
