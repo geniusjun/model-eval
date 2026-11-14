@@ -4,10 +4,11 @@ import type { Lang } from '../../../../src/config/schema.js';
 import { percent } from '../../../../src/report/format.js';
 import type { Cell, Comparison } from '../../../../src/report/schema.js';
 import { CodeText } from '../../components/CodeText.js';
+import { Disclosure } from '../../components/Disclosure.js';
 import { pageMessages, type Messages } from '../../i18n/useMessages.js';
 import { cellLabel } from '../../utils/cell.js';
 import { MetricRateValue } from './MetricRateValue.js';
-import { ROLES, type PerRole, type Role, type VariantIds } from '../../report/variants.js';
+import { ROLES, type PerRole, type Role } from '../../report/variants.js';
 import styles from './metrics.module.css';
 
 type VariantOps = Comparison['ops'][Role];
@@ -27,11 +28,10 @@ function maskedCells(cells: readonly Cell[]): MaskedCell[] {
 
 interface MaskedTableProps {
   readonly cells: readonly MaskedCell[];
-  readonly variantIds: VariantIds;
   readonly messages: Messages;
 }
 
-function MaskedTable({ cells, variantIds, messages }: MaskedTableProps) {
+function MaskedTable({ cells, messages }: MaskedTableProps) {
   return (
     <table className={styles.table}>
       <caption>{messages.text('metrics.postprocess.masked')}</caption>
@@ -39,8 +39,8 @@ function MaskedTable({ cells, variantIds, messages }: MaskedTableProps) {
         <tr>
           <th scope="col">{messages.text('metrics.postprocess.column.cell')}</th>
           {ROLES.map((role) => (
-            <th key={role} scope="col">
-              {messages.text(`role.${role}`, { variant: variantIds[role] })}
+            <th key={role} scope="col" className={styles.number}>
+              {messages.text(`role.${role}`)}
             </th>
           ))}
         </tr>
@@ -68,7 +68,7 @@ interface DiscardReasonsProps {
 
 function DiscardReasons({ reasons, messages }: DiscardReasonsProps) {
   if (reasons.length === 0) {
-    return <p>{messages.text('metrics.postprocess.noDiscards')}</p>;
+    return <p className={styles.empty}>{messages.text('metrics.postprocess.noDiscards')}</p>;
   }
   return (
     <table className={styles.table}>
@@ -76,7 +76,9 @@ function DiscardReasons({ reasons, messages }: DiscardReasonsProps) {
       <thead>
         <tr>
           <th scope="col">{messages.text('metrics.postprocess.column.reason')}</th>
-          <th scope="col">{messages.text('metrics.column.count')}</th>
+          <th scope="col" className={styles.number}>
+            {messages.text('metrics.column.count')}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -104,11 +106,13 @@ interface VariantPostprocessProps {
 function VariantPostprocess({ variant, postprocess, ops, messages }: VariantPostprocessProps) {
   const headingId = useId();
   return (
-    <div className={styles.block} role="group" aria-labelledby={headingId}>
-      <h4 id={headingId}>{variant}</h4>
+    <div className={styles.variant} role="group" aria-labelledby={headingId}>
+      <h4 id={headingId} className={styles.variantHeading}>
+        {variant}
+      </h4>
       {postprocess ? (
         <>
-          <ul>
+          <ul className={styles.figureList}>
             {FIGURES.map((name) => {
               const label = messages.text(`metrics.rate.${name}`);
               return (
@@ -126,7 +130,7 @@ function VariantPostprocess({ variant, postprocess, ops, messages }: VariantPost
           <DiscardReasons reasons={ops.discardReasons} messages={messages} />
         </>
       ) : (
-        <p>{messages.text('metrics.postprocess.none', { variant })}</p>
+        <p className={styles.empty}>{messages.text('metrics.postprocess.none', { variant })}</p>
       )}
     </div>
   );
@@ -138,37 +142,33 @@ interface PostprocessPanelProps {
   readonly ops: Comparison['ops'];
   /** `postprocess` of each compared run: whether its adapter declares post-processing. */
   readonly postprocess: PerRole<boolean>;
-  readonly variantIds: VariantIds;
 }
 
 /**
- * The post-processing figures of FR-016: the masked rate of each `raw` cell, then per variant
- * the discard, fallback and regeneration rates and the discard reasons (constitution I).
+ * The post-processing figures of FR-016, closed until opened: the masked rate of each `raw`
+ * cell, then per variant the discard, fallback and regeneration rates and the discard reasons
+ * (constitution I).
  */
-export function PostprocessPanel({
-  lang,
-  cells,
-  ops,
-  postprocess,
-  variantIds,
-}: PostprocessPanelProps) {
+export function PostprocessPanel({ lang, cells, ops, postprocess }: PostprocessPanelProps) {
   const messages = pageMessages(lang);
   const masked = maskedCells(cells);
   return (
     <div className={styles.block}>
       <h3>{messages.text('metrics.postprocess.heading')}</h3>
-      {masked.length > 0 && (
-        <MaskedTable cells={masked} variantIds={variantIds} messages={messages} />
-      )}
-      {ROLES.map((role) => (
-        <VariantPostprocess
-          key={role}
-          variant={variantIds[role]}
-          postprocess={postprocess[role]}
-          ops={ops[role]}
-          messages={messages}
-        />
-      ))}
+      <Disclosure label={messages.text('metrics.postprocess.show')}>
+        {masked.length > 0 && <MaskedTable cells={masked} messages={messages} />}
+        <div className={styles.variants}>
+          {ROLES.map((role) => (
+            <VariantPostprocess
+              key={role}
+              variant={messages.text(`role.${role}`)}
+              postprocess={postprocess[role]}
+              ops={ops[role]}
+              messages={messages}
+            />
+          ))}
+        </div>
+      </Disclosure>
     </div>
   );
 }

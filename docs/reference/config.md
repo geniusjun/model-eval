@@ -2,19 +2,18 @@
 
 The config is `model-eval.config.yaml` in the folder you run from, or the file `--config` names.
 Relative paths in it (`adapter.cwd`, the `files` globs, `output.dir`) resolve from the config
-file's folder.
+file's folder. Unknown keys are errors.
 
-An annotated config with every default is in
-[contracts/config.md](../../specs/001-swap-check/contracts/config.md#config-file), and
-[`examples/pogo/model-eval.config.yaml`](../../examples/pogo/model-eval.config.yaml) is a working
-one. The JSON Schema is [`schemas/config.schema.json`](../../schemas/config.schema.json). Editors
-with a YAML language server pick it up from a comment on the first line:
+- [`examples/pogo/model-eval.config.yaml`](../../examples/pogo/model-eval.config.yaml) is a working
+  config.
+- [contracts/config.md](../../specs/001-swap-check/contracts/config.md#config-file) has an
+  annotated config with every default.
+- [`schemas/config.schema.json`](../../schemas/config.schema.json) is the JSON Schema. Editors with
+  a YAML language server pick it up from a comment on the first line:
 
 ```yaml
 # yaml-language-server: $schema=./node_modules/model-eval/schemas/config.schema.json
 ```
-
-Unknown keys are errors.
 
 ## Required keys
 
@@ -68,12 +67,16 @@ pricing:
   model-b: { input: 0.20, cachedInput: 0.02, cacheWrite: 0.25, output: 1.20 }
 ```
 
-Add every model the service calls, side calls included. With a cap, a variant model without a
-price, or an unpriced model that first appears during a run, ends the command with exit code 4.
-Without a cap, unpriced calls are charged at the most expensive known price per bucket and
-reported as `unpriced-model`. Without `cachedInput`, cache hits are charged at `input`. Give
-`cacheWrite` only for models that bill cache writes. Pricing rules:
-[data-model §Cost](../../specs/001-swap-check/data-model.md#cost).
+Add every model the service calls, side calls included.
+
+- With a cap, a variant model without a price ends the command with exit code 4. So does an
+  unpriced model that first appears during a run.
+- Without a cap, unpriced calls are charged at the most expensive known price per bucket and
+  reported as `unpriced-model`.
+- Without `cachedInput`, cache hits are charged at `input`.
+- Give `cacheWrite` only for models that bill cache writes.
+
+Pricing rules: [data-model §Cost](../../specs/001-swap-check/data-model.md#cost).
 
 ## Redaction
 
@@ -82,14 +85,17 @@ redact:
   - { pattern: "\\b01[0-9]-?\\d{3,4}-?\\d{4}\\b", replace: '<phone>' }
 ```
 
-Patterns are JavaScript regular expressions with the `u` flag. `replace` must not be empty, so a
-reader can see that text was removed. A pattern that matches the empty string is rejected.
-
-Redaction applies to free text (model and service output, error and log messages, rule titles,
-anchor quotes, case notes) in reports, saved comparisons, stdout, stderr and logs. Identifiers,
-hashes and codes are written as they are. Trial records and grades stay unredacted, because
-checks must read the original text. `report` rewrites a saved comparison with the redaction it
-was saved under; a changed `redact` takes effect through `compare`.
+- Patterns are JavaScript regular expressions with the `u` flag. A pattern that matches the empty
+  string is rejected.
+- `replace` must not be empty, so a reader can see that text was removed.
+- Redaction applies to free text (model and service output, error and log messages, rule titles,
+  anchor quotes, case notes) in reports, saved comparisons, stdout, stderr and logs.
+- Identifiers, hashes and codes are written as they are.
+- Everything else under `runs/` (`trials.jsonl`, grades, `manifest.json`) and `swaps/` is written
+  unredacted. Trial records and grades keep the original text because checks must read it. Keep
+  the output directory out of version control and public artifacts.
+- `report` rewrites a saved comparison with the redaction it was saved under. A changed `redact`
+  takes effect through `compare`.
 
 ## Rule and case files
 
@@ -98,5 +104,5 @@ was saved under; a changed `redact` takes effect through `compare`.
 | Rule files | [`schemas/rules.schema.json`](../../schemas/rules.schema.json) | [data-model §Rule](../../specs/001-swap-check/data-model.md#rule), [§Anchor](../../specs/001-swap-check/data-model.md#anchor), [checks](checks.md) |
 | Case files | [`schemas/cases.schema.json`](../../schemas/cases.schema.json) | [data-model §Case](../../specs/001-swap-check/data-model.md#case)                                                                                  |
 
-Rule, case and variant IDs match `^[a-z0-9][a-z0-9._-]{0,63}$`, since they appear in file names
-and run IDs. How to write them: [Writing rules and cases](../guide/rules.md).
+Rule, case and variant IDs match `^[a-z0-9][a-z0-9._-]{0,63}$`. See
+[Writing rules and cases](../guide/rules.md).

@@ -28,10 +28,6 @@ function SideFromHash({ comparison }: SideFromHashProps) {
       rules={comparison.rules}
       samples={comparison.samples}
       view={view.kind === 'side' ? view : undefined}
-      variants={{
-        baseline: comparison.baseline.variant.id,
-        candidate: comparison.candidate.variant.id,
-      }}
       lang="en"
     />
   );
@@ -72,19 +68,25 @@ describe('002 SideBySide', () => {
     window.location.hash = '#/side/script-ja/greet-ja/0';
     const comparison = loadComparison('block');
     renderSide(comparison);
-    const candidate = column('Candidate (next)');
+    const candidate = column('Candidate');
     expect(codeTexts(candidate)).toEqual([
       'こんにちは </script><!-- $& <img src=x onerror=alert(1)> ```js\nalert(1)\n``` 안녕',
       'こんにちは <b>ok</b> `` x `` $1',
     ]);
     expect(
-      within(candidate).getByText(label('sample.raw', { finishReason: 'stop' })),
+      within(candidate).getByText(label('sample.raw', { finishReason: en['sample.finish.stop'] })),
     ).toBeDefined();
     expect(
-      within(candidate).getByText(label('sample.final', { finalKind: 'model' })),
+      within(candidate).getByText(
+        label('sample.final', { finalKind: en['sample.finalKind.model'] }),
+      ),
     ).toBeDefined();
-    const baseline = column('Baseline (current)');
-    expect(codeTexts(baseline)).toEqual(['こんにちは。', 'こんにちは。']);
+    const baseline = column('Baseline');
+    // The baseline shipped its raw answer unchanged: one box says so.
+    expect(codeTexts(baseline)).toEqual(['こんにちは。']);
+    expect(
+      within(baseline).getByText(label('sample.same', { finishReason: en['sample.finish.stop'] })),
+    ).toBeDefined();
     // The two columns sit side by side: baseline first.
     expect(baseline.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(
       0,
@@ -94,13 +96,10 @@ describe('002 SideBySide', () => {
   it('002 FR-005 shows the kind and message of an error sample in place of its text', () => {
     window.location.hash = `#/side/${REVIEW_RULE}/mood-vague-ko/0`;
     renderSide();
-    const candidate = column('Candidate (next)');
+    const candidate = column('Candidate');
     expect(within(candidate).getByText(label('sample.error', { kind: 'transient' }))).toBeDefined();
     expect(codeTexts(candidate)).toEqual(['429 rate limited <!-- $& -->']);
-    expect(codeTexts(column('Baseline (current)'))).toEqual([
-      '오늘 좀 그랬구나. 무슨 일 있었어?',
-      '오늘 좀 그랬구나. 무슨 일 있었어?',
-    ]);
+    expect(codeTexts(column('Baseline'))).toEqual(['오늘 좀 그랬구나. 무슨 일 있었어?']);
   });
 
   it('002 FR-011 previous and next case and repeat are labelled buttons that work with the keyboard', async () => {
@@ -129,7 +128,7 @@ describe('002 SideBySide', () => {
     // A disabled move does nothing.
     await user.keyboard(' ');
     expect(window.location.hash).toBe(`#/side/${REVIEW_RULE}/mood-vague-ko/0`);
-    expect(codeTexts(column('Candidate (next)'))).toEqual([
+    expect(codeTexts(column('Candidate'))).toEqual([
       'candidate mood-vague-ko 0',
       'candidate mood-vague-ko 0 final',
     ]);
@@ -159,7 +158,8 @@ describe('002 ReportPage side by side', () => {
     render(
       <ReportPage page={{ ...loadComparisonPage('page-comparison-block.json'), lang: 'en' }} />,
     );
-    const link = screen.getByRole('link', { name: en['side.link'] });
+    const detail = screen.getByRole('region', { name: 'script-ja (ja, raw)' });
+    const link = within(detail).getByRole('link', { name: en['side.link'] });
     expect(link.getAttribute('href')).toBe('#/side/script-ja/greet-ja/0');
     await user.click(link);
     const region = screen.getByRole('region', { name: en['side.heading'] });
@@ -178,7 +178,11 @@ describe('002 ReportPage side by side', () => {
       comparison: derivedComparison(),
       lang: 'en' as const,
     };
-    const hrefs = () => screen.getAllByRole('link').map((link) => link.getAttribute('href'));
+    // The links of the open detail; the summary quotes failing examples with links of its own.
+    const hrefs = () =>
+      within(screen.getByRole('region', { name: 'script-ja (ja, final)' }))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href'));
     window.location.hash = '#/cell/script-ja/ja/final';
     const { unmount } = render(<ReportPage page={page} />);
     expect(hrefs()).toEqual(['#/side/script-ja/ask-ja/1', '#/side/script-ja/greet-ja/1']);
@@ -202,5 +206,31 @@ describe('002 ReportPage side by side', () => {
     const at = (name: string) => regions.indexOf(name);
     expect(at(en['side.heading'])).toBeGreaterThan(at(en['grid.heading']));
     expect(at(en['side.heading'])).toBeLessThan(at(en['metrics.heading']));
+  });
+});
+
+describe('002 SideBySide first view', () => {
+  it('002 FR-005 shows the first position of the first regressed rule without changing the hash or focus', () => {
+    const comparison = loadComparison('block');
+    render(
+      <SideBySide
+        rules={comparison.rules}
+        samples={comparison.samples}
+        view={undefined}
+        lang="en"
+        regressedRuleIds={new Set(['script-ja'])}
+      />,
+    );
+    expect(window.location.hash).toBe('');
+    expect(screen.getByRole('button', { name: 'script-ja' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    const heading = screen.getByRole('heading', { level: 3, name: /script-ja/ });
+    expect(document.activeElement).not.toBe(heading);
+    const candidate = column('Candidate');
+    // The failing answer says so before the answer and marks its evidence in it.
+    expect(within(candidate).getByText(en['sample.failed'])).toBeDefined();
+    expect([...candidate.querySelectorAll('mark')].map((mark) => mark.textContent)).not.toEqual([]);
+    expect(within(column('Baseline')).queryByText(en['sample.failed'])).toBeNull();
   });
 });

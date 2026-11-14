@@ -36,10 +36,6 @@ function GridFromHash({ comparison }: GridFromHashProps) {
       selected={view.kind === 'cell' ? view.cell : undefined}
       rules={comparison.rules}
       samples={comparison.samples}
-      variants={{
-        baseline: comparison.baseline.variant.id,
-        candidate: comparison.candidate.variant.id,
-      }}
       lang="en"
       sideHref={(view) => formatHash({ view, lang: null })}
     />
@@ -92,8 +88,22 @@ describe('002 RuleLanguageGrid', () => {
     const button = cellButton('script-ja', 'ja', 'raw');
     const badge = within(button).getByText('Regressed');
     expect(badge.classList.contains('regressed')).toBe(true);
+    // A held cell shows only its shape; the word is there for assistive technology.
     const held = within(cellButton('no-emoji', 'ko', 'raw')).getByText('Held');
-    expect(held.classList.contains('non-inferior')).toBe(true);
+    expect(held.parentElement?.classList.contains('non-inferior')).toBe(true);
+    expect(held.classList.contains('hidden')).toBe(true);
+    expect(within(button).getByText('Regressed').classList.contains('hidden')).toBe(false);
+  });
+
+  it('002 FR-003 shows a rate once when the baseline and the candidate print the same', () => {
+    renderGrid();
+    // no-emoji (ja, raw) has no rate in either variant: both print as —.
+    const same = cellButton('no-emoji', 'ja', 'raw').textContent;
+    expect(same.split('—')).toHaveLength(2);
+    expect(same).not.toContain('→');
+    expect(cellButton('script-ja', 'ja', 'raw').textContent).toContain('99.3% → 70.0%');
+    // The candidate's passes of trials follow its rate.
+    expect(cellButton('script-ja', 'ja', 'raw').textContent).toContain('105/150');
   });
 
   it('002 FR-003 leaves a rule and language without a cell as an empty position, not a button', () => {
@@ -102,14 +112,14 @@ describe('002 RuleLanguageGrid', () => {
     const columns = within(table)
       .getAllByRole('columnheader')
       .map((header) => header.textContent);
-    expect(columns).toEqual([en['grid.column.rule'], 'ja', 'ko']);
+    expect(columns).toEqual([en['grid.column.rule'], 'ja', 'ko', 'en']);
     const row = within(table).getByRole('rowheader', { name: 'script-ja' }).closest('tr');
     expect(row).not.toBeNull();
     const positions = row === null ? [] : within(row).getAllByRole('cell');
-    expect(positions).toHaveLength(2);
-    expect(
-      positions[1] === undefined ? null : within(positions[1]).queryByRole('button'),
-    ).toBeNull();
+    expect(positions).toHaveLength(3);
+    for (const position of positions.slice(1)) {
+      expect(within(position).queryByRole('button')).toBeNull();
+    }
   });
 
   it('002 FR-011 opens a detail with Enter right after its table, focuses its heading and sets the hash', async () => {

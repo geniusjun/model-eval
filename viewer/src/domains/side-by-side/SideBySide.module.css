@@ -1,5 +1,16 @@
+.intro,
+.none {
+  color: var(--color-text-muted);
+}
+
+.none {
+  margin: 0;
+}
+
 .subheading {
-  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
   margin: var(--space-4) 0 var(--space-2);
 }
 
@@ -15,24 +26,42 @@
 .rule,
 .move {
   background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
   color: var(--color-text);
   cursor: pointer;
+  font-size: var(--font-size-small);
   padding: var(--space-1) var(--space-3);
 }
 
 .rule {
+  align-items: center;
+  display: inline-flex;
   font-family: var(--font-code);
+  font-size: var(--font-size-code);
+  gap: 0.4em;
+}
+
+.rule svg {
+  color: var(--color-regressed);
+}
+
+.rule:hover,
+.move:hover {
+  border-color: var(--color-text-faint);
 }
 
 .rule[aria-pressed='true'] {
-  background: var(--color-surface);
   border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  font-weight: 600;
 }
 
 .move[aria-disabled='true'] {
-  color: var(--color-text-muted);
+  background: transparent;
+  border-color: var(--color-border);
+  border-style: dashed;
+  color: var(--color-text-faint);
   cursor: default;
 }
 
@@ -43,35 +72,53 @@
   padding: var(--space-4);
 }
 
+@media (min-width: 48rem) {
+  .panel {
+    padding: var(--space-4) var(--space-6) var(--space-6);
+  }
+}
+
 .heading {
   font-family: var(--font-code);
   font-size: var(--font-size-body);
   margin: 0 0 var(--space-1);
+  overflow-wrap: anywhere;
 }
 
 .progress {
   color: var(--color-text-muted);
   font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
   margin: 0 0 var(--space-3);
 }
 
 .navigation {
   align-items: center;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-4);
 }
 
 .navigationLabel {
   color: var(--color-text-muted);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-xs);
+  margin-right: var(--space-1);
 }
 
+/* Baseline first, candidate beside it on a wide screen and below it on a narrow one. */
 .columns {
   display: grid;
-  gap: var(--space-4);
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 48rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .column {
@@ -79,11 +126,37 @@
 }
 
 .columnHeading {
-  font-size: var(--font-size-body);
+  border-bottom: 2px solid var(--color-border-strong);
+  font-size: var(--font-size-small);
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-1);
+}
+
+.column:last-child .columnHeading {
+  border-bottom-color: var(--color-text-faint);
+}
+
+/* A failing example says so, with its evidence, before the answer. */
+.failed {
+  align-items: baseline;
+  color: var(--color-text);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  gap: 0 0.35em;
   margin: 0 0 var(--space-2);
 }
 
-.none {
-  color: var(--color-text-muted);
-  margin: 0;
+.failed svg {
+  color: var(--color-regressed);
+}
+
+.failedWord {
+  color: var(--verdict-regressed-text);
+  font-weight: 600;
+}
+
+.evidence {
+  font-family: var(--font-code);
+  white-space: pre-wrap;
 }

@@ -47,7 +47,7 @@ test.describe('002 side by side', () => {
       const key = tabKey(browserName);
       await openReviewRule(page, key);
       await expect(positionHeading(page)).toContainText('mood-vague-ko');
-      const candidate = sideRegion(page).getByRole('group', { name: 'Candidate (next)' });
+      const candidate = sideRegion(page).getByRole('group', { name: 'Candidate' });
       await expect(
         candidate.getByText(en['sample.error'].replace('{kind}', 'transient'), { exact: true }),
       ).toBeVisible();

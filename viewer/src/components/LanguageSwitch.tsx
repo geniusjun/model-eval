@@ -26,7 +26,9 @@ export function LanguageSwitch({ lang }: LanguageSwitchProps) {
   };
   return (
     <div className={styles.switch}>
-      <label htmlFor={id}>{messages.text('language.label')}</label>
+      <label htmlFor={id} className={styles.label}>
+        {messages.text('language.label')}
+      </label>
       <select id={id} className={styles.select} value={lang} onChange={handleChange}>
         {LANGS.map((option) => (
           <option key={option} value={option}>

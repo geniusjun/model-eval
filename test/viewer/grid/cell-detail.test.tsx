@@ -38,10 +38,6 @@ function renderDetail(
       cell={findCell(comparison, place)}
       rules={comparison.rules}
       samples={comparison.samples}
-      variants={{
-        baseline: comparison.baseline.variant.id,
-        candidate: comparison.candidate.variant.id,
-      }}
       lang="en"
       onClose={onClose}
       sideHref={(view) => formatHash({ view, lang: null })}
@@ -81,11 +77,11 @@ describe('002 CellDetail', () => {
     expect(candidate?.textContent).toContain('70.0% [64.0, 73.0]');
     const baselineChart = baseline === undefined ? null : within(baseline).getByRole('img');
     const candidateChart = candidate === undefined ? null : within(candidate).getByRole('img');
-    expect(baselineChart?.querySelector('title')?.textContent).toContain('current');
-    expect(candidateChart?.querySelector('title')?.textContent).toContain('next');
+    expect(baselineChart?.querySelector('title')?.textContent).toContain('Baseline');
+    expect(candidateChart?.querySelector('title')?.textContent).toContain('Candidate');
     const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
-    expect(headers).toContain('Baseline (current)');
-    expect(headers).toContain('Candidate (next)');
+    expect(headers).toContain('Baseline');
+    expect(headers).toContain('Candidate');
   });
 
   it('002 FR-004 shows the difference with its interval, the failure-rate ratio and the masked rate per variant', () => {
@@ -119,9 +115,9 @@ describe('002 CellDetail', () => {
       throw new Error('no failing example');
     }
     const item = within(example);
-    expect(item.getByText('next · case greet-ja · repeat 0')).toBeDefined();
-    expect(item.getByText('Raw answer (finish reason stop)')).toBeDefined();
-    expect(item.getByText('Shipped text (model)')).toBeDefined();
+    expect(item.getByText('Candidate · case greet-ja · repeat 0')).toBeDefined();
+    expect(item.getByText('Raw answer (ended normally)')).toBeDefined();
+    expect(item.getByText("Shipped text (the model's answer)")).toBeDefined();
     expect(text.raw).toContain('\n');
     const withText = (expected: string) =>
       item.queryAllByText((_, element) => element?.textContent === expected, { ignore: false });
@@ -153,7 +149,7 @@ describe('002 CellDetail', () => {
     renderDetail(SCRIPT_JA_RAW, comparison);
     const examples = within(screen.getByRole('list', { name: en['grid.detail.failing'] }));
     expect(examples.getAllByRole('listitem')).toHaveLength(2);
-    expect(examples.getByText('Raw answer (finish reason length)')).toBeDefined();
+    expect(examples.getByText('Raw answer (cut off at the length limit)')).toBeDefined();
     expect(examples.getByText('No shipped text (discarded).')).toBeDefined();
     expect(examples.getByText('Error (transient)')).toBeDefined();
     expect(examples.getByText('429 rate limited <!-- $& -->')).toBeDefined();
@@ -176,7 +172,7 @@ describe('002 CellDetail', () => {
 
   it('002 FR-004 shows "baseline 0" for a null ratio over a baseline rate of 1 and — for a null baseline rate', () => {
     const first = renderDetail(SCRIPT_JA_FINAL);
-    expect(fact(en['grid.detail.failRatio'])).toBe('baseline 0');
+    expect(fact(en['grid.detail.failRatio'])).toBe(`baseline 0 ${en['grid.detail.noRatio']}`);
     first.unmount();
     renderDetail(NO_EMOJI_JA);
     expect(fact(en['grid.detail.failRatio'])).toBe('—');

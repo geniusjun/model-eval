@@ -1,24 +1,45 @@
+/* Like a heat map that colours only drops: a regressed cell is tinted with a bar on its left;
+   every other cell is its rate and a quiet word. */
 .cell {
-  align-items: flex-start;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  align-items: baseline;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-small);
   color: var(--color-text);
   cursor: pointer;
-  display: inline-flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem var(--space-2);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  /* Holds the visually hidden label, so it stays inside the scrolling grid. */
+  position: relative;
   text-align: left;
+  width: 100%;
+}
+
+/* The ring sits inside the button, so the scrolling grid never clips it. */
+.cell:focus-visible {
+  outline-offset: -2px;
 }
 
 .cell:hover {
-  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.cell[data-verdict='regressed'] {
+  background: var(--verdict-regressed-background);
+  box-shadow: inset 3px 0 0 var(--color-regressed);
 }
 
 .cell[aria-expanded='true'] {
-  border-color: var(--color-accent);
-  box-shadow: inset 0 0 0 1px var(--color-accent);
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
+.cell[data-verdict='regressed'][aria-expanded='true'] {
+  box-shadow:
+    inset 0 0 0 2px var(--color-accent),
+    inset 4px 0 0 var(--color-regressed);
 }
 
 /* Read by assistive technology, hidden on screen where the table headers say the same. */
@@ -33,6 +54,53 @@
 
 .rates {
   color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A regressed cell stacks its rates, so the large rate and the difference stay on its tint. */
+.cell[data-verdict='regressed'] .rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.3em;
+}
+
+.to {
   font-size: var(--font-size-small);
-  white-space: nowrap;
+}
+
+/* Only a cell that moved, or may have, lifts its candidate rate to the body colour; a cell that
+   moved also sets it large. */
+.cell[data-verdict='regressed'] .to,
+.cell[data-verdict='improved'] .to {
+  color: var(--color-text);
+  font-size: var(--font-size-cell);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.cell[data-verdict='inconclusive'] .to {
+  color: var(--color-text);
+}
+
+.moved {
+  color: var(--color-text-muted);
+}
+
+/* A cell that did not regress is one line of text, its rate, passes of trials and verdict,
+   that wraps between words on a narrow column; a regressed one leads with its verdict above a
+   large rate. */
+.cell:not([data-verdict='regressed']) {
+  display: block;
+}
+
+.cell[data-verdict='regressed'] {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Passes of trials, so a rate on few trials reads as such. */
+.counts {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
 }

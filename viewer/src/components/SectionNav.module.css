@@ -1,0 +1,81 @@
+/* The buttons wrap onto a second line on a narrow screen rather than scroll, so every region
+   stays in reach and focus rings are never clipped. */
+.nav {
+  margin: 0 calc(-1 * var(--space-2));
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-2);
+}
+
+.link {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--font-size-small);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) calc(var(--space-2) - 2px);
+  /* Holds the visually hidden count inside the button. */
+  position: relative;
+  white-space: nowrap;
+}
+
+.link:hover {
+  color: var(--color-text);
+}
+
+.link[aria-current='true'] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.flag {
+  align-items: center;
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  gap: 0.25em;
+}
+
+.flag[data-shape='triangle'] svg {
+  color: var(--color-regressed);
+}
+
+.flag[data-shape='square'] svg {
+  color: var(--color-warning-line);
+}
+
+/* Read by assistive technology only. */
+.hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* Five short buttons fit one line on a phone. */
+@media (max-width: 30rem) {
+  .link {
+    font-size: var(--font-size-code);
+    gap: var(--space-1);
+    padding-inline: 0.3rem;
+  }
+
+  .list {
+    gap: 0;
+  }
+}

@@ -11,6 +11,8 @@ import { loadComparison } from '../fixtures.js';
 const messages = pageMessages('en');
 const text: Messages['text'] = (key, params) => messages.text(key, params);
 const ROLES = ['baseline', 'candidate'] as const;
+/** How the page names each variant. */
+const ROLE_NAMES = { baseline: 'Baseline', candidate: 'Candidate' } as const;
 const FIGURES = ['discard', 'fallback', 'regeneration'] as const;
 
 function renderPanel(comparison: Comparison) {
@@ -22,10 +24,6 @@ function renderPanel(comparison: Comparison) {
       postprocess={{
         baseline: comparison.baseline.postprocess,
         candidate: comparison.candidate.postprocess,
-      }}
-      variantIds={{
-        baseline: comparison.baseline.variant.id,
-        candidate: comparison.candidate.variant.id,
       }}
     />,
   );
@@ -55,11 +53,7 @@ describe('002 PostprocessPanel', () => {
     const headers = within(table)
       .getAllByRole('columnheader')
       .map((header) => header.textContent);
-    expect(headers).toEqual([
-      text('metrics.postprocess.column.cell'),
-      'Baseline (current)',
-      'Candidate (next)',
-    ]);
+    expect(headers).toEqual([text('metrics.postprocess.column.cell'), 'Baseline', 'Candidate']);
     expect(rowsOf(table)).toEqual([
       ['script-ja (ja, raw)', percent(0.007), percent(0.273)],
       ['no-emoji (ko, raw)', percent(null), percent(0.05)],
@@ -79,7 +73,7 @@ describe('002 PostprocessPanel', () => {
     const comparison = loadComparison('block');
     renderPanel(comparison);
     for (const role of ROLES) {
-      const group = variantGroup(comparison[role].variant.id);
+      const group = variantGroup(ROLE_NAMES[role]);
       const items = within(group)
         .getAllByRole('listitem')
         .map((item) => item.textContent);
@@ -107,8 +101,8 @@ describe('002 PostprocessPanel', () => {
           name: text('metrics.postprocess.discardReasons'),
         }),
       );
-    expect(reasons('current')).toEqual([['AnswerCut: the answer ended mid-sentence', '1']]);
-    expect(reasons('next')).toEqual([
+    expect(reasons('Baseline')).toEqual([['AnswerCut: the answer ended mid-sentence', '1']]);
+    expect(reasons('Candidate')).toEqual([
       ['AnswerCut: the answer ended mid-sentence', '9'],
       ['<img src=x> $1', '2'],
     ]);
@@ -119,7 +113,7 @@ describe('002 PostprocessPanel', () => {
     const comparison = loadComparison('block');
     comparison.ops.baseline.discardReasons = [];
     renderPanel(comparison);
-    const group = variantGroup('current');
+    const group = variantGroup('Baseline');
     expect(within(group).queryByRole('table')).toBeNull();
     expect(within(group).getByText(text('metrics.postprocess.noDiscards'))).toBeTruthy();
   });
@@ -128,19 +122,22 @@ describe('002 PostprocessPanel', () => {
     const comparison: Comparison = loadComparison('block');
     comparison.candidate.postprocess = false;
     renderPanel(comparison);
-    const group = variantGroup('next');
-    expect(group.textContent).toContain(text('metrics.postprocess.none', { variant: 'next' }));
+    const group = variantGroup('Candidate');
+    expect(group.textContent).toContain(text('metrics.postprocess.none', { variant: 'Candidate' }));
     expect(within(group).queryByRole('listitem')).toBeNull();
     expect(within(group).queryByRole('table')).toBeNull();
-    expect(within(variantGroup('current')).getAllByRole('listitem')).toHaveLength(FIGURES.length);
+    expect(within(variantGroup('Baseline')).getAllByRole('listitem')).toHaveLength(FIGURES.length);
   });
 });
 
+/** The variant IDs of the fixtures. */
+const VARIANTS = { baseline: 'current', candidate: 'next' } as const;
+
 describe('002 WarningList', () => {
-  it('002 FR-006 shows each warning text with its rule, language, variants and case IDs', () => {
+  it('002 FR-006 shows each warning text with its rule, language, variant and case IDs', () => {
     const labelled: readonly (readonly [string, Comparison['warnings'][number]])[] = [
       [
-        'next · cases greet-ja',
+        'Candidate · cases greet-ja',
         {
           code: 'adapter-warnings',
           variants: ['next'],
@@ -149,7 +146,8 @@ describe('002 WarningList', () => {
         },
       ],
       [
-        'current, next',
+        // A warning about both variants does not name them.
+        '',
         {
           code: 'discard-rate-increase',
           variants: ['current', 'next'],
@@ -166,13 +164,49 @@ describe('002 WarningList', () => {
       ],
       ['script-ja (ja)', { code: 'identical-repeats', ruleId: 'script-ja', lang: 'ja' }],
     ];
-    render(<WarningList warnings={labelled.map(([, warning]) => warning)} lang="en" />);
+    render(
+      <WarningList
+        warnings={labelled.map(([, warning]) => warning)}
+        lang="en"
+        variants={VARIANTS}
+      />,
+    );
     const items = within(screen.getByRole('list'))
       .getAllByRole('listitem')
       .map((item) => item.textContent);
     expect(items).toEqual(
-      labelled.map(([label, warning]) => `${label} · ${messages.warning(warning)}`),
+      labelled.map(([label, warning]) =>
+        label === '' ? messages.warning(warning) : `${label} · ${messages.warning(warning)}`,
+      ),
     );
+  });
+
+  it('002 FR-006 writes cost and latency warnings as both values, the ratio and the warning level', () => {
+    const warnings: Comparison['warnings'] = [
+      {
+        code: 'cost-ratio',
+        variants: ['current', 'next'],
+        params: {
+          costPerTrialUsd: { current: 0.0000147, next: 0.0000323 },
+          ratio: 2.19,
+          threshold: 2,
+        },
+      },
+      {
+        code: 'latency-p95-ratio',
+        variants: ['current', 'next'],
+        params: { p95Ms: { current: 800, next: 1900 }, ratio: 2.375, threshold: 1.5 },
+      },
+    ];
+    render(<WarningList warnings={warnings} lang="en" variants={VARIANTS} />);
+    expect(
+      within(screen.getByRole('list'))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'Cost per 1,000 trials: $0.0147 → $0.0323, ×2.19, past the warning level ×2.00',
+      'Latency p95: 0.8s → 1.9s, ×2.38, past the warning level ×1.50',
+    ]);
   });
 
   it('002 FR-016 labels a warning with its rule and language', () => {
@@ -182,17 +216,17 @@ describe('002 WarningList', () => {
         code: 'identical-repeats',
         ruleId: 'script-ja',
         lang: 'ja',
-        variants: ['current', 'next'],
+        variants: ['current'],
         caseIds: ['greet-ja', 'ask-ja'],
       },
       ...comparison.warnings,
     ];
-    render(<WarningList warnings={warnings} lang="en" />);
+    render(<WarningList warnings={warnings} lang="en" variants={VARIANTS} />);
     const first = within(screen.getByRole('list')).getAllByRole('listitem')[0];
     expect(first?.textContent).toBe(
       [
         'script-ja (ja)',
-        'current, next',
+        'Baseline',
         text('metrics.warnings.cases', { cases: 'greet-ja, ask-ja' }),
         messages.warning({ code: 'identical-repeats' }),
       ].join(' · '),
@@ -200,17 +234,28 @@ describe('002 WarningList', () => {
   });
 
   it('002 FR-006 shows a message when there is no warning', () => {
-    render(<WarningList warnings={[]} lang="en" />);
+    render(<WarningList warnings={[]} lang="en" variants={VARIANTS} />);
     expect(screen.queryByRole('list')).toBeNull();
     expect(screen.getByText(text('metrics.warnings.none'))).toBeTruthy();
   });
 
   it('002 FR-013 writes the warnings in the page language', () => {
     const { warnings } = loadComparison('block');
-    render(<WarningList warnings={warnings} lang="ko" />);
+    render(<WarningList warnings={warnings} lang="ko" variants={VARIANTS} />);
+    const ko = pageMessages('ko');
     const items = within(screen.getByRole('list')).getAllByRole('listitem');
     warnings.forEach((warning, index) => {
-      expect(items[index]?.textContent).toContain(pageMessages('ko').warning(warning));
+      expect(items[index]?.textContent).toContain(
+        warning.code === 'cost-ratio'
+          ? ko.text('metrics.warnings.ratio', {
+              metric: ko.text('summary.cost.per1000'),
+              baseline: '$0.17',
+              candidate: '$0.38',
+              ratio: '2.20',
+              threshold: '2.00',
+            })
+          : ko.warning(warning),
+      );
     });
   });
 });

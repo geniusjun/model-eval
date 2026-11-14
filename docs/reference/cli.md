@@ -4,8 +4,7 @@
 model-eval <command> [options]
 ```
 
-The behaviour of each command and option is specified in
-[contracts/cli.md](../../specs/001-swap-check/contracts/cli.md). This page lists them.
+The full contract is [contracts/cli.md](../../specs/001-swap-check/contracts/cli.md).
 
 ## Commands
 
@@ -19,17 +18,13 @@ The behaviour of each command and option is specified in
 | `model-eval swap --from <id> --to <id>`      | yes          | `run` for both variants, then `compare`, in one command                                                            |
 | `model-eval report <comparisonId>`           | no           | Rewrites `report.md`, `report.html` and the output `index.html` from a saved comparison                            |
 
-`init` keeps files that already exist. With an existing config it only adds that config's
-`output.dir` to `.gitignore`.
-
-`compare`, `swap` and `report` fill the result page from the template the package ships in
-`dist/viewer/report.html`. Without it, as in a source checkout whose viewer is not built, they
-write no `report.html` or `index.html`, print one warning on stderr, point `report.md` to
-`samples.review` in `comparison.json` and exit as they would otherwise.
-
-`lint`, `run` and `swap` start the adapter; `lint --no-adapter` does not. See
-[Running in CI](../guide/ci.md#untrusted-changes-lint---no-adapter) before running them on
-changes you have not reviewed.
+- `init` keeps files that already exist. With an existing config it only adds that config's
+  `output.dir` to `.gitignore`.
+- `lint`, `run` and `swap` start the adapter; `lint --no-adapter` does not. Read
+  [Running in CI](../guide/ci.md#untrusted-changes-lint---no-adapter) before running them on
+  changes you have not reviewed.
+- In a source checkout whose viewer is not built, `compare`, `swap` and `report` skip
+  `report.html` and `index.html` and print a warning on stderr. The exit code does not change.
 
 ## Common options
 
@@ -46,28 +41,22 @@ common options.
 
 ## `lint`
 
-| Option               | Meaning                                                                                                      |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `--render`           | Render every case through the adapter for every variant and check anchors. The adapter must declare `render` |
-| `--variant <id>`     | With `--render`, render only this variant                                                                    |
-| `--max-warnings <n>` | Exit 1 when warnings exceed n. Info findings do not count                                                    |
-| `--no-adapter`       | Do not start the adapter; skip input-schema, target, anchor and helper-version checks                        |
+| Option               | Meaning                                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `--render`           | Render every case through the adapter for every variant and check anchors. The adapter must declare `render`                  |
+| `--variant <id>`     | With `--render`, render only this variant                                                                                     |
+| `--max-warnings <n>` | Exit 1 when warnings exceed n. Info findings do not count                                                                     |
+| `--no-adapter`       | Do not start the adapter; skip input-schema, target, anchor and helper-version checks. A usage error (exit 4) with `--render` |
 
-Without `--render`, lint starts the adapter with the first variant to read the targets' input
-schemas.
-
-An adapter may name a helper library it is built on in its `initialize` result
-(`adapter.helper`, with `language` and `version`). Lint compares that version with the helper
-version bundled with this release, part by part as `MAJOR.MINOR.PATCH`, and warns with
-`helper-outdated` when it is older or not of that form. A newer version is not reported, and an
-adapter that names no helper is not checked.
-
-Lint codes are listed in
-[data-model §Validation Rules](../../specs/001-swap-check/data-model.md#validation-rules).
+- Without `--render`, lint still starts the adapter with the first variant to read the targets'
+  input schemas.
+- When the adapter names the helper library it is built on, lint warns with `helper-outdated` if
+  that helper is older than the one bundled with this release.
+- All lint codes: [data-model §Validation Rules](../../specs/001-swap-check/data-model.md#validation-rules).
 
 ## `run` and `swap`
 
-`run` takes `--variant <id>`; `swap` takes `--from <id>` (the baseline) and `--to <id>` (the
+`run` takes `--variant <id>`. `swap` takes `--from <id>` (the baseline) and `--to <id>` (the
 candidate). Both accept:
 
 | Option               | Meaning                                                                                                                                                  |
@@ -95,20 +84,22 @@ Gated cells
   script-ja  ja  raw    150 planned trials per variant · n_min 35
 ```
 
-`basis` says where the estimate comes from per language: `structure` (the rendered prompt and the
-`estimate` settings) on a first run, `history` once a previous run of the variant exists. How the
-estimates and the cap work: [data-model §Cost](../../specs/001-swap-check/data-model.md#cost).
-What resume resends, keeps and refuses:
-[data-model §Resume and Locking](../../specs/001-swap-check/data-model.md#resume-and-locking).
+`basis` is the source of each language's estimate: `structure` (the rendered prompt and the
+`estimate` settings) on a first run, `history` once the variant has a previous run.
+
+More detail: [data-model §Cost](../../specs/001-swap-check/data-model.md#cost) for estimates and
+the cap, [data-model §Resume and Locking](../../specs/001-swap-check/data-model.md#resume-and-locking)
+for what resume resends, keeps and refuses.
 
 ## Output files
 
-Everything is written under `output.dir` (default `.model-eval`) next to the config file:
+Everything is written under `output.dir` (default `.model-eval`) next to the config file. Which
+files are redacted: [Redaction](config.md#redaction).
 
 | Path                                         | Contents                                                        |
 | -------------------------------------------- | --------------------------------------------------------------- |
 | `runs/<runId>/manifest.json`                 | Versions, variant, hashes, prices, segments and status of a run |
-| `runs/<runId>/trials.jsonl`                  | One line per attempt, raw and unredacted                        |
+| `runs/<runId>/trials.jsonl`                  | One line per attempt, raw                                       |
 | `runs/<runId>/grades/<gradeSetId>.jsonl`     | A grade set: the grades of one run under one set of rules       |
 | `runs/<runId>/adapter.log`                   | The adapter's `log` notifications, redacted                     |
 | `swaps/<swapId>.json`                        | The two runs of a swap                                          |
@@ -117,9 +108,9 @@ Everything is written under `output.dir` (default `.model-eval`) next to the con
 | `comparisons/<comparisonId>/report.html`     | The result page, redacted ([guide](../guide/result-page.md))    |
 | `index.html`                                 | The list of comparisons, each linking to its result page        |
 
-Record shapes are in [`schemas/`](../../schemas/): `manifest.schema.json`, `trial.schema.json`
-(one line of `trials.jsonl`), `swap-record.schema.json` and `comparison.schema.json`. Grade lines
-are described in [data-model §Grade and GradeSet](../../specs/001-swap-check/data-model.md#grade-and-gradeset).
+Record schemas in [`schemas/`](../../schemas/): `manifest.schema.json`, `trial.schema.json` (one
+line of `trials.jsonl`), `swap-record.schema.json` and `comparison.schema.json`. Grade lines are
+described in [data-model §Grade and GradeSet](../../specs/001-swap-check/data-model.md#grade-and-gradeset).
 
 ## Exit codes
 
@@ -133,17 +124,21 @@ are described in [data-model §Grade and GradeSet](../../specs/001-swap-check/da
 | 5    | `over-budget`    | The expected cost exceeded the cap before the start, or the cap was reached during the run                       |
 | 6    | `internal-error` | An unexpected internal error; report it as a bug                                                                 |
 
-Every case of exit code 4 and how overlapping codes resolve:
-[contracts/cli.md §Exit Codes](../../specs/001-swap-check/contracts/cli.md#exit-codes). Codes and
-names are a public contract and change only with a major version.
+Codes and names change only with a major version. Every cause of exit code 4, and which code wins
+when several apply: [contracts/cli.md §Exit Codes](../../specs/001-swap-check/contracts/cli.md#exit-codes).
 
 ## `--json`
 
 Every command writes the same envelope: `schemaVersion`, `command`, `exit` (`code` and `name`),
-`result` and `warnings`. Each command's envelope, with its `result`, has a schema in
-[`schemas/`](../../schemas/) named after the command (`init.schema.json`, `lint.schema.json`,
-`run.schema.json`, `grade.schema.json`, `compare.schema.json`, `swap.schema.json` and
-`report.schema.json`). [`schemas/envelope.schema.json`](../../schemas/envelope.schema.json)
-describes the envelope of any command, including one whose command line names no known command.
-Field details:
-[contracts/cli.md §`--json` Output](../../specs/001-swap-check/contracts/cli.md#--json-output).
+`result` and `warnings`. `result` is `null` when the command ends with exit code 4 or 6 before it
+has a result. Findings carry codes and params, never sentences, so the JSON does not change with
+`--lang`.
+
+- [`schemas/envelope.schema.json`](../../schemas/envelope.schema.json) describes the envelope of
+  any command.
+- Each command has its own schema named after it, such as
+  [`schemas/swap.schema.json`](../../schemas/swap.schema.json).
+- Field details:
+  [contracts/cli.md §`--json` Output](../../specs/001-swap-check/contracts/cli.md#--json-output).
+
+[Running in CI](../guide/ci.md#machine-readable-output) shows a full example.

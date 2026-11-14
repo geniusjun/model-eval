@@ -1,14 +1,15 @@
 import { Fragment, useMemo } from 'react';
 
 import type { Lang } from '../../../../src/config/schema.js';
-import type { Cell, RuleSummary, Samples } from '../../../../src/report/schema.js';
+import type { Cell, RuleSummary, Samples, Verdict } from '../../../../src/report/schema.js';
+import { VerdictBadge } from '../../components/VerdictBadge.js';
 import { pageMessages } from '../../i18n/useMessages.js';
 import { buildGrid, type SurfaceGrid } from './buildGrid.js';
 import { CellDetail } from './CellDetail.js';
-import type { VariantIds } from '../../report/variants.js';
 import { cellId, isSameCell, type CellPlace } from '../../utils/cell.js';
 import type { SideView } from '../../utils/hash.js';
 import { GridCell } from './GridCell.js';
+import styles from './RuleLanguageGrid.module.css';
 import tableStyles from './table.module.css';
 import { useSelectedCell } from './useSelectedCell.js';
 
@@ -18,7 +19,6 @@ interface RuleLanguageGridProps {
   readonly selected: Cell | undefined;
   readonly rules: readonly RuleSummary[];
   readonly samples: Samples;
-  readonly variants: VariantIds;
   readonly lang: Lang;
   /** The location of a side-by-side position, for the links from failing examples. */
   readonly sideHref: (view: SideView) => string;
@@ -32,10 +32,21 @@ interface SurfaceTableProps {
   readonly cellRef: (cell: CellPlace) => (button: HTMLButtonElement | null) => void;
 }
 
+/**
+ * The narrowest a surface's table may get: the rule column and a usable width per language.
+ * Below it the table scrolls sideways inside the grid.
+ */
+function minTableWidth(languages: number) {
+  return { minWidth: `calc(var(--rule-column) + var(--language-column) * ${String(languages)})` };
+}
+
 function SurfaceTable({ grid, selected, lang, onPressCell, cellRef }: SurfaceTableProps) {
   const messages = pageMessages(lang);
   return (
-    <table className={tableStyles.table}>
+    <table
+      className={[tableStyles.table, tableStyles.grid].filter(Boolean).join(' ')}
+      style={minTableWidth(grid.languages.length)}
+    >
       <caption>{messages.text('grid.caption', { surface: grid.surface })}</caption>
       <thead>
         <tr>
@@ -74,6 +85,29 @@ function SurfaceTable({ grid, selected, lang, onPressCell, cellRef }: SurfaceTab
   );
 }
 
+/** Order of the key: what changed first, then what did not, then what could not be judged. */
+const LEGEND_ORDER: readonly Verdict[] = [
+  'regressed',
+  'improved',
+  'non-inferior',
+  'inconclusive',
+  'insufficient',
+  'not-applicable',
+];
+
+function Legend({ lang }: { readonly lang: Lang }) {
+  const messages = pageMessages(lang);
+  return (
+    <ul className={styles.legend} aria-label={messages.text('grid.legend')}>
+      {LEGEND_ORDER.map((verdict) => (
+        <li key={verdict}>
+          <VerdictBadge verdict={verdict} lang={lang} quiet />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * The rule × language grid of each output surface (FR-003). A cell's detail opens directly after
  * the table of its surface, so it sits next to the cell that opened it.
@@ -83,7 +117,6 @@ export function RuleLanguageGrid({
   selected,
   rules,
   samples,
-  variants,
   lang,
   sideHref,
 }: RuleLanguageGridProps) {
@@ -98,7 +131,8 @@ export function RuleLanguageGrid({
     }
   };
   return (
-    <div>
+    <div className={styles.grids}>
+      <Legend lang={lang} />
       {grids.map((grid) => (
         <Fragment key={grid.surface}>
           <SurfaceTable
@@ -114,7 +148,6 @@ export function RuleLanguageGrid({
               cell={selected}
               rules={rules}
               samples={samples}
-              variants={variants}
               lang={lang}
               onClose={close}
               sideHref={sideHref}

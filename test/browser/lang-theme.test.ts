@@ -26,7 +26,6 @@ const REGION_KEYS = [
   'side.heading',
   'metrics.heading',
   'scope.heading',
-  'scope.reproduction.heading',
 ] as const;
 
 const CATALOGS = { en, ko } as const;
@@ -148,10 +147,18 @@ function badgeColours(page: Page, label: string, verdict: string): Promise<Colou
   return cellButtons(page, SURFACE_CAPTION)
     .filter({ hasText: label })
     .getByText(verdict, { exact: true })
-    .evaluate((badge) => ({
-      color: getComputedStyle(badge).color,
-      background: getComputedStyle(badge).backgroundColor,
-    }));
+    .evaluate((word) => {
+      // A held cell shows only its shape and keeps the word for assistive technology, so the
+      // colours on screen are those of the badge that holds the word.
+      const badge = word.getBoundingClientRect().width <= 1 ? word.parentElement : word;
+      if (badge === null) {
+        throw new Error('the verdict word has no badge');
+      }
+      return {
+        color: getComputedStyle(badge).color,
+        background: getComputedStyle(badge).backgroundColor,
+      };
+    });
 }
 
 test.describe('002 language and theme', () => {

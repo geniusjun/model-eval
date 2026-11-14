@@ -1,0 +1,56 @@
+.chart {
+  display: block;
+  height: 1.25rem;
+  overflow: visible;
+  width: 100%;
+}
+
+.zero {
+  stroke: var(--color-text-faint);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.margin {
+  stroke: var(--color-text-faint);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.interval {
+  fill: var(--color-chart-interval);
+}
+
+.neutral {
+  fill: var(--color-chart-interval);
+}
+
+.regressed {
+  fill: var(--color-regressed);
+}
+
+.improved {
+  fill: var(--color-improved);
+}
+
+/* Outside the gate: an outline only, so it reads behind the cells that can block. */
+.outside {
+  fill: var(--color-background);
+  stroke: var(--color-text-faint);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The estimate keeps a ring of the page colour, so it shows on any interval colour. */
+.halo {
+  stroke: var(--color-background);
+  stroke-width: 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.point {
+  stroke: var(--color-text);
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}

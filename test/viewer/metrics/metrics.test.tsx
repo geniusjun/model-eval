@@ -18,6 +18,8 @@ import { loadComparison } from '../fixtures.js';
 const messages = pageMessages('en');
 const text: Messages['text'] = (key, params) => messages.text(key, params);
 const ROLES = ['baseline', 'candidate'] as const;
+/** How the page names each variant. */
+const ROLE_NAMES = { baseline: 'Baseline', candidate: 'Candidate' } as const;
 const TOKEN_FIELDS = ['input', 'cachedInput', 'cacheWrite', 'output', 'reasoning'] as const;
 const FINISH_REASONS = ['stop', 'length', 'content_filter', 'other'] as const;
 
@@ -37,10 +39,6 @@ function comparisonWithAllFields(): Comparison {
     { model: 'model-b-2026-11-01', trials: 10 },
   ];
   return comparison;
-}
-
-function variantIds(comparison: Comparison) {
-  return { baseline: comparison.baseline.variant.id, candidate: comparison.candidate.variant.id };
 }
 
 function latencyOf(comparison: Comparison) {
@@ -75,20 +73,16 @@ function rowsOf(table: HTMLElement): string[][] {
 describe('002 MetricsTable', () => {
   it('002 FR-006 heads its columns with both variants', () => {
     const comparison = loadComparison('block');
-    render(<MetricsTable lang="en" ops={comparison.ops} variantIds={variantIds(comparison)} />);
+    render(<MetricsTable lang="en" ops={comparison.ops} />);
     const headers = within(metricsTable())
       .getAllByRole('columnheader')
       .map((header) => header.textContent);
-    expect(headers).toEqual([
-      text('metrics.column.metric'),
-      'Baseline (current)',
-      'Candidate (next)',
-    ]);
+    expect(headers).toEqual([text('metrics.column.metric'), 'Baseline', 'Candidate']);
   });
 
   it('002 FR-006 shows the eight rates per variant with their counts and intervals', () => {
     const comparison = loadComparison('block');
-    render(<MetricsTable lang="en" ops={comparison.ops} variantIds={variantIds(comparison)} />);
+    render(<MetricsTable lang="en" ops={comparison.ops} />);
     const table = metricsTable();
     for (const name of opsRateNames) {
       const cells = rowCells(table, text(`metrics.rate.${name}`));
@@ -108,7 +102,7 @@ describe('002 MetricsTable', () => {
 
   it('002 FR-006 shows systematic failures, abandoned trials and finish reasons per variant', () => {
     const comparison = comparisonWithAllFields();
-    render(<MetricsTable lang="en" ops={comparison.ops} variantIds={variantIds(comparison)} />);
+    render(<MetricsTable lang="en" ops={comparison.ops} />);
     const table = metricsTable();
     const { baseline, candidate } = comparison.ops;
     expect(rowCells(table, text('metrics.systematic.trials'))).toEqual([
@@ -131,7 +125,7 @@ describe('002 MetricsTable', () => {
 
   it('002 FR-006 shows p50, p95, the five token means and cost per trial with null as a dash', () => {
     const comparison = comparisonWithAllFields();
-    render(<MetricsTable lang="en" ops={comparison.ops} variantIds={variantIds(comparison)} />);
+    render(<MetricsTable lang="en" ops={comparison.ops} />);
     const table = metricsTable();
     const { baseline, candidate } = comparison.ops;
     expect(rowCells(table, text('metrics.latencyP50'))).toEqual([
@@ -159,33 +153,31 @@ describe('002 MetricsTable', () => {
 
   it('002 FR-006 lists top messages with their error kind and count, as text', () => {
     const comparison = comparisonWithAllFields();
-    const { container } = render(
-      <MetricsTable lang="en" ops={comparison.ops} variantIds={variantIds(comparison)} />,
-    );
+    const { container } = render(<MetricsTable lang="en" ops={comparison.ops} />);
     const table = screen.getByRole('table', { name: text('metrics.topMessages') });
     expect(rowsOf(table)).toEqual([
-      ['current', 'permanent', '2', '<b>refused</b> $&'],
-      ['next', 'transient', '10', '429 rate limited `retry`'],
+      ['Baseline', 'permanent', '2', '<b>refused</b> $&'],
+      ['Candidate', 'transient', '10', '429 rate limited `retry`'],
     ]);
     expect(container.querySelector('b')).toBeNull();
   });
 
   it('002 FR-006 lists side-call failures per kind and response models with their trials', () => {
     const comparison = comparisonWithAllFields();
-    render(<MetricsTable lang="en" ops={comparison.ops} variantIds={variantIds(comparison)} />);
+    render(<MetricsTable lang="en" ops={comparison.ops} />);
     const sideCalls = screen.getByRole('table', { name: text('metrics.sideCallFailures') });
-    expect(rowsOf(sideCalls)).toEqual([['current', 'timeout', '3']]);
+    expect(rowsOf(sideCalls)).toEqual([['Baseline', 'timeout', '3']]);
     const models = screen.getByRole('table', { name: text('metrics.responseModels') });
     expect(rowsOf(models)).toEqual([
-      ['current', 'model-a-2026-01-01', '300'],
-      ['next', 'model-b-2026-10-01', '290'],
-      ['next', 'model-b-2026-11-01', '10'],
+      ['Baseline', 'model-a-2026-01-01', '300'],
+      ['Candidate', 'model-b-2026-10-01', '290'],
+      ['Candidate', 'model-b-2026-11-01', '10'],
     ]);
   });
 
   it('002 FR-006 says so when neither variant has a list entry', () => {
     const comparison = loadComparison('block');
-    render(<MetricsTable lang="en" ops={comparison.ops} variantIds={variantIds(comparison)} />);
+    render(<MetricsTable lang="en" ops={comparison.ops} />);
     expect(screen.queryByRole('table', { name: text('metrics.sideCallFailures') })).toBeNull();
     const heading = screen.getByRole('heading', { name: text('metrics.sideCallFailures') });
     expect(heading.nextElementSibling?.textContent).toBe(text('metrics.none'));
@@ -227,15 +219,9 @@ function chartWidth(chart: SVGSVGElement): number {
 describe('002 LatencyChart', () => {
   it('002 FR-006 is an SVG image per variant whose title holds p50 and p95', () => {
     const comparison = loadComparison('block');
-    render(
-      <LatencyChart
-        lang="en"
-        latency={latencyOf(comparison)}
-        variantIds={variantIds(comparison)}
-      />,
-    );
+    render(<LatencyChart lang="en" latency={latencyOf(comparison)} />);
     for (const role of ROLES) {
-      const chart = chartOf(comparison[role].variant.id);
+      const chart = chartOf(ROLE_NAMES[role]);
       const title = chart.querySelector('title')?.textContent;
       const { p50, p95 } = comparison.ops[role].latencyMs;
       expect(chart.tagName.toLowerCase()).toBe('svg');
@@ -246,21 +232,15 @@ describe('002 LatencyChart', () => {
 
   it('002 FR-006 draws one mark per bin of the values for each variant on one shared scale', () => {
     const comparison = latencyComparison([0, 0, 1000], [1000, 2000]);
-    render(
-      <LatencyChart
-        lang="en"
-        latency={latencyOf(comparison)}
-        variantIds={variantIds(comparison)}
-      />,
-    );
-    const baseline = marksOf(chartOf('current'));
-    const candidate = marksOf(chartOf('next'));
+    render(<LatencyChart lang="en" latency={latencyOf(comparison)} />);
+    const baseline = marksOf(chartOf('Baseline'));
+    const candidate = marksOf(chartOf('Candidate'));
     expect(baseline).toHaveLength(2);
     expect(candidate).toHaveLength(2);
     const [zero, baselineMiddle] = baseline;
     const [candidateMiddle, top] = candidate;
     // 20 equal bins from 0 to 2000 ms: 0 ms in bin 0, 1000 ms in bin 10, 2000 ms in bin 19.
-    const binWidth = chartWidth(chartOf('next')) / LATENCY_BINS;
+    const binWidth = chartWidth(chartOf('Candidate')) / LATENCY_BINS;
     for (const mark of [...baseline, ...candidate]) {
       expect(mark.width).toBeCloseTo(binWidth);
     }
@@ -274,30 +254,46 @@ describe('002 LatencyChart', () => {
     expect(top?.height).toBeCloseTo(candidateMiddle?.height ?? 0);
   });
 
+  it('002 FR-006 starts the shared scale at the fastest latency of both and writes both ends', () => {
+    const comparison = latencyComparison([1000, 1000, 1500], [2000]);
+    render(<LatencyChart lang="en" latency={latencyOf(comparison)} />);
+    // 20 equal bins from 1000 to 2000 ms: 1000 ms in bin 0, 1500 ms in bin 10, 2000 ms in bin 19.
+    const binWidth = chartWidth(chartOf('Candidate')) / LATENCY_BINS;
+    expect(marksOf(chartOf('Baseline')).map((mark) => mark.x)).toEqual([0, 10 * binWidth]);
+    expect(marksOf(chartOf('Candidate')).map((mark) => mark.x)).toEqual([19 * binWidth]);
+    expect(
+      screen.getByText(text('metrics.latency.scale', { min: seconds(1000), max: seconds(2000) })),
+    ).toBeTruthy();
+  });
+
+  it('002 FR-006 says so in one line when p50 and p95 are the same for both and keeps the chart one click away', () => {
+    const comparison = latencyComparison([500, 800], [500, 800]);
+    comparison.ops.baseline.latencyMs.p95 = 800;
+    comparison.ops.candidate.latencyMs.p95 = 800;
+    const { container } = render(<LatencyChart lang="en" latency={latencyOf(comparison)} />);
+    expect(
+      screen.getByText(text('metrics.latency.same', { p50: seconds(500), p95: seconds(800) })),
+    ).toBeTruthy();
+    const details = container.querySelector('details');
+    expect(details?.open).toBe(false);
+    expect(details?.querySelector('summary')?.textContent).toBe(text('metrics.latency.show'));
+    expect(details?.querySelectorAll('svg[role="img"]')).toHaveLength(2);
+  });
+
   it('002 FR-006 draws one mark for values that share a bin', () => {
     const comparison = latencyComparison([1500, 1500, 1500], [3000]);
-    render(
-      <LatencyChart
-        lang="en"
-        latency={latencyOf(comparison)}
-        variantIds={variantIds(comparison)}
-      />,
-    );
-    expect(marksOf(chartOf('current'))).toHaveLength(1);
-    expect(marksOf(chartOf('next'))).toHaveLength(1);
+    render(<LatencyChart lang="en" latency={latencyOf(comparison)} />);
+    expect(marksOf(chartOf('Baseline'))).toHaveLength(1);
+    expect(marksOf(chartOf('Candidate'))).toHaveLength(1);
   });
 
   it('002 FR-006 draws nothing for a variant without values and says no latency was measured', () => {
     const comparison = latencyComparison([800, 1200], []);
-    render(
-      <LatencyChart
-        lang="en"
-        latency={latencyOf(comparison)}
-        variantIds={variantIds(comparison)}
-      />,
-    );
-    expect(marksOf(chartOf('current'))).toHaveLength(2);
+    render(<LatencyChart lang="en" latency={latencyOf(comparison)} />);
+    expect(marksOf(chartOf('Baseline'))).toHaveLength(2);
     expect(screen.getAllByRole('img')).toHaveLength(1);
-    expect(screen.getByText(text('metrics.latency.notMeasured', { variant: 'next' }))).toBeTruthy();
+    expect(
+      screen.getByText(text('metrics.latency.notMeasured', { variant: 'Candidate' })),
+    ).toBeTruthy();
   });
 });

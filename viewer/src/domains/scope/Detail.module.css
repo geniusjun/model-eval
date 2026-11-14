@@ -1,13 +1,19 @@
+/* Terms and values as quiet rows: a muted term, the value in body weight beside it. */
 .list {
-  display: grid;
-  gap: var(--space-2);
   margin: 0 0 var(--space-6);
 }
 
 .detail {
+  border-bottom: 1px solid var(--color-border);
   display: grid;
+  font-size: var(--font-size-small);
   gap: var(--space-1) var(--space-4);
-  grid-template-columns: minmax(10rem, 16rem) 1fr;
+  grid-template-columns: minmax(7rem, min(32%, 18rem)) minmax(0, 1fr);
+  padding: var(--space-2) 0;
+}
+
+.detail:first-child {
+  padding-top: 0;
 }
 
 .term {
@@ -20,8 +26,8 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 40rem) {
+@media (max-width: 30rem) {
   .detail {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
