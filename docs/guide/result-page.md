@@ -17,8 +17,8 @@ works offline and as a file sent on its own.
         └── report.md
 ```
 
-- `report.html` shows everything `report.md` shows, with each cell's detail one click away and the
-  answers of both models side by side.
+- `report.html` shows everything `report.md` shows but its reproduction details, with each
+  cell's detail one click away and the answers of both models side by side.
 - `index.html` lists every comparison in the output directory, newest first, and links to each
   page by relative path. Move or copy the output directory as a whole to keep the links working.
 - `model-eval report <comparisonId>` writes `report.md`, `report.html` and `index.html` again from
@@ -28,34 +28,68 @@ works offline and as a file sent on its own.
 
 ## What it shows
 
+A bar at the top keeps the title, the gate result and the Language menu in view while you
+scroll, with a button for each region below. A button moves to its region; the counts beside
+Cells and Metrics are the cells that block the gate and the warnings. On a narrow screen the bar
+stays at the top of the page instead of following you.
+
+The page calls the two variants the baseline and the candidate; the title says which is which.
+
 From top to bottom:
 
 1. Withheld banner: only when a compared run did not finish. The gate result is `undecided`, and
    the banner says which run stopped and why.
-2. Decision summary: the gate result with its reasons, then the worse, better and undecided
-   cells, operational changes and the judged scope.
+2. Decision summary, in the order you would ask:
+   - The gate result and one sentence that says why. The gate's reasons, blocking cells and
+     counts open from the line under it.
+   - Changed cells: a chart with a row per worse, better and undecided cell and per gated cell
+     that held. Each row shows the difference in compliance with its interval against the cell's
+     margin, both rates with their passes of trials, and what a new run needs when the data
+     cannot tell yet. Rows that block the gate say so; a cell outside the gate is an outline.
+     Select a cell's name to open its detail.
+   - Failing answers of the candidate: up to two answers of the largest drop, with the text that
+     broke the rule highlighted and a link to the same case side by side.
+   - Cost, speed and errors, which are not part of the verdict: cost per 1,000 trials, latency
+     and error rates of both variants, with the change as a ratio or a difference in points.
+     ▲ marks a rise, ● a fall, and ■ a change past its warning level.
+   - The judged scope on one line: judged and review rules, cases, languages, repeats and
+     targets.
 3. Cells: one table per output surface, a row per rule and a column per language. Each cell
-   states its verdict in words as well as colour. Select a cell to open its detail: both
-   compliance rates with an interval chart, the difference and its interval, the failure-rate
-   ratio, the rate the service masked, failing examples (raw and shipped), the anchored prompt
-   sentence and the rule's origin. Below the tables: rates pooled across languages, for reference
-   only, and the cells whose baseline compliance is below `report.lowBaseline`.
+   states its verdict in words and shape: ▲ regressed, ● better, = held, ◐ inconclusive, a
+   dotted circle for too few samples and a slashed circle for not applicable. Only regressed
+   cells are coloured, so the drops stand out, and a held cell shows = without the word. Select a cell to open its detail: both compliance
+   rates with an interval chart, the difference and its interval, the failure-rate ratio, the
+   rate fixed before shipping, failing examples (raw and shipped), the anchored prompt sentence
+   and the rule's origin. Below the tables: rates pooled across languages, for reference only,
+   and the cells whose baseline compliance is below `report.lowBaseline`.
 4. Side by side: for each `review` rule and each rule with failing examples, the baseline and
-   candidate answers to the same case and repeat. Buttons move to the previous or next case and
-   repeat.
-5. Operational metrics and warnings, per variant: the eight rates with counts and intervals,
+   candidate answers to the same case and repeat. It opens on the first rule with a regressed
+   cell; a failing answer says so and highlights its evidence. Buttons move to the previous or
+   next case and repeat.
+5. Operational metrics and warnings, per variant, none of which affect the verdict or the exit
+   code: the warnings (a cost or latency warning as both values, the ratio and the warning
+   level), the latency distribution from the fastest to the slowest trial (one line when the
+   variants do not differ), then under "All metrics" the eight rates with counts and intervals,
    systematic failures, discard reasons, the most common error messages, side-call failures,
-   abandoned trials, finish reasons, the latency distribution with p50 and p95, tokens and cost
-   per trial, response models and the post-processing figures. Then the comparison's warnings.
+   abandoned trials, finish reasons, latency p50 and p95, tokens and cost per trial, response
+   models and the post-processing figures.
 6. Judged scope: targets; judged, not judged, `review` and excluded rules; case coverage;
-   baseline completion per language; every rule with its anchors and origin.
-7. Reproduction: the comparison ID, both runs with their grade sets, variants and versions,
-   the statistics settings, the settings used and the commands that reproduce the comparison.
+   baseline completion per language; every rule with its anchors and origin. One sentence names
+   the lists that are empty.
+
+The page ends with the comparison ID and when it was written, in UTC. The runs, versions,
+statistics settings, settings used and commands that reproduce the comparison are in
+`report.md`.
+
+Supporting detail starts closed, so the first screen shows what decides: the gate's reasons,
+the pooled and low-baseline tables, all metrics, the post-processing figures and the rule list.
+Select a line with an arrow, or press Enter on it, to open it.
 
 [Reading the results](statistics.md) explains the verdicts, intervals and the gate.
 
-The cells and the side-by-side view work from the keyboard. Tab reaches every cell, Enter opens
-its detail and moves focus to it, Escape or Back closes it and returns focus to the cell.
+The page works from the keyboard. Tab reaches every cell, Enter opens its detail and moves focus
+to it, Escape or Back closes it and returns focus to the cell. Enter on a button of the top bar
+moves focus to the heading of that region.
 
 ## Links to one view
 
