@@ -2,7 +2,6 @@ import { type ChildProcessWithoutNullStreams, execFileSync, spawn } from 'node:c
 import { isIP } from 'node:net';
 import path from 'node:path';
 import process from 'node:process';
-import { createInterface } from 'node:readline';
 
 import type { z } from 'zod';
 
@@ -195,8 +194,21 @@ export class AdapterDriver {
 
   private constructor(private readonly child: ChildProcessWithoutNullStreams) {
     child.stderr.on('data', (chunk: Buffer) => this.exchange.stderr.push(chunk.toString('utf8')));
-    createInterface({ input: child.stdout }).on('line', (line) => {
-      this.receive(line);
+    // Messages end with LF. readline would also end a line at U+2028 and U+2029, which a JSON
+    // string may hold unescaped.
+    let buffered = '';
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      buffered += chunk;
+      for (let end = buffered.indexOf('\n'); end !== -1; end = buffered.indexOf('\n')) {
+        this.receive(buffered.slice(0, end).replace(/\r$/, ''));
+        buffered = buffered.slice(end + 1);
+      }
+    });
+    child.stdout.on('end', () => {
+      if (buffered !== '') {
+        this.receive(buffered);
+      }
     });
     // Writing to an adapter that has exited fails with EPIPE; the request is rejected below.
     child.stdin.on('error', () => undefined);

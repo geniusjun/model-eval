@@ -3055,6 +3055,1737 @@
         "answers": 2,
         "warnings": []
       }
+    },
+    {
+      "name": "Node: the SDK's stream helper, re-drawing on content.done before the end event was read, the re-draw cut by the time limit, without answers: cut last answer, timeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream helper, re-drawing on content.done before the end event was read, the re-draw cut by the time limit (leaving the read loop after the deadline), without answers: cut last answer, timeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream helper, re-drawing on content.done before the end event was read, the re-draw cut by the time limit (only stopping to wait), without answers: cut last answer, timeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream helper, re-drawing on content.done) with answers=2: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream helper, re-drawing on content.done) with the re-draw cut (leaving the read loop after the deadline) and answers=2: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream helper, re-drawing on content.done) with the re-draw cut (only stopping to wait) and answers=2: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream iterator, re-drawing on the event with the finish reason before the end event was read, the re-draw cut by the time limit, without answers: cut last answer, timeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream iterator, re-drawing on the event with the finish reason before the end event was read, the re-draw cut by the time limit (leaving the read loop after the deadline), without answers: cut last answer, timeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream iterator, re-drawing on the event with the finish reason before the end event was read, the re-draw cut by the time limit (only stopping to wait), without answers: cut last answer, timeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream iterator, re-drawing on the event with the finish reason) with answers=2: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream iterator, re-drawing on the event with the finish reason) with the re-draw cut (leaving the read loop after the deadline) and answers=2: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream iterator, re-drawing on the event with the finish reason) with the re-draw cut (only stopping to wait) and answers=2: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream iterator, re-drawing on the event with the finish reason before the end event was read, the re-draw cut by the time limit, without answers: cut last answer, timeout",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream iterator, re-drawing on the event with the finish reason before the end event was read, the re-draw cut by the time limit (leaving the read loop after the deadline), without answers: cut last answer, timeout",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream iterator, re-drawing on the event with the finish reason before the end event was read, the re-draw cut by the time limit (only stopping to wait), without answers: cut last answer, timeout",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-cut-last-answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream iterator, re-drawing on the event with the finish reason) with answers=2: normal",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "limitMs": 400,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream iterator, re-drawing on the event with the finish reason) with the re-draw cut (leaving the read loop after the deadline) and answers=2: normal",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the same (the SDK's stream iterator, re-drawing on the event with the finish reason) with the re-draw cut (only stopping to wait) and answers=2: normal",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "first",
+                "stream": true,
+                "cut": {
+                  "at": {
+                    "event": "finish"
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            },
+            {
+              "call": {
+                "name": "again",
+                "same": "first",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "first"
+              },
+              "final": {
+                "callText": "first"
+              },
+              "finishReason": "stop",
+              "answers": 2
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              400
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "First answer.",
+        "answers": 2,
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
     }
   ],
   "S-REGEN-04": [
@@ -4887,7 +6618,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -4986,7 +6724,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -5075,7 +6820,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -5175,7 +6927,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -5275,7 +7034,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -5369,7 +7135,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -5462,7 +7235,14 @@
       "name": "a memory extraction with another system streamed to the same model, still running at function end: Outcome row 5",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -5535,7 +7315,14 @@
       "name": "the same with reply_call excluding the memory extraction: normal",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": {
@@ -5619,7 +7406,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -5690,7 +7484,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -5757,7 +7558,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -5830,7 +7638,14 @@
       "name": "the same request as two streams, the first finished answer used, the late one cut: normal, answers 1",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -6647,7 +8462,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -6723,7 +8545,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -6798,7 +8627,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -6869,7 +8705,14 @@
       "name": "a modified non-stream resend after the cut (leaving the read loop after the deadline), reply_call true for both, the re-received answer refined, answers=1: normal",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -6946,7 +8789,14 @@
       "name": "a modified non-stream resend after the cut (only stopping to wait), reply_call true for both, the re-received answer refined, answers=1: normal",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -7023,7 +8873,14 @@
       "name": "the same (leaving the read loop after the deadline) without answers=1: normal, the helper counts the cut stream, answers 2",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -7099,7 +8956,14 @@
       "name": "the same (only stopping to wait) without answers=1: normal, the helper counts the cut stream, answers 2",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -7175,7 +9039,14 @@
       "name": "the same (leaving the read loop after the deadline) with answers=1 and without reply_call: timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7251,7 +9122,14 @@
       "name": "the same (only stopping to wait) with answers=1 and without reply_call: timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7329,7 +9207,14 @@
       "name": "a content cut, regenerated with a modified non-stream request and shipped, no reply_call, answers=2: normal, no Outcome row 5",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7380,9 +9265,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -7408,7 +9293,14 @@
       "name": "a non-stream same-model classification, the answer stream cut for content, answers=1 without kind: the cut last answer gives timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7465,9 +9357,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -7490,7 +9382,14 @@
       "name": "a same-system streaming classification, the answer stream cut for content, answers=1 without kind: the cut last answer gives timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7547,9 +9446,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -7576,7 +9475,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7672,7 +9578,14 @@
       "name": "after the classification, the answer stream cut by a first-token time limit, the same request resent and cut by the overall time limit (leaving the read loop after the deadline), what was received shipped with answers=1: timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7778,7 +9691,14 @@
       "name": "after the classification, the answer stream cut by a first-token time limit, the same request resent and cut by the overall time limit (only stopping to wait), what was received shipped with answers=1: timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7890,7 +9810,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -7970,7 +9897,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": {
@@ -8057,7 +9991,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -8144,7 +10085,14 @@
       ],
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": {
@@ -8234,7 +10182,14 @@
       "name": "the answer stream cut (leaving the read loop after the deadline) and the received text shipped, then a non-stream same-model memory summary, no reply_call: cut last answer, timeout with W6",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -8315,7 +10270,14 @@
       "name": "the answer stream cut (only stopping to wait) and the received text shipped, then a non-stream same-model memory summary, no reply_call: cut last answer, timeout with W6",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -8396,7 +10358,14 @@
       "name": "the same (leaving the read loop after the deadline) with reply_call selecting the answer call: the failure check gives timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": {
@@ -8484,7 +10453,14 @@
       "name": "the same (only stopping to wait) with reply_call selecting the answer call: the failure check gives timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": {
@@ -8572,7 +10548,14 @@
       "name": "the same (leaving the read loop after the deadline), the memory summary gets 429 after the SDK's retries and is swallowed, no reply_call: the latest-ended failure, transient with W5",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -8660,7 +10643,14 @@
       "name": "the same (only stopping to wait), the memory summary gets 429 after the SDK's retries and is swallowed, no reply_call: the latest-ended failure, transient with W5",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -8748,7 +10738,14 @@
       "name": "the same (leaving the read loop after the deadline) with reply_call excluding the memory summary: timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": {
@@ -8843,7 +10840,14 @@
       "name": "the same (only stopping to wait) with reply_call excluding the memory summary: timeout",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": {
@@ -8940,7 +10944,14 @@
       "name": "the late original not cut, a modified short request streamed alongside, the original finishes first and the other is cut, reply_call true for both, answers=1: normal",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -9023,7 +11034,14 @@
       "name": "the same without answers: cut last answer, timeout with W6",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "target": {
         "replyCall": true
@@ -9107,7 +11125,14 @@
       "name": "the same without reply_call: cut last answer, timeout with W6",
       "sdks": [
         "openai-2",
-        "anthropic-2"
+        "anthropic-2",
+        "openai-5-first",
+        "openai-5",
+        "openai-6",
+        "openai-7",
+        "anthropic-sdk-0-first",
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -11949,7 +13974,7 @@
               0,
               0,
               400,
-              300
+              5000
             ]
           }
         },
@@ -11967,7 +13992,7 @@
               0,
               0,
               0,
-              600
+              1500
             ]
           }
         }
@@ -12120,7 +14145,7 @@
               0,
               0,
               400,
-              300
+              5000
             ]
           }
         },
@@ -12141,7 +14166,7 @@
               0,
               0,
               0,
-              600
+              1500
             ]
           }
         }
@@ -12297,7 +14322,7 @@
               0,
               0,
               400,
-              300
+              5000
             ]
           }
         },
@@ -12318,7 +14343,7 @@
               0,
               0,
               0,
-              600
+              1500
             ]
           }
         }

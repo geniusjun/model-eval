@@ -13,6 +13,7 @@ import math
 import os
 import queue
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -300,6 +301,15 @@ SDK_OF_API = {"chat-completions": "openai", "responses": "openai", "messages": "
 PIN = re.compile(r"^(openai|anthropic)(?:\[[^\]]*\])?==(\S+)", re.MULTILINE)
 
 
+def node_sdk_aliases() -> frozenset[str]:
+    """The Node SDK aliases of package.json, which a case's `sdks` may name beside requirements
+    files; the Python harness leaves them out."""
+    with open(REPO_DIR / "package.json", encoding="utf-8") as file:
+        dev = json.load(file).get("devDependencies", {})
+    prefixes = ("npm:openai@", "npm:@anthropic-ai/sdk@")
+    return frozenset(name for name, spec in dev.items() if str(spec).startswith(prefixes))
+
+
 def requirements_sdks(name: str) -> dict[str, str]:
     """The SDKs a file of tests/requirements/ pins, and their versions."""
     path = REQUIREMENTS_DIR / f"{name}.txt"
@@ -329,12 +339,14 @@ BOTH_TRANSPORTS = "both-transports"
 
 
 def runs_for(data: JsonObject, api: str, requirements: str | None) -> bool:
-    """A case's `sdks` holds requirements files; one counts for an API only when it pins the SDK
-    that serves that API, and the case runs when this environment's file is among those. A case
-    without `sdks` runs in every environment but `both-transports`."""
+    """A case's `sdks` holds requirements files, and Node SDK aliases this harness leaves out; a
+    file counts for an API only when it pins the SDK that serves that API, and the case runs when
+    this environment's file is among those. A case without `sdks` runs in every environment but
+    `both-transports`."""
     if "sdks" not in data:
         return requirements != BOTH_TRANSPORTS
-    serving = {name for name in data["sdks"] if SDK_OF_API[api] in requirements_sdks(name)}
+    files = [name for name in data["sdks"] if name not in node_sdk_aliases()]
+    serving = {name for name in files if SDK_OF_API[api] in requirements_sdks(name)}
     return requirements in serving
 
 
@@ -435,11 +447,46 @@ def trial_params(case: ScenarioCase) -> JsonObject:
     return {**defaults, **case.data.get("params", {})}
 
 
+# Where a fixture writes a port that refuses connections: a loopback port the harness bound and
+# closed just before the run. A fixed port such as 1 is not usable, because Node's `fetch`
+# refuses the fetch standard's bad ports before connecting.
+CLOSED_PORT = "{closedPort}"
+
+
+def closed_port() -> int:
+    """A loopback port nothing listens on: bound by this process and closed again."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+
+
+def with_closed_port(case: ScenarioCase) -> ScenarioCase:
+    """The case with each `{closedPort}` replaced by a port that refuses connections."""
+    text = json.dumps(case.data)
+    if CLOSED_PORT not in text:
+        return case
+    data = json.loads(text.replace(CLOSED_PORT, str(closed_port())))
+    return replace(case, data=data)
+
+
+def sdk_log_env(case: ScenarioCase) -> dict[str, str]:
+    """The SDKs' info logging, for a cancel that waits for a line the SDK writes."""
+    if "afterStderr" in case.data.get("cancel", {}):
+        return {"OPENAI_LOG": "info", "ANTHROPIC_LOG": "info"}
+    return {}
+
+
 def run_case(case: ScenarioCase, mock: MockApi, service: str = "scenario") -> Outcome:
     """Loads the case's script, runs its request in a new adapter, and shuts the adapter down."""
+    case = with_closed_port(case)
     mock.load(case.data.get("script", []))
     base_url = mock.tls_url(case.data["tls"]) if "tls" in case.data else mock.url
-    env = {**api_env(base_url), **scenario_env(case), MOCK_URL_VARIABLE: mock.url}
+    env = {
+        **api_env(base_url),
+        **scenario_env(case),
+        MOCK_URL_VARIABLE: mock.url,
+        **sdk_log_env(case),
+    }
     if "tls" in case.data:
         env["SSL_CERT_FILE"] = str(ROOT_CA)
     adapter = AdapterProcess(service, env)
@@ -484,16 +531,44 @@ def send_trials(case: ScenarioCase, adapter: AdapterProcess, mock: MockApi) -> l
         return [adapter.request(request, trial) for trial in params]
     request_ids = [adapter.send(request, trial) for trial in params]
     if "cancel" in case.data:
-        wait_to_cancel(case.data["cancel"], mock)
+        cancel = case.data["cancel"]
+        wait_to_cancel(cancel, mock, adapter)
         adapter.notify("cancel", {"id": request_ids[0]})
+        if "respondWithinMs" in cancel:
+            first = wait_after_cancel(adapter, request_ids[0], int(cancel["respondWithinMs"]))
+            return [first, *(adapter.wait(request_id) for request_id in request_ids[1:])]
     return [adapter.wait(request_id) for request_id in request_ids]
 
 
-def wait_to_cancel(cancel: JsonObject, mock: MockApi) -> None:
+def wait_after_cancel(adapter: AdapterProcess, request_id: int, within_ms: int) -> JsonObject:
+    """The cancelled trial's response, which must arrive within `within_ms` of the cancel."""
+    try:
+        return adapter.wait(request_id, timeout=within_ms / 1000)
+    except AssertionError as error:
+        raise AssertionError(f"no response within {within_ms} ms of the cancel: {error}") from None
+
+
+def wait_to_cancel(
+    cancel: JsonObject, mock: MockApi, adapter: AdapterProcess | None = None
+) -> None:
     if "afterMs" in cancel:
         time.sleep(cancel["afterMs"] / 1000)
-        return
-    wait_for_requests(int(cancel["afterRequests"]), mock)
+    elif "afterStderr" in cancel:
+        if adapter is None:
+            raise ValueError("`afterStderr` needs the adapter whose stderr is read")
+        wait_for_stderr(str(cancel["afterStderr"]), adapter)
+    else:
+        wait_for_requests(int(cancel["afterRequests"]), mock)
+
+
+def wait_for_stderr(text: str, adapter: AdapterProcess, timeout: float = DEFAULT_TIMEOUT_S) -> None:
+    """Waits until the adapter's stderr holds the text, compared without case."""
+    wanted = text.lower()
+    deadline = time.monotonic() + timeout
+    while wanted not in "".join(adapter.exchange.stderr).lower():
+        if time.monotonic() > deadline:
+            raise AssertionError(f"the adapter never wrote {text!r} to stderr")
+        time.sleep(0.01)
 
 
 def wait_for_requests(count: int, mock: MockApi, timeout: float = DEFAULT_TIMEOUT_S) -> None:

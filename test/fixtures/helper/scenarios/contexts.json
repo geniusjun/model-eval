@@ -1385,6 +1385,7 @@
   "S-CTX-15": [
     {
       "name": "fut.result(timeout=) inside with ThreadPoolExecutor() at concurrency 1, the late response awaited when the block exits, wrapped: the late answer is the first answer, a fallback (K17)",
+      "languages": ["python"],
       "backends": [
         "sync"
       ],
@@ -1428,6 +1429,7 @@
     },
     {
       "name": "the same, kind timeout thrown: timeout with one more call",
+      "languages": ["python"],
       "backends": [
         "sync"
       ],
@@ -1480,6 +1482,7 @@
   "S-CTX-16": [
     {
       "name": "the same resending the same request and shipping its answer, Result(raw=<re-received answer>, answers=1): normal, answers 1",
+      "languages": ["python"],
       "backends": [
         "sync"
       ],
@@ -1547,6 +1550,7 @@
     },
     {
       "name": "without it the late response counts too: answers 2 (K17)",
+      "languages": ["python"],
       "backends": [
         "sync"
       ],
@@ -1603,6 +1607,7 @@
     },
     {
       "name": "a modified resend with reply_call true for both: normal, answers 1, the fingerprint differs from the render fingerprint (render-mismatch)",
+      "languages": ["python"],
       "backends": [
         "sync"
       ],
@@ -1677,6 +1682,7 @@
   "S-CTX-17": [
     {
       "name": "the resend ends in 429 after the SDK's retries and a fixed message is shipped; status=429 thrown: transient, and as the 429 overlaps the late response it is recovered, so one more call is added",
+      "languages": ["python"],
       "backends": [
         "sync"
       ],
@@ -1758,6 +1764,7 @@
     },
     {
       "name": "the same given as call=: A13",
+      "languages": ["python"],
       "backends": [
         "sync"
       ],
@@ -2345,6 +2352,7 @@
     },
     {
       "name": "the earlier failure a read time-out on a non-stream body, kind timeout thrown: it matches that call, transient (K6)",
+      "languages": ["python"],
       "backends": [
         "async",
         "aiohttp"
@@ -2404,6 +2412,67 @@
           }
         ]
       }
+    },
+    {
+      "name": "Node: the earlier failure a read time-out on a non-stream body (undici's bodyTimeout), which the Node SDK does not resend, so the service swallows it and throws kind timeout at once: it matches that call, transient (K6)",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "bodyTimeoutMs": 300,
+                "limitMs": 2500,
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "bodyChunks": {
+            "splitAt": [
+              10
+            ],
+            "chunkDelaysMs": [
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
     }
   ],
   "S-CTX-21": [
@@ -2706,7 +2775,7 @@
   ],
   "S-CTX-25": [
     {
-      "name": "a request from a thread without the context while only a render runs: the render-mode 400 and a normal render, no request sent",
+      "name": "a request from a thread without the context while only a render runs: the render-mode 400 and a normal render, no request sent; the request joins the render as its call",
       "target": {
         "render": true,
         "replyCall": {
@@ -2735,7 +2804,48 @@
             },
             {
               "role": "user",
-              "content": "{\"calls\":[],\"case\":{\"id\":\"case-1\",\"input\":{},\"lang\":\"en\",\"rendering\":true,\"repeat\":0,\"seed\":1},\"probes\":[{\"model\":\"model-c\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"}]}"
+              "content": "{\"calls\":[\"model-c\"],\"case\":{\"id\":\"case-1\",\"input\":{},\"lang\":\"en\",\"rendering\":true,\"repeat\":0,\"seed\":1},\"probes\":[{\"model\":\"model-c\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"}]}"
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the render target request itself from a thread without the context while only a render runs: the render-mode 400 and a normal render of that request, not A11, no request sent",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "thread": {
+                "system": "Answer the user.",
+                "maxTokens": 64
+              },
+              "context": "none"
+            }
+          ],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
             }
           ],
           "maxOutputTokens": 64

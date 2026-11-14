@@ -5,6 +5,7 @@ emits equals its sentence in test/fixtures/helper/messages.json with the placeho
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -92,14 +93,22 @@ def test_003_FR_020_l1_equals_its_sentence(mock_api: MockApi, tmp_path: Path) ->
     service = tmp_path / "service"
     service.mkdir()
     (service / "secret.txt").write_text("secret\n")
+    # The test's git and the helper's run without the user's global and system configuration
+    # (commit.gpgsign, core.hooksPath and the like), and without variables that point git at
+    # another repository.
+    isolated = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+    git_env = {
+        **{name: value for name, value in os.environ.items() if not name.startswith("GIT_")},
+        **isolated,
+    }
     git = ["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid"]
-    subprocess.run([*git, "init", "-q"], cwd=service, check=True)
-    subprocess.run([*git, "add", "-A"], cwd=service, check=True)
-    subprocess.run([*git, "commit", "-q", "-m", "service"], cwd=service, check=True)
+    git += ["-c", "init.defaultBranch=main", "-c", "commit.gpgsign=false"]
+    for arguments in (["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", "service"]):
+        subprocess.run([*git, *arguments], cwd=service, env=git_env, check=True)
     (service / "secret.txt").chmod(0)
     case = case_of({"service": {"behaviour": "reply"}})
     try:
-        env = {"MODEL_EVAL_SERVICE_DIR": str(service)}
+        env = {"MODEL_EVAL_SERVICE_DIR": str(service), **isolated}
         with started(case, mock_api, service="version_service", extra_env=env) as adapter:
             initialize(adapter, case)
     finally:

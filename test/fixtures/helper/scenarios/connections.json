@@ -146,6 +146,992 @@
         ],
         "requests": []
       }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code UNABLE_TO_GET_ISSUER_CERT in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UNABLE_TO_GET_ISSUER_CERT",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code UNABLE_TO_GET_CRL in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UNABLE_TO_GET_CRL",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code UNABLE_TO_DECRYPT_CERT_SIGNATURE in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UNABLE_TO_DECRYPT_CERT_SIGNATURE",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code UNABLE_TO_DECRYPT_CRL_SIGNATURE in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UNABLE_TO_DECRYPT_CRL_SIGNATURE",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CERT_SIGNATURE_FAILURE in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CERT_SIGNATURE_FAILURE",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CRL_SIGNATURE_FAILURE in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CRL_SIGNATURE_FAILURE",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CERT_NOT_YET_VALID in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CERT_NOT_YET_VALID",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CERT_HAS_EXPIRED in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CERT_HAS_EXPIRED",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CRL_NOT_YET_VALID in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CRL_NOT_YET_VALID",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CRL_HAS_EXPIRED in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CRL_HAS_EXPIRED",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code ERROR_IN_CERT_NOT_BEFORE_FIELD in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "ERROR_IN_CERT_NOT_BEFORE_FIELD",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code ERROR_IN_CERT_NOT_AFTER_FIELD in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "ERROR_IN_CERT_NOT_AFTER_FIELD",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code ERROR_IN_CRL_LAST_UPDATE_FIELD in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "ERROR_IN_CRL_LAST_UPDATE_FIELD",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code ERROR_IN_CRL_NEXT_UPDATE_FIELD in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "ERROR_IN_CRL_NEXT_UPDATE_FIELD",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code OUT_OF_MEM in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "OUT_OF_MEM",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code DEPTH_ZERO_SELF_SIGNED_CERT in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "DEPTH_ZERO_SELF_SIGNED_CERT",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code SELF_SIGNED_CERT_IN_CHAIN in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "SELF_SIGNED_CERT_IN_CHAIN",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code UNABLE_TO_GET_ISSUER_CERT_LOCALLY in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code UNABLE_TO_VERIFY_LEAF_SIGNATURE in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CERT_CHAIN_TOO_LONG in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CERT_CHAIN_TOO_LONG",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CERT_REVOKED in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CERT_REVOKED",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code INVALID_CA in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "INVALID_CA",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code PATH_LENGTH_EXCEEDED in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "PATH_LENGTH_EXCEEDED",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code INVALID_PURPOSE in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "INVALID_PURPOSE",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CERT_UNTRUSTED in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CERT_UNTRUSTED",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code CERT_REJECTED in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "CERT_REJECTED",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code HOSTNAME_MISMATCH in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "HOSTNAME_MISMATCH",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: fetch rejected with the certificate code ERR_TLS_CERT_ALTNAME_INVALID in its cause chain: config, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "ERR_TLS_CERT_ALTNAME_INVALID",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config"
+          }
+        ]
+      }
     }
   ],
   "S-CONN-02": [
@@ -157,7 +1143,7 @@
           "steps": [
             {
               "call": {
-                "baseUrl": "http://127.0.0.1:1"
+                "baseUrl": "http://127.0.0.1:{closedPort}"
               }
             }
           ]
@@ -210,6 +1196,7 @@
     },
     {
       "name": "connection-pool wait time-out while another call holds the only connection: transient, failed",
+      "languages": ["python"],
       "backends": [
         "async"
       ],
@@ -368,6 +1355,7 @@
     },
     {
       "name": "read time-out while receiving a non-stream body: transient",
+      "languages": ["python"],
       "apis": [
         "chat-completions"
       ],
@@ -413,11 +1401,63 @@
           }
         ]
       }
+    },
+    {
+      "name": "Node: read time-out while receiving a non-stream body: transient, the body read limited by undici's bodyTimeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "bodyTimeoutMs": 500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "{\"id\":\"chatcmpl-slow\",\"object\":\"chat.completion\","
+              },
+              {
+                "delayMs": 3000,
+                "text": "\"created\":0,\"model\":\"model-b\",\"choices\":[]}"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
     }
   ],
   "S-CONN-05": [
     {
       "name": "read time-out between stream events: timeout",
+      "languages": ["python"],
       "service": {
         "behaviour": "flow",
         "params": {
@@ -457,6 +1497,51 @@
           }
         ]
       }
+    },
+    {
+      "name": "Node: read time-out between stream events: timeout, the body read limited by undici's bodyTimeout",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "bodyTimeoutMs": 500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "timeout"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
     }
   ],
   "S-CONN-06": [
@@ -584,13 +1669,14 @@
   "S-CONN-07": [
     {
       "name": "connection refused raised while the service handles another HTTPS request's certificate error: transient",
+      "languages": ["python"],
       "service": {
         "behaviour": "flow",
         "params": {
           "steps": [
             {
               "afterCertificateError": {
-                "baseUrl": "http://127.0.0.1:1"
+                "baseUrl": "http://127.0.0.1:{closedPort}"
               }
             }
           ]
@@ -613,6 +1699,7 @@
     },
     {
       "name": "a drop before the headers raised while the service handles another HTTPS request's certificate error: transient",
+      "languages": ["python"],
       "service": {
         "behaviour": "flow",
         "params": {
@@ -782,6 +1869,49 @@
             "branch": "answer"
           }
         ]
+      }
+    },
+    {
+      "name": "Node: break from the stream helper's for await with events sent one by one: the SDK cancels the awaited read, timeout",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "streamHelper": true,
+                "read": {
+                  "events": 2
+                }
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout"
       }
     }
   ],
@@ -1637,6 +2767,7 @@
   "S-CONN-19": [
     {
       "name": "other work closes the body during an awaited read (aclose()): a cancel, timeout",
+      "languages": ["python"],
       "backends": [
         "async",
         "aiohttp"
@@ -1682,6 +2813,242 @@
       }
     }
   ],
+  "S-CONN-20": [
+    {
+      "name": "UND_ERR_HEADERS_TIMEOUT before the response headers: timeout",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UND_ERR_HEADERS_TIMEOUT",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout"
+      }
+    },
+    {
+      "name": "UND_ERR_BODY_TIMEOUT in a stream: timeout",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UND_ERR_BODY_TIMEOUT",
+            "at": "body"
+          },
+          "call": {
+            "stream": true
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout"
+      }
+    },
+    {
+      "name": "UND_ERR_BODY_TIMEOUT in a non-stream body: transient",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UND_ERR_BODY_TIMEOUT",
+            "at": "body"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient"
+      }
+    },
+    {
+      "name": "UND_ERR_SOCKET in a non-stream body: transient",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UND_ERR_SOCKET",
+            "at": "body"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient"
+      }
+    },
+    {
+      "name": "UND_ERR_SOCKET before the response headers: transient",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UND_ERR_SOCKET",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient"
+      }
+    },
+    {
+      "name": "UND_ERR_CONNECT_TIMEOUT: never arrived, transient, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "UND_ERR_CONNECT_TIMEOUT",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ECONNREFUSED from connect: never arrived, transient, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "ECONNREFUSED",
+            "syscall": "connect",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ENOTFOUND from getaddrinfo: never arrived, transient, failed",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "fetch-failure",
+        "params": {
+          "failure": {
+            "code": "ENOTFOUND",
+            "syscall": "getaddrinfo",
+            "at": "request"
+          },
+          "call": {
+            "stream": false
+          }
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    }
+  ],
   "S-CONN-21": [
     {
       "name": "aiohttp backend, request never arrived: transient, failed",
@@ -1694,7 +3061,7 @@
           "steps": [
             {
               "call": {
-                "baseUrl": "http://127.0.0.1:1"
+                "baseUrl": "http://127.0.0.1:{closedPort}"
               }
             }
           ]
@@ -1785,6 +3152,109 @@
           }
         ]
       }
+    },
+    {
+      "name": "Node fetch, a non-stream request, request never arrived: transient, failed",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "baseUrl": "http://127.0.0.1:{closedPort}"
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node fetch, a non-stream request, drop before the response headers: transient, unanswered",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node fetch, a non-stream request, drop in the middle of a non-stream body: transient, unanswered",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there."
+          },
+          "drop": {
+            "chunks": 0,
+            "bytes": 20
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
     }
   ],
   "S-CONN-23": [
@@ -1896,6 +3366,7 @@
   "S-CONN-24": [
     {
       "name": "a header value the HTTP client refuses before connecting (a line break): a drop before headers, transient, unanswered (K37)",
+      "languages": ["python"],
       "service": {
         "behaviour": "flow",
         "params": {
@@ -1924,6 +3395,38 @@
             "errorKind": "transient"
           }
         ],
+        "requests": []
+      }
+    },
+    {
+      "name": "Node: the SDK's Headers.append throws a TypeError for a line break in a header value before fetch: nothing captured, Outcome row 2 (A1, raised form)",
+      "languages": [
+        "typescript"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "headers": {
+                  "x-note": "one\ntwo"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1-raised",
+          "placeholders": {
+            "exception": "TypeError: Headers.append: \"one\ntwo\" is an invalid header value."
+          }
+        },
+        "calls": null,
         "requests": []
       }
     }
@@ -1989,6 +3492,36 @@
       "languages": [
         "python"
       ]
+    },
+    {
+      "name": "Node: a base_url with neither scheme nor port (api.example.com/v1) makes the SDK throw before fetch: Outcome row 2 (A1, raised form)",
+      "languages": [
+        "typescript"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "baseUrl": "api.example.com/v1"
+              }
+            }
+          ]
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1-raised",
+          "placeholders": {
+            "exception": "TypeError: Invalid URL"
+          }
+        },
+        "calls": null,
+        "requests": []
+      }
     }
   ],
   "S-CONN-26": [
@@ -2000,7 +3533,7 @@
           "steps": [
             {
               "call": {
-                "baseUrl": "http://model-eval.invalid:1/v1"
+                "baseUrl": "http://model-eval.invalid/v1"
               }
             }
           ]

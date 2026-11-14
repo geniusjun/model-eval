@@ -863,6 +863,16 @@ def build_response(entry: JsonObject, api: str, request: JsonObject, rid: int) -
     return Response(int(entry.get("status", 200)), {}, chunks, False)
 
 
+UTF8_BOM = b"\xef\xbb\xbf"
+
+
+def add_bom(response: Response) -> None:
+    """Puts the UTF-8 byte order mark before the body (`bom`), before any compression, as a
+    server or proxy that writes one does."""
+    delay, first = response.chunks[0] if response.chunks else (0, b"")
+    response.chunks[0:1] = [(delay, UTF8_BOM + first)]
+
+
 def unscripted(api: str, message: str) -> Response:
     body = compact_json(error_body(api, {"type": "mock_script_error", "message": message}, 500))
     return Response(500, {}, [(0, body.encode("utf-8"))], False)
@@ -1072,6 +1082,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             response = build_response(entry, api, request, book.next_id())
+            if entry.get("bom"):
+                add_bom(response)
             served = compress(response, entry, self.headers.get("accept-encoding"))
         except ScriptError as error:
             book.publish(record)

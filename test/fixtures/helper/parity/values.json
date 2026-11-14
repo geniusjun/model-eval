@@ -628,6 +628,42 @@
         "nowMs": 2556144000000
       },
       {
+        "name": "retry-after past 2^53 - 1 ms is not read",
+        "headers": {
+          "retry-after": "99999999999999"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after just below 2^53 - 1 ms: 9007199254740.991 s is the double 9007199254740990 ms",
+        "headers": {
+          "retry-after": "9007199254740.991"
+        },
+        "retryAfterMs": 9007199254740990
+      },
+      {
+        "name": "retry-after-ms of 2^53 is not read",
+        "headers": {
+          "retry-after-ms": "9007199254740992"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after-ms of 2^53 is not read, so retry-after decides",
+        "headers": {
+          "retry-after-ms": "9007199254740992",
+          "retry-after": "2"
+        },
+        "retryAfterMs": 2000
+      },
+      {
+        "name": "retry-after-ms of exactly 2^53 - 1 is read: floor(x + 0.5) is x for an integer x, so it must not be computed as a double sum, which rounds to 2^53",
+        "headers": {
+          "retry-after-ms": "9007199254740991"
+        },
+        "retryAfterMs": 9007199254740991
+      },
+      {
         "name": "neither header",
         "headers": {},
         "retryAfterMs": null

@@ -164,6 +164,21 @@ def test_003_SC_002_a_gzip_stream_decodes_chunk_by_chunk_as_it_arrives(mock_api:
     assert arrived[1][0] - arrived[0][0] >= DELAY_S
 
 
+@pytest.mark.parametrize(
+    ("entry", "body"),
+    [
+        ({"text": '{"a": 1}'}, b'{"a": 1}'),
+        ({"sse": {"chunks": [{"text": "data: a\n\n"}]}}, b"data: a\n\n"),
+    ],
+)
+def test_003_SC_002_bom_puts_the_utf_8_byte_order_mark_before_the_body(
+    mock_api: MockApi, entry: dict[str, Any], body: bytes
+) -> None:
+    mock_api.load([{**entry, "bom": True}, entry])
+    assert send(mock_api).read() == b"\xef\xbb\xbf" + body
+    assert send(mock_api).read() == body
+
+
 # --- Connections ----------------------------------------------------------------------------
 
 

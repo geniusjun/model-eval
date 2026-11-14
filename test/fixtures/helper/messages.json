@@ -166,7 +166,7 @@
     },
     "A12": {
       "id": "A12",
-      "text": "`ModelCallError` takes exactly one of `status`, `kind` and `call`.",
+      "text": "`ModelCallError` takes exactly one of `status` (an HTTP status code), `kind` (`connect`, `tls`, `disconnect` or `timeout`) and `call` (a call of this trial).",
       "placeholders": []
     },
     "A13": {
@@ -190,6 +190,23 @@
       "placeholders": [
         "exception"
       ]
+    },
+    "A17": {
+      "id": "A17",
+      "text": "The render function raised <exception>.",
+      "placeholders": [
+        "exception"
+      ]
+    },
+    "A18": {
+      "id": "A18",
+      "text": "The render function returned a value that is not a render result. Return `{messages, tools?, maxOutputTokens?}` with `messages` a non-empty list of message objects, `tools` a list and `maxOutputTokens` a positive integer.",
+      "placeholders": []
+    },
+    "A19": {
+      "id": "A19",
+      "text": "The render target request cannot be rendered: it has no message (a Responses request continuing a conversation stored on the server), a message without a role, or `tools` that is not a list. Return the assembled messages with `@adapter.render`.",
+      "placeholders": []
     },
     "F1": {
       "id": "F1",
@@ -320,7 +337,7 @@
     },
     "L3": {
       "id": "L3",
-      "text": "Blocked a request of an abandoned trial: <exception>.",
+      "text": "A request of an abandoned trial was cut or blocked: <exception>.",
       "placeholders": [
         "exception"
       ]

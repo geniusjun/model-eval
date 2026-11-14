@@ -7,10 +7,12 @@ helper-api §Services That Stopped Waiting."""
 
 from __future__ import annotations
 
+import json
+import os
 import time
 
 import pytest
-from conftest import scenario_cases
+from conftest import SCENARIOS_DIR, installed_sdks, scenario_cases
 from protocol_client import (
     AdapterProcess,
     MockApi,
@@ -18,6 +20,7 @@ from protocol_client import (
     ScenarioCase,
     api_env,
     assert_expect,
+    environment_requirements,
     initialize_params,
     run_case,
     scenario_env,
@@ -38,9 +41,17 @@ def test_003_FR_006_FR_008_FR_015_trial_contexts_keep_calls_apart(
 
 
 def first_case(scenario: str) -> ScenarioCase:
+    """The first case of the row this environment runs. A row missing from the fixture fails;
+    a row whose cases this environment's selection leaves out (protocol_client.runs_for) skips."""
+    with open(SCENARIOS_DIR / SCENARIOS, encoding="utf-8") as file:
+        if scenario not in json.load(file):
+            pytest.fail(f"{scenario} is not a row of {SCENARIOS}")
     cases = [case for case in scenario_cases(SCENARIOS) if case.scenario == scenario]
     if not cases:
-        pytest.fail(f"{scenario} has no case for this environment")
+        installed = installed_sdks()
+        named = environment_requirements(installed, os.environ)
+        environment = named or ", ".join(f"{sdk}-{version}" for sdk, version in installed.items())
+        pytest.skip(f"no case of {scenario} runs in the {environment} environment")
     return cases[0]
 
 

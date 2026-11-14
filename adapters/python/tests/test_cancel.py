@@ -165,33 +165,42 @@ def test_003_FR_023_cancel_while_waiting_for_unfinished_calls_blocks_later_reque
     mock_api: MockApi,
 ) -> None:
     # The function has returned and the helper waits for a slow background call when the tool
-    # cancels; a request that context makes afterwards is not sent and not reported.
+    # cancels. The cancel cuts that call, so its background work gets an exception instead of the
+    # mock server's answer (6 s), and a request the context makes afterwards is not sent and not
+    # reported. Both are logged as L3 (helper-api §Cancel: a request cut on `cancel` or blocked
+    # after it), none as L2.
     steps = [
         {"call": {}},
         {"background": {"user": "Slow note."}},
-        {"background": {"user": "Late note."}, "delay": 1000},
+        {"background": {"user": "Late note."}, "delay": 4500},
         {"sleep": 200},
     ]
     case = case_of(
         {
             "service": {"behaviour": "steps", "params": {"steps": steps}},
             "script": [
-                {"match": {"bodyIncludes": "Slow note"}, "delayMs": 3000, "reply": {"text": "Ok."}},
+                {"match": {"bodyIncludes": "Slow note"}, "delayMs": 6000, "reply": {"text": "Ok."}},
                 {"match": {"bodyIncludes": "Late note"}, "reply": {"text": "Never sent."}},
                 {"reply": {"text": "Hello."}},
             ],
         },
         backend="async",
     )
+    sentence = fill_message(
+        load_messages()["L3"]["text"], {"exception": blocked_request_error(case.api)}
+    )
     with started(case, mock_api) as adapter:
         initialize(adapter, case)
         request_id = generate(adapter, case)
         wait_to_cancel({"afterRequests": 2}, mock_api)
-        # The function returns 0.2 s after starting, so the trial is waiting by now.
-        time.sleep(0.5)
+        # The function returns 0.2 s after starting, so 2 s later the trial is waiting for the
+        # slow call (6 s), and the late request (4.5 s) has not started yet.
+        time.sleep(2.2)
         adapter.notify("cancel", {"id": request_id})
         response = adapter.wait(request_id)
-        time.sleep(1.5)
+        # Two L3 lines: the cut slow call and the blocked late request. A slow call left running
+        # would end with the mock server's answer and log nothing.
+        wait_until(lambda: len(l3_lines(adapter)) >= 2, 10)
         adapter.request("shutdown")
     # helper-api §Cancel: an asynchronous trial's response goes out right away as a failure
     # result with its calls, the slow call cut as `unanswered`.
@@ -204,6 +213,17 @@ def test_003_FR_023_cancel_while_waiting_for_unfinished_calls_blocks_later_reque
     assert "errorKind" not in response["result"]["calls"][1]
     assert len(mock_api.log()) == 2
     assert adapter.exchange.calls == []
+    warnings = [log["message"] for log in adapter.exchange.logs if log.get("level") == "warn"]
+    assert len(l3_lines(adapter)) == 2
+    assert sentence in warnings
+    l2 = load_messages()["L2"]["text"].split("<exception>")[0]
+    assert [warning for warning in warnings if warning.startswith(l2)] == []
+
+
+def l3_lines(adapter: AdapterProcess) -> list[str]:
+    """The adapter's L3 log warnings, whatever their exception."""
+    l3 = load_messages()["L3"]["text"].split("<exception>")[0]
+    return [log["message"] for log in adapter.exchange.logs if log["message"].startswith(l3)]
 
 
 def test_003_FR_023_a_sync_target_awaiting_its_returned_coroutine_is_cancelled_as_async(

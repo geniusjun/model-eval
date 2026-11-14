@@ -20,7 +20,7 @@ from protocol_client import (
     ScenarioCase,
     initialize_params,
 )
-from service_runs import case_of, generate, initialize, ok_result, started
+from service_runs import case_of, generate, initialize, installed_apis, ok_result, started
 
 import model_eval_adapter as helper
 
@@ -433,3 +433,57 @@ def test_003_FR_001_third_argument_failure_retry_usage_and_tool_fields(
 
     assert answer["outcome"] == "ok"
     assert answer["error"] is None
+
+
+@pytest.mark.skipif("responses" not in installed_apis(), reason="needs the openai SDK")
+def test_003_FR_001_responses_call_id_0_is_0_and_an_empty_one_the_item_id(
+    mock_api: MockApi,
+) -> None:
+    # data-model §Finish Reasons, the call_id pairing: a call_id that is missing, None or empty
+    # counts as not given and the item's id takes its place; any other non-string call_id is its
+    # canonical JSON, so 0 gives "0".
+    def function_call(item_id: str, call_id: object) -> JsonObject:
+        return {
+            "type": "function_call",
+            "id": item_id,
+            "call_id": call_id,
+            "name": "lookup",
+            "arguments": "{}",
+            "status": "completed",
+        }
+
+    body = {
+        "id": "resp_call_ids",
+        "object": "response",
+        "created_at": 0,
+        "status": "completed",
+        "model": "model-a",
+        "output": [function_call("fc_zero", 0), function_call("fc_empty", "")],
+        "parallel_tool_calls": True,
+        "tool_choice": "auto",
+        "tools": [],
+        "usage": {
+            "input_tokens": 5,
+            "output_tokens": 2,
+            "total_tokens": 7,
+            "input_tokens_details": {"cached_tokens": 0},
+            "output_tokens_details": {"reasoning_tokens": 0},
+        },
+    }
+    steps = [
+        {"call": {"model": "model-a", "user": "Look it up.", "tools": ["lookup"]}},
+        {"call": {}},
+        {"report": "calls"},
+    ]
+    case = case_of(
+        {
+            "service": {"behaviour": "steps", "params": {"steps": steps}},
+            "script": [{"body": body}, {"reply": {"text": "Answer."}}],
+        },
+        api="responses",
+    )
+    with started(case, mock_api) as adapter:
+        initialize(adapter, case)
+        result = ok_result(adapter.wait(generate(adapter, case)))
+    with_tools = json.loads(result["final"])[0]
+    assert [call["id"] for call in with_tools["tool_calls"]] == ["0", "fc_empty"]

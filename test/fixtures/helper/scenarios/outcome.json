@@ -1779,6 +1779,42 @@
         ],
         "capturedRaw": "Here is the answer."
       }
+    },
+    {
+      "name": "TypeScript: a plain object not built with result(): A14 with calls",
+      "languages": [
+        "typescript"
+      ],
+      "service": {
+        "behaviour": "returns",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ],
+          "value": "plain-object"
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A14"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
     }
   ],
   "S-RESP-14": [

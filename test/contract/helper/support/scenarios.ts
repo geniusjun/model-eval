@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import path from 'node:path';
 import process from 'node:process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -72,6 +73,12 @@ export function nodeSdkAliases(): NodeSdkAlias[] {
   });
 }
 
+/**
+ * The Python backends a case can name. Node has the asynchronous one only, so a TypeScript case
+ * runs when its `backends` is absent or includes `async`.
+ */
+const PYTHON_BACKENDS = ['sync', 'async', 'aiohttp'] as const;
+
 function aliasProvider(alias: NodeSdkAlias): Provider {
   return alias.startsWith('anthropic') ? 'anthropic' : 'openai';
 }
@@ -81,6 +88,7 @@ const caseSchema = z
     name: z.string(),
     languages: z.array(z.enum(['python', 'typescript'])).optional(),
     apis: z.array(z.enum(APIS)).optional(),
+    backends: z.array(z.enum(PYTHON_BACKENDS)).optional(),
     sdks: z.array(z.string()).optional(),
     service: jsonObjectSchema,
     target: jsonObjectSchema.optional(),
@@ -92,13 +100,20 @@ const caseSchema = z
         toolPaths: z.array(z.string()).optional(),
       })
       .optional(),
-    request: z.enum(['generate', 'render']).optional(),
+    request: z.enum(['generate', 'render', 'render-and-generate']).optional(),
     params: jsonObjectSchema.optional(),
     trials: z.int().min(1).optional(),
     trialsInARow: z.int().min(2).optional(),
     shutdownAfterRequests: z.int().min(1).optional(),
     cancel: z
-      .union([z.object({ afterRequests: z.int() }), z.object({ afterMs: z.int() })])
+      .union([
+        z.object({ afterRequests: z.int(), respondWithinMs: z.int().min(1).optional() }),
+        z.object({ afterMs: z.int(), respondWithinMs: z.int().min(1).optional() }),
+        z.object({
+          afterStderr: z.string().min(1),
+          respondWithinMs: z.int().min(1).optional(),
+        }),
+      ])
       .optional(),
     tls: z.string().optional(),
     script: z.array(jsonValueSchema).optional(),
@@ -128,12 +143,38 @@ export function readScenarios(fileName: string): Record<string, CaseData[]> {
   return fixtureSchema.parse(value);
 }
 
+/**
+ * Whether the TypeScript helper runs the case at all: `languages` names it (or is absent),
+ * `backends` includes `async` (or is absent), and at least one of its APIs has a Node SDK alias
+ * among `sdks` (all aliases when absent). A case that passes the first two checks and has no such
+ * pair would run nowhere in Node, so that is an error, not a case left out.
+ */
+export function runsInNode(data: CaseData, where = data.name): boolean {
+  if (!(data.languages?.includes('typescript') ?? true)) {
+    return false;
+  }
+  if (!(data.backends?.includes('async') ?? true)) {
+    return false;
+  }
+  const pairs = (data.apis ?? APIS).flatMap((api) =>
+    NODE_SDK_ALIASES.filter(
+      (alias) => aliasProvider(alias) === providerOf(api) && (data.sdks?.includes(alias) ?? true),
+    ),
+  );
+  if (pairs.length === 0) {
+    throw new Error(
+      `${where}: no API of the case has a Node SDK alias in sdks; add the aliases it runs with, or languages ["python"]`,
+    );
+  }
+  return true;
+}
+
 /** The TypeScript cases of a fixture file, for every API and SDK alias they apply to. */
 export function nodeCases(fileName: string): ScenarioCase[] {
   const aliases = nodeSdkAliases();
   return Object.entries(readScenarios(fileName)).flatMap(([scenario, cases]) =>
     cases
-      .filter((data) => data.languages?.includes('typescript') ?? true)
+      .filter((data) => runsInNode(data, `${fileName} ${scenario} ${data.name}`))
       .flatMap((data) =>
         (data.apis ?? APIS).flatMap((api) =>
           aliases
@@ -165,14 +206,18 @@ const DEFAULT_VARIANT = { id: 'next', model: 'model-b' };
 export interface Outcome {
   /** The response of the first trial. */
   readonly response: RpcResponse<JsonValue>;
-  /** The response of every trial of a case with `trials` or `trialsInARow`, in send order. */
+  /**
+   * The response of every trial of a case with `trials` or `trialsInARow`, in send order, or the
+   * render and generate responses of `render-and-generate`.
+   */
   readonly responses: readonly RpcResponse<JsonValue>[];
   readonly exchange: Exchange;
   readonly requests: ReceivedRequest[];
   readonly renderFingerprint: string | undefined;
 }
 
-function scenarioEnv(scenarioCase: ScenarioCase): Record<string, string> {
+/** What a scenario service needs to run the case: behaviour, options and API. */
+export function scenarioEnv(scenarioCase: ScenarioCase): Record<string, string> {
   const { data } = scenarioCase;
   const spec = {
     scenario: scenarioCase.scenario,
@@ -185,7 +230,8 @@ function scenarioEnv(scenarioCase: ScenarioCase): Record<string, string> {
   return { MODEL_EVAL_SCENARIO: JSON.stringify(spec) };
 }
 
-function initializeParams(data: CaseData): JsonObject {
+/** The `initialize` params of the case, the harness's defaults filled in. */
+export function initializeParams(data: CaseData): JsonObject {
   return {
     protocolVersion: '1',
     client: { name: 'model-eval', version: '0.0.0-test' },
@@ -195,7 +241,8 @@ function initializeParams(data: CaseData): JsonObject {
   };
 }
 
-function trialParams(data: CaseData): JsonObject {
+/** The `generate` and `render` params of the case, the harness's defaults filled in. */
+export function trialParams(data: CaseData): JsonObject {
   const defaults = { target: 'chat', input: {}, caseId: 'case-1', lang: 'en', repeat: 0, seed: 1 };
   return { ...defaults, ...data.params };
 }
@@ -203,12 +250,56 @@ function trialParams(data: CaseData): JsonObject {
 /** The parts of the mock API server a case run uses. */
 export type MockControl = Pick<MockApi, 'url' | 'load' | 'log' | 'tlsUrl'>;
 
+/**
+ * The text a fixture writes where a port that refuses connections goes: a loopback port the
+ * harness bound and closed just before the run. A fixed port such as 1 is not usable, because
+ * Node's `fetch` refuses the fetch standard's bad ports before connecting.
+ */
+export const CLOSED_PORT = '{closedPort}';
+
+/** A loopback port nothing listens on: bound by this process and closed again. */
+export async function closedPort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  await new Promise<void>((resolve) => {
+    server.close(() => {
+      resolve();
+    });
+  });
+  if (address === null || typeof address === 'string') {
+    throw new Error('the closed port has no number');
+  }
+  return address.port;
+}
+
+/** The case with each `{closedPort}` replaced by a port that refuses connections. */
+export async function withClosedPort(data: CaseData): Promise<CaseData> {
+  const text = JSON.stringify(data);
+  if (!text.includes(CLOSED_PORT)) {
+    return data;
+  }
+  const port = String(await closedPort());
+  return caseSchema.parse(JSON.parse(text.replaceAll(CLOSED_PORT, port)));
+}
+
+/** The SDKs' info logging, for a cancel that waits for a line the SDK writes. */
+function sdkLogEnv(data: CaseData): Record<string, string> {
+  return data.cancel !== undefined && 'afterStderr' in data.cancel
+    ? { OPENAI_LOG: 'info', ANTHROPIC_LOG: 'info' }
+    : {};
+}
+
 /** Loads the case's script, runs its request in a new adapter, and shuts the adapter down. */
 export async function runCase(
-  scenarioCase: ScenarioCase,
+  givenCase: ScenarioCase,
   mock: MockControl,
   service = 'scenario',
 ): Promise<Outcome> {
+  const scenarioCase = { ...givenCase, data: await withClosedPort(givenCase.data) };
   const { data } = scenarioCase;
   await mock.load(data.script ?? []);
   const baseUrl = data.tls === undefined ? mock.url : await mock.tlsUrl(data.tls);
@@ -216,6 +307,7 @@ export async function runCase(
     ...apiEnv(baseUrl),
     ...scenarioEnv(scenarioCase),
     [MOCK_URL_VARIABLE]: mock.url,
+    ...sdkLogEnv(data),
     ...(data.tls === undefined ? {} : { SSL_CERT_FILE: ROOT_CA, NODE_EXTRA_CA_CERTS: ROOT_CA }),
   };
   const driver = AdapterDriver.start({
@@ -260,7 +352,8 @@ export async function runCase(
 /**
  * Sends the case's request. With `trials` N, that many `generate`s with caseIds `case-1` to
  * `case-N`, all before waiting for any response; with `trialsInARow` N, each after the previous
- * response arrived.
+ * response arrived. `render-and-generate` sends a `render` and then a `generate` before waiting
+ * for either, and returns both responses, render first.
  */
 async function sendTrials(
   driver: AdapterDriver,
@@ -270,14 +363,24 @@ async function sendTrials(
   const together = data.trials ?? 1;
   const inARow = data.trialsInARow ?? 1;
   const total = Math.max(together, inARow);
+  const request = data.request ?? 'generate';
   if (
     total > 1 &&
-    (data.request === 'render' || data.cancel !== undefined || Math.min(together, inARow) > 1)
+    (request !== 'generate' || data.cancel !== undefined || Math.min(together, inARow) > 1)
   ) {
     throw new Error('`trials` and `trialsInARow` take one generate request without `cancel`');
   }
-  if (data.request === 'render') {
+  if (request === 'render') {
     return [asJson(await driver.render(trialParams(data)))];
+  }
+  if (request === 'render-and-generate') {
+    if (data.cancel !== undefined) {
+      throw new Error('`render-and-generate` takes no `cancel`');
+    }
+    const rendered = driver.render(trialParams(data));
+    const generated = driver.generate(trialParams(data)).done;
+    const both = await Promise.all([rendered, generated]);
+    return both.map(asJson);
   }
   const params =
     total > 1
@@ -296,8 +399,17 @@ async function sendTrials(
   const sent = params.map((trial) => driver.generate(trial));
   const [first] = sent;
   if (data.cancel !== undefined && first !== undefined) {
-    await waitToCancel(data.cancel, mock);
+    await waitToCancel(data.cancel, mock, driver);
     driver.cancel(first.id);
+    const within = data.cancel.respondWithinMs;
+    if (within !== undefined) {
+      const [, ...rest] = sent;
+      const responses = [asJson(await respondedWithin(first.done, within))];
+      for (const { done } of rest) {
+        responses.push(asJson(await done));
+      }
+      return responses;
+    }
   }
   const responses: RpcResponse<JsonValue>[] = [];
   for (const { done } of sent) {
@@ -314,14 +426,44 @@ function asJson(response: RpcResponse<unknown>): RpcResponse<JsonValue> {
 }
 
 async function waitToCancel(
-  cancel: { afterRequests: number } | { afterMs: number },
+  cancel: NonNullable<CaseData['cancel']>,
   mock: MockControl,
+  driver: AdapterDriver,
 ): Promise<void> {
   if ('afterMs' in cancel) {
     await sleep(cancel.afterMs);
-    return;
+  } else if ('afterStderr' in cancel) {
+    await waitForStderr(cancel.afterStderr, driver);
+  } else {
+    await waitForRequests(cancel.afterRequests, mock);
   }
-  await waitForRequests(cancel.afterRequests, mock);
+}
+
+/** Waits until the adapter's stderr holds the text, compared without case. */
+async function waitForStderr(text: string, driver: AdapterDriver): Promise<void> {
+  const wanted = text.toLowerCase();
+  const deadline = Date.now() + 30_000;
+  while (!driver.stderr().toLowerCase().includes(wanted)) {
+    if (Date.now() > deadline) {
+      throw new Error(`the adapter never wrote ${JSON.stringify(text)} to stderr`);
+    }
+    await sleep(10);
+  }
+}
+
+/** The cancelled trial's response, which must arrive within `withinMs` of the cancel. */
+async function respondedWithin<T>(response: Promise<T>, withinMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`no response within ${String(withinMs)} ms of the cancel`));
+    }, withinMs);
+  });
+  try {
+    return await Promise.race([response, late]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Waits until the mock server's log holds `count` requests. */

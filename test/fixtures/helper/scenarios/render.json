@@ -1,7 +1,7 @@
 {
   "S-RESP-09": [
     {
-      "name": "every captured request, to the variant model or another model, in a trial or outside any context, gets one non-retried 400 render_only; the case has rendering true and repeat 0",
+      "name": "every captured request, to the variant model or another model, in a trial or outside any context, gets one non-retried 400 render_only, and a request without the context joins the render as its call; the case has rendering true and repeat 0",
       "target": {
         "render": true,
         "replyCall": {
@@ -48,7 +48,7 @@
             },
             {
               "role": "user",
-              "content": "{\"calls\":[\"model-a\",\"model-b\"],\"case\":{\"id\":\"greet-1\",\"input\":{\"user\":\"Hi.\"},\"lang\":\"en\",\"rendering\":true,\"repeat\":0,\"seed\":235035669},\"probes\":[{\"model\":\"model-a\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-b\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-c\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-b\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"}]}"
+              "content": "{\"calls\":[\"model-a\",\"model-b\",\"model-c\",\"model-b\"],\"case\":{\"id\":\"greet-1\",\"input\":{\"user\":\"Hi.\"},\"lang\":\"en\",\"rendering\":true,\"repeat\":0,\"seed\":235035669},\"probes\":[{\"model\":\"model-a\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-b\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-c\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-b\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"}]}"
             }
           ],
           "maxOutputTokens": 64
@@ -1085,6 +1085,91 @@
           ],
           "tools": null,
           "maxOutputTokens": 40
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Chat Completions: a role written 1.0 as its canonical JSON, 1",
+      "languages": ["python"],
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": 1.0,
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "1",
+              "content": "Hi."
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Chat Completions: a role that is not a string as its canonical JSON, 1 as 1 and {\"a\":1} as {\"a\":1}",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": 1,
+                  "content": "Hi."
+                },
+                {
+                  "role": {
+                    "a": 1
+                  },
+                  "content": "Bye."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "1",
+              "content": "Hi."
+            },
+            {
+              "role": "{\"a\":1}",
+              "content": "Bye."
+            }
+          ]
         },
         "requests": []
       }
@@ -2192,6 +2277,426 @@
           ],
           "tools": null,
           "maxOutputTokens": null
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RV-25": [
+    {
+      "name": "a Responses render target request with input [], no instructions and no prompt: A19",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Chat Completions render target request with a message without role: A19",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Answer the user."
+                },
+                {
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Chat Completions render target request whose tools is an object: A19",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ],
+              "tools": {
+                "type": "function",
+                "function": {
+                  "name": "lookup",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Chat Completions render target request with a message whose role is null: A19",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Answer the user."
+                },
+                {
+                  "role": null,
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Responses input item whose role is null and that has a type: not A19, its type as role and the item's canonical JSON as content",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": [
+                {
+                  "role": "user",
+                  "content": "Weather in Paris?"
+                },
+                {
+                  "type": "function_call",
+                  "role": null,
+                  "call_id": "call_1",
+                  "name": "weather",
+                  "arguments": "{\"city\":\"Paris\"}"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Weather in Paris?"
+            },
+            {
+              "role": "function_call",
+              "content": "{\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"call_id\":\"call_1\",\"name\":\"weather\",\"role\":null,\"type\":\"function_call\"}"
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Responses input item with role null and type message: not A19, role message and the item's canonical JSON as content",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": [
+                {
+                  "role": null,
+                  "type": "message",
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "message",
+              "content": "{\"content\":\"Hi.\",\"role\":null,\"type\":\"message\"}"
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Responses input item with role null and type null: A19",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": [
+                {
+                  "role": null,
+                  "type": null,
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Responses input item with role user and type null: a user message",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": [
+                {
+                  "role": "user",
+                  "type": null,
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ]
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RV-26": [
+    {
+      "name": "a render target request with max_tokens 0: no maxOutputTokens",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ],
+              "max_tokens": 0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ],
+          "maxOutputTokens": null
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "max_tokens null and max_completion_tokens 300: maxOutputTokens 300",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ],
+              "max_tokens": null,
+              "max_completion_tokens": 300
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ],
+          "maxOutputTokens": 300
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "max_tokens 300.0, an integer: maxOutputTokens 300",
+      "languages": ["python"],
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ],
+              "max_tokens": 300.0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ],
+          "maxOutputTokens": 300
         },
         "requests": []
       }

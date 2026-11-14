@@ -21,17 +21,21 @@ class ServiceError(Exception):
     """The service's own exception, which `discard_on` is asked about."""
 
 
-async def one_request(model: str) -> None:
+def request_of(model: str) -> Any:
+    """One request, prepared up to the awaitable that sends it: the SDK is imported and its
+    client and resource built here, so awaiting it sends at once."""
     sdk = importlib.import_module("anthropic" if API == "messages" else "openai")
     client = (sdk.AsyncAnthropic if API == "messages" else sdk.AsyncOpenAI)(max_retries=0)
     messages = [{"role": "user", "content": "Say hello."}]
     if API == "chat-completions":
-        await client.chat.completions.create(model=model, messages=messages)
-    elif API == "responses":
-        await client.responses.create(model=model, input=messages)
-    else:
-        await client.messages.create(model=model, messages=messages, max_tokens=64)
-    await client.close()
+        return client.chat.completions.create(model=model, messages=messages)
+    if API == "responses":
+        return client.responses.create(model=model, input=messages)
+    return client.messages.create(model=model, messages=messages, max_tokens=64)
+
+
+async def one_request(model: str) -> None:
+    await request_of(model)
 
 
 def broken_reply_call(call: Any) -> bool:
@@ -55,10 +59,8 @@ async def reply_call_raises(case: Any, variant: Any) -> str:
 
 @adapter.target("reply-call-unfinished", reply_call=broken_reply_call)
 async def reply_call_raises_with_a_call_running(case: Any, variant: Any) -> str:
-    # The request is still running when the function returns; it is not awaited here. The SDK
-    # is imported first, so the request leaves before the function returns.
-    importlib.import_module("anthropic" if API == "messages" else "openai")
-    BACKGROUND.add(asyncio.ensure_future(one_request(variant.model)))
+    # The request is still running when the function returns; it is not awaited here.
+    BACKGROUND.add(asyncio.ensure_future(request_of(variant.model)))
     await asyncio.sleep(0.2)
     return "Hello."
 

@@ -64,6 +64,17 @@ describe('canonical JSON', () => {
     const withUndefined = { a: undefined } as unknown as JsonValue;
     expect(() => canonicalJson(withUndefined)).toThrow(TypeError);
   });
+
+  it('001 FR-014 rejects a list with an undefined element or a hole', () => {
+    const undefinedElement = [1, undefined] as unknown as JsonValue;
+    expect(() => canonicalJson(undefinedElement)).toThrow(TypeError);
+    // eslint-disable-next-line no-sparse-arrays
+    const hole = [, 1] as unknown as JsonValue;
+    expect(() => canonicalJson(hole)).toThrow(TypeError);
+    // eslint-disable-next-line no-sparse-arrays
+    const nestedHole = { tools: [{ enum: ['a', , 'b'] }] } as unknown as JsonValue;
+    expect(() => canonicalJson(nestedHole)).toThrow(TypeError);
+  });
 });
 
 describe('reading JSON text', () => {

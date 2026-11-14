@@ -90,7 +90,14 @@ def report(
     extra_env: dict[str, str] | None = None,
 ) -> Reported:
     """Starts version_service.py and returns `initialize`'s `service` and the `log` warnings."""
-    env = {**api_env(mock.url), **(extra_env or {})}
+    # The helper's git runs without the user's global and system configuration, as the test's own
+    # git does, so the values do not depend on the machine.
+    env = {
+        **api_env(mock.url),
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_NOSYSTEM": "1",
+        **(extra_env or {}),
+    }
     if service_dir is not None:
         env["MODEL_EVAL_SERVICE_DIR"] = str(service_dir)
     params = {

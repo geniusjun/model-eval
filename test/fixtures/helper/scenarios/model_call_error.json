@@ -1614,6 +1614,7 @@
   "S-MCE-13": [
     {
       "name": "a captured mid-body read time-out raised by the SDK, thrown as kind timeout: the captured classification, transient",
+      "languages": ["python"],
       "apis": [
         "chat-completions"
       ],
@@ -1670,6 +1671,68 @@
           }
         ]
       }
+    },
+    {
+      "name": "Node: a captured mid-body read time-out raised by the SDK, thrown as kind timeout: the captured classification, transient, the body read limited by undici's bodyTimeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "bodyTimeoutMs": 1500
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "{\"id\":\"chatcmpl-slow\",\"object\":\"chat.completion\","
+              },
+              {
+                "delayMs": 5000,
+                "text": "\"created\":0,\"model\":\"model-b\",\"choices\":[]}"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
     }
   ],
   "S-MCE-14": [
@@ -2209,7 +2272,7 @@
           "steps": [
             {
               "call": {
-                "baseUrl": "http://127.0.0.1:1"
+                "baseUrl": "http://127.0.0.1:{closedPort}"
               }
             }
           ],
@@ -2244,6 +2307,7 @@
   "S-MCE-19": [
     {
       "name": "a same-model classification by SSE, the answer without streaming, its mid-body read time-out thrown as kind timeout: the classification stream not corrected, the answer call's captured classification",
+      "languages": ["python"],
       "apis": [
         "chat-completions"
       ],
@@ -2315,6 +2379,83 @@
           }
         ]
       }
+    },
+    {
+      "name": "Node: a same-model classification by SSE, the answer without streaming, its mid-body read time-out thrown as kind timeout: the classification stream not corrected, the answer call's captured classification, the body read limited by undici's bodyTimeout",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "stream": true
+              }
+            },
+            {
+              "call": {
+                "bodyTimeoutMs": 1500
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "{\"id\":\"chatcmpl-slow\",\"object\":\"chat.completion\","
+              },
+              {
+                "delayMs": 5000,
+                "text": "\"created\":0,\"model\":\"model-b\",\"choices\":[]}"
+              }
+            ]
+          },
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
     }
   ],
   "S-MCE-20": [
@@ -2510,7 +2651,8 @@
           {
             "model": "model-b",
             "outcome": "failed",
-            "errorKind": "config"
+            "errorKind": "config",
+            "retryAfterMs": null
           },
           {
             "model": "model-b",
@@ -2571,7 +2713,8 @@
           {
             "model": "model-b",
             "outcome": "failed",
-            "errorKind": "config"
+            "errorKind": "config",
+            "retryAfterMs": null
           },
           {
             "model": "model-b",
@@ -2611,6 +2754,66 @@
             "throw": {
               "message": "The model call failed.",
               "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "connection": "close-before-headers"
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same with model=\"\" thrown: an empty model counts as not given, so the added call is the variant model's",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "stream": true
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout",
+              "model": ""
+            }
+          },
+          "onException": {
+            "throw": {
+              "message": "The model call failed.",
+              "kind": "timeout",
+              "model": ""
             }
           }
         }

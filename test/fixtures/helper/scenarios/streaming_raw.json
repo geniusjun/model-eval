@@ -1043,6 +1043,132 @@
         "finishReason": "stop",
         "warnings": []
       }
+    },
+    {
+      "name": "Node: the SDK's stream helper, the service returns on content.done: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "finishReason": "stop",
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "Node: the SDK's stream helper, the service calls abort() after content.done: normal",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "event": "content.done"
+                  },
+                  "style": "abort"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello there, friend.",
+        "finishReason": "stop",
+        "warnings": []
+      },
+      "languages": [
+        "typescript"
+      ]
     }
   ],
   "S-STR-10": [
@@ -1207,9 +1333,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1275,9 +1401,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1347,9 +1473,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1415,9 +1541,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1493,9 +1619,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1565,9 +1691,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1628,9 +1754,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1695,9 +1821,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1758,9 +1884,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1831,9 +1957,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1910,9 +2036,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -1983,9 +2109,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -2052,9 +2178,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -2066,6 +2192,680 @@
         "finalKind": "model",
         "raw": "Safe start. STOP here",
         "finishReason": "stop",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-17": [
+    {
+      "name": "break from the stream helper's for await at a configured string, events sent one by one (Chat Completions): the SDK cancels the awaited read, timeout with W6",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
+    },
+    {
+      "name": "break from the stream helper's for await at a configured string, events sent one by one (Messages): the SDK cancels the awaited read, timeout with W6",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
+    },
+    {
+      "name": "break from the stream helper's for await at the first of two events in one chunk: normal (K8)",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "eventsPerChunk": 2,
+            "chunkDelaysMs": [
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello STOP. ",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-18": [
+    {
+      "name": "an immediate abort() inside the event handler, events sent one by one (Chat Completions): normal, also on the SDKs that read the body once more after abort",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello STOP. ",
+        "warnings": []
+      }
+    },
+    {
+      "name": "an immediate abort() inside the event handler, events sent one by one (Messages): normal, also on the SDKs that read the body once more after abort",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello STOP. ",
+        "warnings": []
+      }
+    }
+  ],
+  "S-STR-19": [
+    {
+      "name": "abort() after an await in the event handler, events sent one by one (Chat Completions): timeout with W6",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler",
+                  "after": "await"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
+    },
+    {
+      "name": "abort() after an await in the event handler, events sent one by one (Messages): timeout with W6",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler",
+                  "after": "await"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
+    },
+    {
+      "name": "abort() after waiting one setImmediate in the event handler (Chat Completions): timeout with W6",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler",
+                  "after": "setImmediate"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
+    },
+    {
+      "name": "abort() after waiting one setImmediate in the event handler (Messages): timeout with W6",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler",
+                  "after": "setImmediate"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
+    },
+    {
+      "name": "abort() after one await null in the event handler, at the first of two events in one chunk: normal (K8)",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler",
+                  "after": "await"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "eventsPerChunk": 2,
+            "chunkDelaysMs": [
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello STOP. ",
         "warnings": []
       }
     }
@@ -2115,9 +2915,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -2326,6 +3126,71 @@
           }
         ]
       }
+    },
+    {
+      "name": "through a Node stream helper with stopped_early, the time limit fires while the service awaits its work on each event: the helper reads on, so an awaited read is cut, timeout with W6",
+      "languages": [
+        "typescript"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "processMs": 100,
+                "limitMs": 450,
+                "onError": "swallow",
+                "streamHelper": true
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
     }
   ],
   "S-STR-23": [
@@ -2373,9 +3238,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -2865,9 +3730,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -2948,9 +3813,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -3036,9 +3901,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -3131,9 +3996,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -3226,9 +4091,9 @@
               0,
               0,
               0,
+              200,
               0,
-              0,
-              0,
+              200,
               900,
               300
             ]
@@ -5137,6 +6002,311 @@
             "chunkDelaysMs": [
               0,
               600
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Promise.race with a timer ends before the answer stream does, a fixed message as Result(raw=\"\", kind=\"fallback\", finish_reason=\"other\"), the stream left behind still running: timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Safe start. STOP here and then the rest of the answer."
+          },
+          "stream": {
+            "deltas": 8,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              900,
+              300
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "the same, the stream left behind finishes after the wait ended: timeout with W6",
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              1200
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "the same, the stream left behind fails after the wait ended: timeout with W6",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "server_error",
+              "message": "The server had an error."
+            }
+          },
+          "stream": {
+            "ending": "failure",
+            "chunkDelaysMs": [
+              0,
+              600
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "the same, the stream left behind fails after the wait ended: timeout with W6",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend.",
+            "failure": {
+              "type": "overloaded_error",
+              "message": "Overloaded."
+            }
+          },
+          "stream": {
+            "ending": "failure",
+            "chunkDelaysMs": [
+              0,
+              600
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "the trial's time limit (initialize timeoutMs 6000) ends the helper's wait for unfinished calls about 1 s after the trial started, while the stream left behind runs on for 4 s: still running when the wait ends, timeout with W6",
+      "initialize": {
+        "timeoutMs": 6000
+      },
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "onError": "swallow",
+                "cut": {
+                  "at": {
+                    "ms": 400
+                  },
+                  "style": "stop-waiting"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer that right now.",
+              "kind": "fallback",
+              "finishReason": "other"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello there, friend."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              4000
             ]
           }
         }

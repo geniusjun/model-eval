@@ -34,7 +34,7 @@
           "items": { "$ref": "#/$defs/api" }
         },
         "backends": {
-          "description": "Python backends the case runs under; all three when absent. Ignored in TypeScript.",
+          "description": "Python backends the case runs under; all three when absent. TypeScript runs the case only when this is absent or includes async.",
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
@@ -229,15 +229,36 @@
           "type": "object",
           "required": ["afterRequests"],
           "additionalProperties": false,
-          "properties": { "afterRequests": { "type": "integer", "minimum": 0 } }
+          "properties": {
+            "afterRequests": { "type": "integer", "minimum": 0 },
+            "respondWithinMs": { "$ref": "#/$defs/respondWithinMs" }
+          }
         },
         {
           "type": "object",
           "required": ["afterMs"],
           "additionalProperties": false,
-          "properties": { "afterMs": { "type": "integer", "minimum": 0 } }
+          "properties": {
+            "afterMs": { "type": "integer", "minimum": 0 },
+            "respondWithinMs": { "$ref": "#/$defs/respondWithinMs" }
+          }
+        },
+        {
+          "description": "Once the adapter's stderr holds this text, compared without case. The harness turns on the SDKs' info logging (`OPENAI_LOG` and `ANTHROPIC_LOG` set to `info`), so the text can be a line the SDK writes once it received a response, such as `retrying` before an SDK resend.",
+          "type": "object",
+          "required": ["afterStderr"],
+          "additionalProperties": false,
+          "properties": {
+            "afterStderr": { "type": "string", "minLength": 1 },
+            "respondWithinMs": { "$ref": "#/$defs/respondWithinMs" }
+          }
         }
       ]
+    },
+    "respondWithinMs": {
+      "description": "The trial's response must arrive within this many ms after the harness sent `cancel`, for a response helper-api §Cancel sends at once.",
+      "type": "integer",
+      "minimum": 1
     },
     "scriptEntry": {
       "description": "The mock server's answer to one request. Exactly one of `reply`, `error`, `body`, `text` and `sse` gives the content, except with `connection` `close-before-headers` or `close-unread`, which send nothing.",
@@ -296,6 +317,10 @@
             "br": { "$ref": "#/$defs/compressedBody" },
             "zstd": { "$ref": "#/$defs/compressedBody" }
           }
+        },
+        "bom": {
+          "description": "The body starts with the UTF-8 byte order mark (U+FEFF), JSON and SSE bodies alike, before any compression.",
+          "type": "boolean"
         },
         "drop": {
           "description": "Close the connection after this many whole body chunks and this many bytes of the next one.",
