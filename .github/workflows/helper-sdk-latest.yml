@@ -32,6 +32,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # On 3.10, pip installs the newest release that still supports 3.10, which is what users
+        # of 3.10 get once an SDK drops it.
         python: ['3.10', '3.x']
         requirements: ${{ fromJSON(needs.python-requirements.outputs.files) }}
     defaults:
@@ -56,9 +58,6 @@ jobs:
 
   node:
     runs-on: ubuntu-latest
-    env:
-      # The newest alias of each SDK, pointed at its latest release below.
-      MODEL_EVAL_NODE_SDKS: openai-7,anthropic-sdk-1
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v5
@@ -68,12 +67,18 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.x'
+      # The newest alias of each SDK in package.json (openai-N, anthropic-sdk-N with the largest N),
+      # pointed at the SDK's latest release; the contract tests run with those aliases only.
       - name: Install without the lockfile, the SDK aliases at their latest releases
         run: |
+          newest() { jq -r '.devDependencies | keys[]' package.json | grep -E "^$1-[0-9]+$" | sort -V | tail -n 1; }
+          openai=$(newest openai)
+          anthropic=$(newest anthropic-sdk)
           rm pnpm-lock.yaml
           pnpm install --no-frozen-lockfile
-          pnpm add --save-dev 'openai-7@npm:openai@latest' 'anthropic-sdk-1@npm:@anthropic-ai/sdk@latest'
-          pnpm list openai-7 anthropic-sdk-1
+          pnpm add --save-dev "$openai@npm:openai@latest" "$anthropic@npm:@anthropic-ai/sdk@latest"
+          pnpm list "$openai" "$anthropic"
+          echo "MODEL_EVAL_NODE_SDKS=$openai,$anthropic" >> "$GITHUB_ENV"
       # The Python of the mock API server and the parity drivers: the packages of each SDK's
       # requirements file with the highest major (ci.yml pins openai-2 and anthropic-2 instead),
       # without their pins.

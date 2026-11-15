@@ -138,6 +138,14 @@ jobs:
       matrix:
         python: ['3.10', '3.x']
         requirements: ${{ fromJSON(needs.python-requirements.outputs.files) }}
+        # openai 1.x cannot build Responses API objects on Python 3.14 and later (it sets an
+        # attribute on a typing.Union; openai 2.7.2 fixed it), so its newest Python is 3.13.
+        exclude:
+          - python: '3.x'
+            requirements: openai-1
+        include:
+          - python: '3.13'
+            requirements: openai-1
     defaults:
       run:
         working-directory: adapters/python
