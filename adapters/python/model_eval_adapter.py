@@ -1975,10 +1975,12 @@ class CapturedCall:
             self.fail(Failure(now, status=200, error=error, text=failure_text(error)))
 
     def read_finished(self) -> None:
-        """The body was read to its end without a read error."""
+        """The body was read to its end without a read error. A read started after the body was
+        closed or cancelled is not an awaited read however it ends, so reaching the end through
+        it neither completes the body nor counts as a drop."""
         with HUB.lock:
-            self.read_returned()
-            if self.cut or self.body_done:
+            after_close = self.read_returned()
+            if after_close or self.cut or self.body_done:
                 return
             self.body_done = True
             now = time.monotonic()
@@ -2058,7 +2060,7 @@ class CapturedCall:
 
     def awaited_reads(self) -> int:
         """Reads in progress that started before the body was closed or cancelled. A read
-        started after that and ended by it is not an awaited read (helper-api §Reading Response
+        started after that is not an awaited read, however it ends (helper-api §Reading Response
         Bodies)."""
         return self.reading - self.reads_after_close
 
@@ -4781,7 +4783,8 @@ class Server:
         function is cancelled and its calls in flight are cut as `unanswered`, those awaited in
         other tasks too."""
         with HUB.lock:
-            trial = HUB.trials.get(request_id) if isinstance(request_id, int) else None
+            # helper-api §Shared Conventions: only an integer names a trial (not `True`); 1.0 is 1.
+            trial = HUB.trials.get(int(request_id)) if whole_number(request_id) else None
             if trial is None or trial.state not in ("running", "waiting"):
                 return
             trial.cancelled = True

@@ -1011,8 +1011,10 @@ export class CapturedCall {
 
   /** The body was read to its end without a read error. */
   readFinished(): void {
-    this.readReturned();
-    if (this.cut || this.bodyDone) {
+    // A read started after the body was closed or cancelled is not an awaited read however it
+    // ends, so reaching the end through it neither completes the body nor counts as a drop.
+    const afterClose = this.readReturned();
+    if (afterClose || this.cut || this.bodyDone) {
       return;
     }
     this.bodyDone = true;
@@ -1130,7 +1132,7 @@ export class CapturedCall {
 
   /**
    * Reads in progress that started before the body was closed or cancelled. A read started after
-   * that and ended by it is not an awaited read (helper-api §Reading Response Bodies), such as the
+   * that is not an awaited read, however it ends (helper-api §Reading Response Bodies), such as the
    * one some SDKs make after `abort()` when a `for await` loop is left.
    */
   private awaitedReads(): number {

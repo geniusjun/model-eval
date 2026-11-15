@@ -438,7 +438,11 @@ class Server {
    * as `unanswered`. A Node target function cannot be stopped; it ends when its requests fail.
    */
   private cancel(requestId: JsonValue | undefined): void {
-    const trial = typeof requestId === 'number' ? HUB.trials.get(trialKey(requestId)) : undefined;
+    // helper-api §Shared Conventions: only an integer names a trial; JSON 1.0 is 1.
+    const trial =
+      typeof requestId === 'number' && Number.isSafeInteger(requestId)
+        ? HUB.trials.get(trialKey(requestId))
+        : undefined;
     if (trial === undefined || (trial.state !== 'running' && trial.state !== 'waiting')) {
       return;
     }
