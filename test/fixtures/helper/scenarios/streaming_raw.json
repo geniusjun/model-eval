@@ -2332,12 +2332,15 @@
       }
     },
     {
-      "name": "break from the stream helper's for await at the first of two events in one chunk: normal (K8)",
+      "name": "break from the stream helper's for await at the first of two events in one chunk, on an SDK that reads no further: normal (K8)",
       "languages": [
         "typescript"
       ],
       "apis": [
         "chat-completions"
+      ],
+      "sdks": [
+        "openai-7"
       ],
       "service": {
         "behaviour": "stream-report",
@@ -2392,6 +2395,77 @@
         "finalKind": "model",
         "raw": "Hello STOP. ",
         "warnings": []
+      }
+    },
+    {
+      "name": "the same on an SDK whose stream helper starts the next read before the break (openai-node 5 and 6): the read is waiting, timeout with W6 (K8)",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "sdks": [
+        "openai-5-first",
+        "openai-5",
+        "openai-6"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "eventsPerChunk": 2,
+            "chunkDelaysMs": [
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
       }
     }
   ],

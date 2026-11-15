@@ -116,7 +116,9 @@ export function closeStream(stream) {
  * error undici's connector raises when its connect time limit fires (`ConnectTimeoutError`,
  * `UND_ERR_CONNECT_TIMEOUT`), so `fetch` rejects with `TypeError: fetch failed` and that error as
  * its `cause`, and the request never reaches the server. A loopback server accepts a connection
- * at once, so a real connect time-out cannot be produced against the mock server.
+ * at once, so a real connect time-out cannot be produced against the mock server. The error goes
+ * through whichever handler API the Node release's undici gives `fetch`: `onResponseError` with a
+ * controller (undici 8, Node 26), else `onError`.
  */
 export function connectTimeoutDispatcher(ms) {
   return {
@@ -125,10 +127,26 @@ export function connectTimeoutDispatcher(ms) {
         const error = new Error('Connect Timeout Error');
         error.name = 'ConnectTimeoutError';
         error.code = 'UND_ERR_CONNECT_TIMEOUT';
-        handler.onError(error);
+        if (typeof handler.onResponseError === 'function') {
+          handler.onResponseError(idleController(), error);
+        } else {
+          handler.onError(error);
+        }
       }, ms);
       return true;
     },
+  };
+}
+
+/** A request controller for undici's handler API that has nothing to abort, pause or resume. */
+function idleController() {
+  return {
+    aborted: false,
+    paused: false,
+    reason: null,
+    abort() {},
+    pause() {},
+    resume() {},
   };
 }
 
