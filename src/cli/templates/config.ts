@@ -4,11 +4,23 @@
 /** `output.dir` of the template, which `init` also adds to `.gitignore`. */
 export const OUTPUT_DIR = '.model-eval';
 
-export const CONFIG_TEMPLATE = `version: 1
+/** The comment column of the template's key lines. */
+const COMMENT_COLUMN = 43;
+
+/** `adapter.command` without `--adapter`, the name the guide uses for a Node adapter. */
+const DEFAULT_COMMAND = '[node, adapter.mjs]';
+
+function commandLine(command: string): string {
+  return `  command: ${command}`.padEnd(COMMENT_COLUMN - 1);
+}
+
+/** The config file, with the command that starts the adapter `init --adapter` wrote. */
+export function configTemplate(command: string = DEFAULT_COMMAND): string {
+  return `version: 1
 lang: en                                   # Human output and result page language: en or ko.
 
 adapter:
-  command: [node, adapter.mjs]             # The command that starts your adapter, as an array; no shell is involved.
+${commandLine(command)} # The command that starts your adapter, as an array; no shell is involved.
   timeoutMs: 120000                        # Longer than one service call can take, SDK retry waits included.
 
 files:
@@ -41,3 +53,4 @@ estimate:
 output:
   dir: ${OUTPUT_DIR}                       # Runs, comparisons and result pages; init adds it to .gitignore.
 `;
+}

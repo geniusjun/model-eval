@@ -1,4 +1,5 @@
 import type { Lang } from '../../config/schema.js';
+import type { AdapterLanguage } from '../templates/adapter.js';
 import type { MessageKey } from '../../messages/index.js';
 import { textOf } from './text.js';
 
@@ -30,6 +31,10 @@ export interface InitOutcome {
   };
   /** The config path when init created it from the template, so it still needs the user's values. */
   readonly templateConfig: string | undefined;
+  /** With `--adapter`: the skeleton to connect to the service, and the config it goes with. */
+  readonly adapter:
+    | { readonly language: AdapterLanguage; readonly file: string; readonly config: string }
+    | undefined;
 }
 
 const IGNORE_KEYS: Readonly<Record<IgnoreState, MessageKey>> = {
@@ -38,9 +43,15 @@ const IGNORE_KEYS: Readonly<Record<IgnoreState, MessageKey>> = {
   outside: 'human.init.outsideFolder',
 };
 
+/** The next step after `--adapter`; a Node adapter also needs the tool installed beside it. */
+const NEXT_ADAPTER_KEYS: Readonly<Record<AdapterLanguage, MessageKey>> = {
+  python: 'human.init.nextAdapter.python',
+  node: 'human.init.nextAdapter.node',
+};
+
 export function initLines(lang: Lang, outcome: InitOutcome): string[] {
   const t = textOf(lang);
-  const { files, gitignore, templateConfig } = outcome;
+  const { files, gitignore, templateConfig, adapter } = outcome;
   return [
     ...files.map((file) =>
       t(file.created ? 'human.init.created' : 'human.init.kept', { path: file.path }),
@@ -51,6 +62,10 @@ export function initLines(lang: Lang, outcome: InitOutcome): string[] {
       dir: gitignore.outputDir,
       path: gitignore.path,
     }),
-    ...(templateConfig === undefined ? [] : [t('human.init.next', { config: templateConfig })]),
+    ...(adapter !== undefined
+      ? [t(NEXT_ADAPTER_KEYS[adapter.language], { file: adapter.file, config: adapter.config })]
+      : templateConfig === undefined
+        ? []
+        : [t('human.init.next', { config: templateConfig })]),
   ];
 }
