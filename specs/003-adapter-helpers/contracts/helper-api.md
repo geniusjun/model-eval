@@ -615,13 +615,15 @@ Only the combinations the CI contract tests run are supported. For each major ve
 
 | Runtime | SDK | Major versions | Default transport |
 |---|---|---|---|
-| Python 3.10 or later | `openai` | 1, 2 | `httpx` |
+| Python 3.10 to 3.13 | `openai` | 1 | `httpx` |
+| Python 3.10 or later | `openai` | 2 | `httpx` |
 | Python 3.10 or later | `openai` | 3 (from 3.0.0) | `httpx2` |
 | Python 3.10 or later | `anthropic` | 0 | `httpx` |
 | Python 3.10 or later | `anthropic` | 1 (from 1.0.0), 2 | `httpx2` |
 | Node 22.17 or later | `openai` | 5 (from 5.0.0), 6, 7 | global `fetch` |
 | Node 22.17 or later | `@anthropic-ai/sdk` | 0 (from 0.50.1), 1 | global `fetch` |
 
+- `openai` 1 stops at Python 3.13 because the SDK itself fails on Python 3.14 and later: it cannot build Responses API objects there, with or without the helper. `openai` 2.7.2 fixed it.
 - The SDKs' aiohttp backend (`DefaultAioHttpClient`) is an httpx or httpx2 async client with a different transport, so it is captured as is.
 - Azure OpenAI is captured. The OpenAI SDK's Azure client puts the deployment name in the path (`/openai/deployments/<deployment>/chat/completions`) and also keeps it as the body's `model`, so variant `model` values and price keys are deployment names. The variant model check reads only the body's `model`, so it does not catch a client created with `azure_deployment` (K35 of [data-model §Known Limits](../data-model.md#known-limits)). Let the target function pick the deployment per variant by `model`; the comparison raises `same-response-model` when both variants answered with the same response model ([001 data-model §Warnings](../../001-swap-check/data-model.md#warnings)).
 

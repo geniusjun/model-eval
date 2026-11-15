@@ -206,7 +206,7 @@
 **Purpose**: CI matrix, recorded fixtures, docs
 
 - [ ] T081 Extend `.github/workflows/ci.yml` (SC-002, SC-003, SC-004):
-  - A Python job whose matrix is Python 3.10 and the newest Python 3 release × each file of `adapters/python/tests/requirements/`, with `fail-fast: false`; each entry builds its environment and runs `python3 -m pytest` in `adapters/python/`.
+  - A Python job whose matrix is Python 3.10 and the newest Python 3 release × each file of `adapters/python/tests/requirements/`, with the `openai` 1 file on Python 3.13 instead of the newest release (helper-api §Supported SDKs), and `fail-fast: false`; each entry builds its environment and runs `python3 -m pytest` in `adapters/python/`.
   - In the Node job, an environment built from the `openai` 2 and `anthropic` 2 files of `adapters/python/tests/requirements/`, with `MODEL_EVAL_PYTHON` pointing at its interpreter, for the mock servers, the Python adapters and the parity drivers; the contract tests with every SDK alias on Node 22 and, on Node 24 and 26, `MODEL_EVAL_NODE_SDKS` set to `openai-7` and `anthropic-sdk-1`.
   - After the Python job, a step that collects the pytest results of every matrix entry and fails when a scenario ID of `test/fixtures/helper/scenarios/` ran in no entry, so a filter bug that skips a case everywhere is caught (pytest marks an empty parameter set as skipped, `empty_parameter_set_mark = "skip"` in `adapters/python/pyproject.toml`).
   - A separate step that creates `examples/python-service/.venv` and runs `vitest run --project example` with `timeout-minutes: 5`, so the 3-minute limit of 001's example step (SC-001) keeps its meaning.

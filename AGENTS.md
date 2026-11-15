@@ -32,7 +32,8 @@ pnpm test:browser      # after pnpm build and pnpm exec playwright install
 ```
 
 The Python helper in `adapters/python/`. Its tests run in an environment built from one file of
-`tests/requirements/`; CI runs each file on Python 3.10 and the newest Python 3. The contract
+`tests/requirements/`; CI runs each file on Python 3.10 and the newest Python 3, and
+`openai-1.txt` on 3.13 instead of the newest, which openai 1.x does not run on. The contract
 tests of `pnpm test` start Python from `MODEL_EVAL_PYTHON`, an interpreter with both SDKs; CI
 builds it from `openai-2.txt` and `anthropic-2.txt`.
 
