@@ -20,6 +20,10 @@ The full contract is [contracts/cli.md](../../specs/001-swap-check/contracts/cli
 
 - `init` keeps files that already exist. With an existing config it only adds that config's
   `output.dir` to `.gitignore`.
+- `init --adapter python` or `init --adapter node` also writes an adapter skeleton that uses the
+  helper, next to the config, and sets `adapter.command` in a new config to start it. For Python
+  it copies the helper file `model_eval_adapter.py` there too
+  ([Writing an adapter](../guide/adapter.md#helpers)).
 - `lint`, `run` and `swap` start the adapter; `lint --no-adapter` does not. Read
   [Running in CI](../guide/ci.md#untrusted-changes-lint---no-adapter) before running them on
   changes you have not reviewed.
