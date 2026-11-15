@@ -624,6 +624,50 @@
           }
         ]
       }
+    },
+    {
+      "name": "429 insufficient_quota whose body was read, with retry-after-ms: config, no retryAfterMs on the result or the call",
+      "apis": [
+        "chat-completions",
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "maxRetries": 0
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429,
+            "code": "insufficient_quota"
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "retryAfterMs": null,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config",
+            "retryAfterMs": null
+          }
+        ]
+      }
     }
   ],
   "S-STAT-05": [
@@ -1215,6 +1259,43 @@
             "outcome": "failed",
             "branch": "answer",
             "errorKind": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "403 with retry-after-ms: config, no retryAfterMs on the result or the call",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 403
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "config",
+        "retryAfterMs": null,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "config",
+            "retryAfterMs": null
           }
         ]
       }

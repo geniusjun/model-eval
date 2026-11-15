@@ -271,6 +271,11 @@ export class AdapterDriver {
     this.write({ jsonrpc: '2.0', method: 'cancel', params: { id } });
   }
 
+  /** Writes one protocol line as given, for values `JSON.stringify` cannot write (`1.0`). */
+  writeLine(line: string): void {
+    this.child.stdin.write(`${line}\n`);
+  }
+
   async shutdown(): Promise<void> {
     const response = await this.request('shutdown', null, (value) =>
       shutdownResultSchema.parse(value),

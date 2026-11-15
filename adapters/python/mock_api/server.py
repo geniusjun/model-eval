@@ -904,9 +904,7 @@ def content_text(content: Any) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        return "\n".join(
-            str(part.get("text", "")) for part in content if isinstance(part, dict)
-        )
+        return "\n".join(str(part.get("text", "")) for part in content if isinstance(part, dict))
     return ""
 
 

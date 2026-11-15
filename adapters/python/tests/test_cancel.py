@@ -275,3 +275,33 @@ def test_003_FR_023_a_cancelled_trial_with_a_raising_reply_call_still_reports_co
     assert result["error"]["kind"] == "config"
     calls = [(call["outcome"], call.get("errorKind")) for call in result["calls"]]
     assert calls == [("failed", "config"), ("unanswered", None)]
+
+
+def test_003_FR_023_only_an_integer_id_names_the_trial_to_cancel(mock_api: MockApi) -> None:
+    """`true` and `"1"` cancel nothing, and 1.0 names the trial 1 (helper-api §Shared
+    Conventions). No `initialize`, so the first trial has the request id 1, which `true`
+    equals in Python."""
+    case = case_of(
+        {
+            "service": {"behaviour": "steps", "params": {"steps": [{"call": {}}]}},
+            "script": [
+                {"delayMs": 1000, "reply": {"text": "Kept."}},
+                {"delayMs": 1000, "reply": {"text": "Kept."}},
+            ],
+        },
+        backend="async",
+    )
+    cancelled_error = {"kind": "timeout", "message": load_messages()["F2"]["text"]}
+    with started(case, mock_api) as adapter:
+        first = generate(adapter, case)
+        assert first == 1
+        wait_to_cancel({"afterRequests": 1}, mock_api)
+        adapter.notify("cancel", {"id": True})
+        adapter.notify("cancel", {"id": "1"})
+        kept = adapter.wait(first)
+        second = generate(adapter, case)
+        wait_to_cancel({"afterRequests": 2}, mock_api)
+        adapter.notify("cancel", {"id": float(second)})
+        cancelled = adapter.wait(second)
+    assert kept.get("result", {}).get("error") != cancelled_error
+    assert cancelled["result"]["error"] == cancelled_error

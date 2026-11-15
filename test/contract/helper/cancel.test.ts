@@ -15,6 +15,7 @@ import {
   message,
   resultOf,
   sdkFor,
+  startService,
   TIMEOUT_MS,
   useMockApi,
   withService,
@@ -80,6 +81,46 @@ async function blockedRequestError(scenarioCase: ScenarioCase): Promise<string> 
 
 describe('003 cancel on the TypeScript helper (helper-api §Cancel)', () => {
   itRunsTheCases('cancel.json', '003 FR-023', server);
+
+  it(
+    '003 FR-023 only an integer id names the trial to cancel: true and "1" cancel nothing, 1.0 names trial 1',
+    async () => {
+      // No `initialize`, so the first trial has the request id 1, the id `true` would equal in
+      // a language where a bool is an integer.
+      const scenarioCase = stepsCase(
+        [{ call: {} }],
+        [
+          { delayMs: 1000, reply: { text: 'Kept.' } },
+          { delayMs: 1000, reply: { text: 'Kept.' } },
+        ],
+      );
+      const mock = server();
+      const driver = await startService(scenarioCase, mock);
+      try {
+        const first = driver.generate(generateParams(scenarioCase));
+        expect(first.id).toBe(1);
+        await waitForRequests(mock, 1);
+        driver.writeLine('{"jsonrpc":"2.0","method":"cancel","params":{"id":true}}');
+        driver.writeLine('{"jsonrpc":"2.0","method":"cancel","params":{"id":"1"}}');
+        const kept = await first.done;
+        const second = driver.generate(generateParams(scenarioCase));
+        await waitForRequests(mock, 2);
+        driver.writeLine(
+          `{"jsonrpc":"2.0","method":"cancel","params":{"id":${String(second.id)}.0}}`,
+        );
+        const cancelled = await second.done;
+        expect(kept.kind === 'result' ? resultOf(kept).error : undefined).not.toEqual({
+          kind: 'timeout',
+          message: message('F2'),
+        });
+        expect(resultOf(cancelled).error).toEqual({ kind: 'timeout', message: message('F2') });
+        await driver.shutdown();
+      } finally {
+        await driver.close();
+      }
+    },
+    TIMEOUT_MS,
+  );
 
   it(
     '003 FR-023 cancel aborts the trial fetch calls and the response follows at once',

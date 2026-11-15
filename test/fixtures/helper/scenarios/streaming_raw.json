@@ -2525,6 +2525,153 @@
         "raw": "Hello STOP. ",
         "warnings": []
       }
+    },
+    {
+      "name": "an immediate abort() inside the event handler where the body ends without an end event, the last chunk without delay (Chat Completions): an unread response, normal, on every SDK",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "ending": "text-only"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello STOP. ",
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "errorKind": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "an immediate abort() inside the event handler where the body ends without an end event, the last chunk without delay (Messages): an unread response, normal, on every SDK",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "abort",
+                  "in": "handler"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ending": "text-only"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello STOP. ",
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "errorKind": null
+          }
+        ]
+      }
     }
   ],
   "S-STR-19": [

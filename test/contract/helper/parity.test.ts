@@ -177,9 +177,21 @@ function runsAsync(data: CaseData): boolean {
   return !Array.isArray(backends) || backends.includes('async');
 }
 
+/**
+ * Whether both helpers run the case: a row held for one language only (`languages` naming just
+ * `python` or `typescript`) has no counterpart to compare with.
+ */
+function runsInBothLanguages(data: CaseData): boolean {
+  const languages = data.languages;
+  return (
+    languages === undefined || (languages.includes('python') && languages.includes('typescript'))
+  );
+}
+
+/** The Python side of the cases both helpers run, one per API. */
 function pythonCasesOf(scenario: string, cases: readonly CaseData[]): ScenarioCase[] {
   return cases
-    .filter((data) => data.languages?.includes('python') ?? true)
+    .filter(runsInBothLanguages)
     .filter(runsAsync)
     .flatMap((data) =>
       (data.apis ?? APIS).map((api) => ({
