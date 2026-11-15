@@ -80,9 +80,10 @@ def test_003_FR_002_output_while_the_service_module_is_imported_goes_to_stderr(
 def test_003_FR_002_protocol_lines_stay_intact_around_long_unterminated_output(
     mock_api: MockApi,
 ) -> None:
-    long_output = "x" * 200_000
+    # The service repeats the text: Linux limits one environment variable to 128 KiB.
+    long_output = {"write-fd": "x", "times": 200_000}
     case = steps_case(
-        [{"write-fd": long_output}, {"call": {}}, {"write-fd": long_output}, {"return": "done"}],
+        [long_output, {"call": {}}, long_output, {"return": "done"}],
         times=4,
     )
     with started(case, mock_api) as adapter:

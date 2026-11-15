@@ -5,8 +5,9 @@
   ends the function first. Steps:
   - `{"call": request, "swallow": bool}`: one model request (`model`, `user`, `system`,
     `stream`, `maxTokens`, `tools`); `swallow` goes on after the SDK's exception.
-  - `{"print": text}`, `{"write-fd": text}` (descriptor 1), `{"child": text}` (a child process
-    prints it): output the service writes.
+  - `{"print": text}`, `{"write-fd": text, "times": n}` (descriptor 1, the text repeated n
+    times, 1 by default), `{"child": text}` (a child process prints it): output the service
+    writes.
   - `{"sleep": ms}`; `{"raise": {"class": name, "message": text}}`.
   - `{"background": request, "delay": ms}` (asynchronous backends): an asyncio task, not
     awaited, that sends the request after the delay, or raises when the request is
@@ -209,7 +210,8 @@ class Steps:
         elif "print" in step:
             print(step["print"], flush=True)
         elif "write-fd" in step:
-            os.write(1, str(step["write-fd"]).encode("utf-8"))
+            text = str(step["write-fd"]) * int(step.get("times", 1))
+            os.write(1, text.encode("utf-8"))
         elif "child" in step:
             code = f"print({str(step['child'])!r})"
             subprocess.run([sys.executable, "-c", code], check=True)

@@ -91,11 +91,9 @@ describe('003 stdout protection of the TypeScript helper (helper-api §stdout Pr
   it(
     '003 FR-002 protocol lines stay intact around long unterminated output of concurrent trials',
     async () => {
-      const long = 'x'.repeat(200_000);
-      const scenarioCase = stdoutCase(
-        [{ write: long }, { call: {} }, { write: long }, { return: 'done' }],
-        4,
-      );
+      // The service repeats the text: Linux limits one environment variable to 128 KiB.
+      const long = { write: 'x', times: 200_000 };
+      const scenarioCase = stdoutCase([long, { call: {} }, long, { return: 'done' }], 4);
       const results = await withService(
         scenarioCase,
         server(),

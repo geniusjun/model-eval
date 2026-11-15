@@ -1,7 +1,8 @@
 // The stdout steps service: an adapter whose target function writes to standard output in the
 // ways `service.params.steps` of `MODEL_EVAL_SCENARIO` lists, then answers with one model request.
 //
-// - `{"write": text}`: `process.stdout.write`.
+// - `{"write": text, "times": n}`: `process.stdout.write` of the text repeated n times (1 by
+//   default).
 // - `{"console": text}`: `console.log`, `console.info` and `console.debug`, each with its name.
 // - `{"fd": text}`: `fs.writeSync(1, …)`, as a native module writing to descriptor 1 does.
 // - `{"child": text}`: a child process that shares descriptor 1 writes the text and a newline.
@@ -29,7 +30,7 @@ async function generate(c, variant) {
   let text;
   for (const step of steps) {
     if ('write' in step) {
-      process.stdout.write(step.write);
+      process.stdout.write(step.write.repeat(step.times ?? 1));
     } else if ('console' in step) {
       console.log(`${step.console} (log)`);
       console.info(`${step.console} (info)`);
