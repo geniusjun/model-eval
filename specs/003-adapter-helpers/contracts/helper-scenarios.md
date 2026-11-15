@@ -144,7 +144,7 @@ Rules: [data-model §When the Adapter Gives Raw](../data-model.md#when-the-adapt
 | S-STR-15 | Content cut, the same request resent as a stream and fully received, `Result(raw=<pre-cut text>, finish_reason="stop", answers=2)` | Normal, `answers` 2. Without `answers`, the helper takes it as a late cut: 1 |
 | S-STR-16 | `break` at a configured string with `Result(raw=, finish_reason="stop", stopped_early=True)` | Normal |
 | S-STR-17 | The same logic with `break` from a Node stream helper's `for await` | Events sent one by one: the SDK cancels the awaited read, `timeout` with W6. Two events in one chunk, stopping at the first: normal (K8) |
-| S-STR-18 | The same logic with an immediate `abort()` inside the event handler | Normal, also on openai-node 5 and 6 and `@anthropic-ai/sdk` 0 and 1, which read the body once more after abort |
+| S-STR-18 | The same logic with an immediate `abort()` inside the event handler; the same where the body ends without an end event and its last chunk arrives without delay, so the read after abort reaches the end of the body | Normal, also on openai-node 5 and 6 and `@anthropic-ai/sdk` 0 and 1, which read the body once more after abort; with the body ending without an end event, the call is an unread response on every SDK |
 | S-STR-19 | `abort()` after an `await` in the handler | Events one by one: `timeout` with W6. Waiting one `setImmediate`: always `timeout`. One `await null` with two events in one chunk: normal at the first event (K8) |
 | S-STR-20 | `break` at a configured string without `stopped_early` | `timeout` with W6 |
 | S-STR-21 | An adapter that always gives `stopped_early`; the service's time limit cancels an awaited read | `timeout` |
@@ -219,12 +219,12 @@ Rules: [helper-api §Error Classification](helper-api.md#error-classification), 
 | S-STAT-01 | 429 then a successful SDK retry | Normal: in both languages the 429 the SDK closed unread is a recovered failure |
 | S-STAT-02 | 429 only | `transient` |
 | S-STAT-03 | A tool loop's earlier call succeeds, the later call ends in 429 after the SDK's retries, a fixed message | The earlier call ended before the later was sent, so it does not recover the failure: Outcome row 6, `transient` |
-| S-STAT-04 | Quota exhaustion, every quota code of [helper-api §Error Classification](helper-api.md#error-classification) | `config` |
+| S-STAT-04 | Quota exhaustion, every quota code of [helper-api §Error Classification](helper-api.md#error-classification); a 429 `insufficient_quota` with a `retry-after-ms` header whose body was read | `config`; no `retryAfterMs` on the result or the call |
 | S-STAT-05 | Anthropic `details.error_code`: `enforced_spend_limit_reached` in a 429; `organization_on_hold`, `claude_code_key_creator_not_member`, `claude_code_version_too_old` in a 400; `skill_read_blocked_undecryptable` in a 409 | `config` |
 | S-STAT-06 | Anthropic `ramp_limit_exceeded` in a 429 | `transient` |
 | S-STAT-07 | Anthropic `thread_not_found` in a 404 | `permanent` |
 | S-STAT-08 | A beta `thread` service gets `thread_not_found`, resends the whole conversation and answers | `reply_call` true for both requests: normal. Without it: two branches, Outcome row 5 |
-| S-STAT-09 | 401; 402; 400 billing error in both shapes (type and message) | `config` |
+| S-STAT-09 | 401; 402; 403 with a `retry-after-ms` header; 400 billing error in both shapes (type and message) | `config`; no `retryAfterMs` on the result or the call |
 | S-STAT-10 | 400 | `permanent` |
 | S-STAT-11 | 408 remaining after the SDK's retries | `transient` |
 | S-STAT-12 | 409 | `permanent` |
