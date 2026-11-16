@@ -37,7 +37,7 @@ import zlib
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 JsonObject = dict[str, Any]
 
@@ -63,6 +63,9 @@ CONTENT_FIELDS = ("reply", "error", "body", "text", "sse")
 BODY_FIELDS = {"model", "stream", "bodyIncludes"}
 # How often a listener checks for shutdown, so stopping a test server takes no noticeable time.
 POLL_S = 0.05
+# The longest a response or a chunk waits for `afterRequests`; shorter than the test clients'
+# own time limits, so a count that is never reached shows up as `waitTimedOut` in the log.
+AFTER_REQUESTS_TIMEOUT_S = 20.0
 
 
 class ScriptError(Exception):
@@ -81,6 +84,7 @@ class ScriptBook:
 
     def __init__(self, print_log: bool) -> None:
         self._lock = threading.Lock()
+        self._received = threading.Condition(self._lock)
         self._entries: list[JsonObject] | None = None
         self._remaining: list[int] = []
         self._log: list[JsonObject] = []
@@ -106,9 +110,9 @@ class ScriptBook:
         with self._lock:
             return self._entries is not None
 
-    def peek(self, method: str, path: str) -> JsonObject | None:
-        """The entry that answers a request known by method and path, or None when the body
-        could decide it."""
+    def peek(self, head: RequestHead) -> JsonObject | None:
+        """The entry that answers a request known by its method, path and headers, or None when
+        the body could decide it."""
         with self._lock:
             for index, entry in enumerate(self._entries or []):
                 if self._remaining[index] == 0:
@@ -116,14 +120,14 @@ class ScriptBook:
                 match = entry.get("match") or {}
                 if BODY_FIELDS & match.keys():
                     return None
-                if matches(match, method, path, None):
+                if matches(match, head, None):
                     return entry
         return None
 
-    def take(self, method: str, path: str, body: Any) -> JsonObject | None:
+    def take(self, head: RequestHead, body: Any) -> JsonObject | None:
         with self._lock:
             for index, entry in enumerate(self._entries or []):
-                if self._remaining[index] > 0 and matches(entry.get("match"), method, path, body):
+                if self._remaining[index] > 0 and matches(entry.get("match"), head, body):
                     self._remaining[index] -= 1
                     return entry
         return None
@@ -136,6 +140,20 @@ class ScriptBook:
     def record(self, record: JsonObject) -> None:
         with self._lock:
             self._log.append(record)
+            self._received.notify_all()
+
+    def wait_for_requests(self, count: int, record: JsonObject, what: str) -> bool:
+        """Waits until `count` requests were received since the script was loaded (`afterRequests`).
+        Past AFTER_REQUESTS_TIMEOUT_S it gives up, notes `waitTimedOut` on the request's record
+        and returns False."""
+        with self._lock:
+            if self._received.wait_for(lambda: len(self._log) >= count, AFTER_REQUESTS_TIMEOUT_S):
+                return True
+            record["waitTimedOut"] = (
+                f"{what} waited {AFTER_REQUESTS_TIMEOUT_S:g} s for {count} requests; "
+                f"{len(self._log)} arrived"
+            )
+            return False
 
     def publish(self, record: JsonObject) -> None:
         """Prints a record with --log, once the response it describes is decided."""
@@ -195,14 +213,25 @@ def check_body_chunks(index: int, entry: JsonObject) -> None:
         raise ScriptError(f"{where}.splitAt must fall inside the {len(known.encode())}-byte body")
 
 
-def matches(match: JsonObject | None, method: str, path: str, body: Any) -> bool:
+class RequestHead(NamedTuple):
+    """What a request says before its body: method, path and headers (names in lowercase)."""
+
+    method: str
+    path: str
+    headers: dict[str, str]
+
+
+def matches(match: JsonObject | None, head: RequestHead, body: Any) -> bool:
     """Whether a request fits `match`; with `body` None, fields read from the body never fit."""
     if not match:
         return True
-    if "method" in match and match["method"] != method:
+    if "method" in match and match["method"] != head.method:
         return False
-    if "path" in match and not path.endswith(match["path"]):
+    if "path" in match and not head.path.endswith(match["path"]):
         return False
+    for name, value in (match.get("headers") or {}).items():
+        if head.headers.get(name.lower()) != value:
+            return False
     if BODY_FIELDS & match.keys() and body is None:
         return False
     request = body if isinstance(body, dict) else {}
@@ -757,7 +786,8 @@ def stream_chunks(events: list[Event], options: JsonObject) -> list[tuple[int, b
 
 
 class Response:
-    """What to send: status, headers and the body as chunks, each after its delay."""
+    """What to send: status, headers and the body as chunks, each after its delay and, by chunk
+    index, once the server has received the number of requests in `after_requests`."""
 
     def __init__(
         self, status: int, headers: dict[str, str], chunks: list[tuple[int, bytes]], sse: bool
@@ -766,6 +796,7 @@ class Response:
         self.headers = headers
         self.chunks = chunks
         self.sse = sse
+        self.after_requests: list[int] = []
 
 
 def accepted_encodings(header: str | None) -> set[str]:
@@ -847,7 +878,10 @@ def build_response(entry: JsonObject, api: str, request: JsonObject, rid: int) -
                 raise ScriptError("bodyChunks is for bodies that are not SSE; use stream")
             options = entry.get("stream") or {}
             events = stream_events(api, rid, model, reply, request, options)
-            return Response(int(entry.get("status", 200)), {}, stream_chunks(events, options), True)
+            chunks = stream_chunks(events, options)
+            response = Response(int(entry.get("status", 200)), {}, chunks, True)
+            response.after_requests = [int(n) for n in options.get("chunkAfterRequests", [])]
+            return response
         body = compact_json(reply_body(api, rid, model, reply)).encode("utf-8")
         return Response(int(entry.get("status", 200)), {}, body_chunks(body, entry), False)
     if "error" in entry:
@@ -1039,9 +1073,10 @@ class Handler(BaseHTTPRequestHandler):
             "scripted": False,
             "servedEncoding": None,
         }
-        early = book.peek(method, path)
+        head = RequestHead(method, path, record["headers"])
+        early = book.peek(head)
         if early is not None and early.get("connection") == "close-unread":
-            book.take(method, path, None)
+            book.take(head, None)
             record["scripted"] = True
             book.record(record)
             book.publish(record)
@@ -1058,7 +1093,7 @@ class Handler(BaseHTTPRequestHandler):
         )
         entry: JsonObject | None = None
         if book.loaded:
-            entry = book.take(method, path, body)
+            entry = book.take(head, body)
             record["scripted"] = entry is not None
         elif record["api"] == "chat-completions":
             entry = example_entry(request)
@@ -1074,6 +1109,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send(unscripted(api, f"mock server: {message}"), None)
             return
         time.sleep(int(entry.get("delayMs", 0)) / 1000)
+        if "afterRequests" in entry and not book.wait_for_requests(
+            int(entry["afterRequests"]), record, "the response"
+        ):
+            book.publish(record)
+            self.send(unscripted(api, f"mock server: {record['waitTimedOut']}"), None)
+            return
         if entry.get("connection") == "close-before-headers":
             book.publish(record)
             self.drop_connection()
@@ -1092,9 +1133,11 @@ class Handler(BaseHTTPRequestHandler):
         response.headers.update(
             {name.lower(): value for name, value in (entry.get("headers") or {}).items()}
         )
-        self.send(response, entry.get("drop"))
+        self.send(response, entry.get("drop"), record)
 
-    def send(self, response: Response, drop: JsonObject | None) -> None:
+    def send(
+        self, response: Response, drop: JsonObject | None, record: JsonObject | None = None
+    ) -> None:
         content_type = "text/event-stream" if response.sse else "application/json"
         headers = {"content-type": content_type, **response.headers}
         chunked = response.sse or len(response.chunks) > 1
@@ -1107,8 +1150,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(name, value)
         self.end_headers()
         whole = len(response.chunks) if drop is None else int(drop.get("chunks", 0))
-        for delay, chunk in response.chunks[:whole]:
+        for index, (delay, chunk) in enumerate(response.chunks[:whole]):
             time.sleep(delay / 1000)
+            if index < len(response.after_requests) and record is not None:
+                count = response.after_requests[index]
+                if not self.server.book.wait_for_requests(count, record, f"chunk {index}"):
+                    self.drop_connection()
+                    return
             self.wfile.write(frame(chunk) if chunked else chunk)
         if drop is not None:
             self.send_partial(response.chunks[whole:], int(drop.get("bytes", 0)), chunked)

@@ -73,9 +73,15 @@ class MockApi:
         self.control("reset")
 
     def log(self) -> list[JsonObject]:
+        """The requests received since the script was loaded. Fails when a response or chunk
+        held by `afterRequests` or `chunkAfterRequests` gave up waiting, since the case then did
+        not run the scene its script describes."""
         with urllib.request.urlopen(f"{self.url}/__mock__/log", timeout=10) as response:
             requests: list[JsonObject] = json.loads(response.read())["requests"]
-            return requests
+        for number, record in enumerate(requests, start=1):
+            if "waitTimedOut" in record:
+                raise AssertionError(f"mock server, request {number}: {record['waitTimedOut']}")
+        return requests
 
     def tls_url(self, certificate: str) -> str:
         port = self.control("tls", {"certificate": certificate})["port"]

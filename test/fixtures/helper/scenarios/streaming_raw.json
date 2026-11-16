@@ -3237,9 +3237,9 @@
               "call": {
                 "name": "answer",
                 "stream": true,
-                "processMs": 100,
-                "limitMs": 450,
-                "onError": "swallow"
+                "limitMs": 700,
+                "onError": "swallow",
+                "processTextMs": 1500
               }
             }
           ],
@@ -3298,9 +3298,9 @@
               "call": {
                 "name": "answer",
                 "stream": true,
-                "processMs": 100,
-                "limitMs": 450,
-                "onError": "swallow"
+                "limitMs": 700,
+                "onError": "swallow",
+                "processTextMs": 1500
               }
             }
           ],
@@ -3361,10 +3361,10 @@
               "call": {
                 "name": "answer",
                 "stream": true,
-                "processMs": 100,
-                "limitMs": 450,
+                "limitMs": 700,
                 "onError": "swallow",
-                "streamHelper": true
+                "streamHelper": true,
+                "processTextMs": 1500
               }
             }
           ],

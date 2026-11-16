@@ -26,6 +26,8 @@
 //   - The text kept is what was received up to and including the event where the cut happens.
 // - `processMs`: an awaited pause after each event, the service's work on each chunk, so a time
 //   limit (`limitMs`) can fire while no read is awaited.
+// - `processTextMs`: the same pause after each event that adds text only, so a time limit can be
+//   placed inside the work on the first text, whatever number of events comes before it.
 // - `streamHelper`: true reads the stream through the SDK's stream helper
 //   (`client.chat.completions.stream()`, `client.messages.stream()`, `client.responses.stream()`).
 //   A Chat Completions helper's text comes from its `content.delta` events, and a cut can name
@@ -288,8 +290,10 @@ class StreamReportFlow extends ReportFlow {
   async readStream(api, spec, stream, taken, cut, reached, signal) {
     taken.stream = stream;
     const pauseMs = Number(spec.processMs ?? 0);
+    const textPauseMs = Number(spec.processTextMs ?? 0);
     const events = spec.streamHelper ? helperEvents(api, stream) : stream;
     for await (const event of events) {
+      const textBefore = taken.text.length;
       taken.add(event);
       if (cut !== undefined && !reached.isSet && cut.reached(api, taken, event)) {
         taken.cut = true;
@@ -306,6 +310,9 @@ class StreamReportFlow extends ReportFlow {
       }
       if (pauseMs > 0) {
         await sleep(pauseMs, signal);
+      }
+      if (textPauseMs > 0 && taken.text.length > textBefore) {
+        await sleep(textPauseMs, signal);
       }
     }
   }

@@ -33,6 +33,7 @@ export const receivedRequestSchema = z
     headers: z.record(z.string(), z.string()),
     scripted: z.boolean(),
     servedEncoding: z.string().nullable(),
+    waitTimedOut: z.string().optional(),
   })
   .loose();
 export type ReceivedRequest = z.infer<typeof receivedRequestSchema>;
@@ -86,9 +87,20 @@ export class MockApi {
     await this.control('reset', {});
   }
 
+  /**
+   * The requests received since the script was loaded. Fails when a response or chunk held by
+   * `afterRequests` or `chunkAfterRequests` gave up waiting, since the case then did not run the
+   * scene its script describes.
+   */
   async log(): Promise<ReceivedRequest[]> {
     const response = await fetch(`${this.url}/__mock__/log`);
-    return logSchema.parse(await response.json()).requests;
+    const requests = logSchema.parse(await response.json()).requests;
+    requests.forEach((record, index) => {
+      if (record.waitTimedOut !== undefined) {
+        throw new Error(`mock server, request ${String(index + 1)}: ${record.waitTimedOut}`);
+      }
+    });
+    return requests;
   }
 
   /** The base URL of a TLS listener that presents a certificate of test/fixtures/helper/tls/. */

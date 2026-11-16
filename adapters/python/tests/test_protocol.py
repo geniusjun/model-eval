@@ -77,25 +77,32 @@ def test_003_FR_001_initialize_without_max_concurrency_sets_no_limit(mock_api: M
 def test_003_FR_001_concurrent_generate_requests_are_matched_by_id(
     mock_api: MockApi, backend: str
 ) -> None:
+    # The slow reply waits for a third request, sent only once the fast trial is answered, so
+    # the fast trial can be answered only while the slow one still waits for its headers.
     case = reply_case(
         backend,
         script=[
-            {"match": {"bodyIncludes": "slow"}, "delayMs": 1500, "reply": {"text": "slow answer"}},
+            {
+                "match": {"bodyIncludes": "slow"},
+                "afterRequests": 3,
+                "reply": {"text": "slow answer"},
+            },
             {"match": {"bodyIncludes": "fast"}, "reply": {"text": "fast answer"}},
+            {"match": {"bodyIncludes": "third"}, "reply": {"text": "third answer"}},
         ],
     )
     with started(case, mock_api) as adapter:
         initialize(adapter, case)
-        sent = time.monotonic()
         slow = generate(adapter, case, input={"user": "slow"}, caseId="slow")
         fast = generate(adapter, case, input={"user": "fast"}, caseId="fast")
         fast_result = ok_result(adapter.wait(fast))
-        fast_after = time.monotonic() - sent
+        third = generate(adapter, case, input={"user": "third"}, caseId="third")
         slow_result = ok_result(adapter.wait(slow))
+        third_result = ok_result(adapter.wait(third))
+    mock_api.log()
     assert fast_result["raw"] == "fast answer"
     assert slow_result["raw"] == "slow answer"
-    # The fast trial is answered while the slow one still waits for its response headers.
-    assert fast_after < 1.2
+    assert third_result["raw"] == "third answer"
 
 
 def test_003_FR_001_synchronous_targets_run_in_a_worker_thread(mock_api: MockApi) -> None:
@@ -118,18 +125,18 @@ def test_003_FR_001_synchronous_targets_run_in_a_worker_thread(mock_api: MockApi
 
 
 def test_003_FR_001_synchronous_targets_run_concurrently(mock_api: MockApi) -> None:
+    # Each reply waits until both requests arrived, which happens only when the two synchronous
+    # targets run at the same time.
     case = reply_case(
-        "sync", script=[{"times": 2, "delayMs": 1000, "reply": {"text": "late answer"}}]
+        "sync", script=[{"times": 2, "afterRequests": 2, "reply": {"text": "late answer"}}]
     )
     with started(case, mock_api) as adapter:
         initialize(adapter, case)
-        sent = time.monotonic()
         first = generate(adapter, case, caseId="one")
         second = generate(adapter, case, caseId="two")
         results = [ok_result(adapter.wait(first)), ok_result(adapter.wait(second))]
-        elapsed = time.monotonic() - sent
+    mock_api.log()
     assert [result["raw"] for result in results] == ["late answer", "late answer"]
-    assert elapsed < 1.8
 
 
 @pytest.mark.parametrize("backend", ["sync", "async"])

@@ -276,6 +276,11 @@
           "type": "integer",
           "minimum": 0
         },
+        "afterRequests": {
+          "description": "After `delayMs`, hold the response headers until the server has received this many requests since the script was loaded, this one included. Past 20 s the server answers with a 500 naming the wait and notes `waitTimedOut` on the request's log record.",
+          "type": "integer",
+          "minimum": 1
+        },
         "connection": {
           "description": "`respond` (default); `close-before-headers`: read the request, then close without a response; `close-unread`: close without reading the request body. Whether the client then fails while sending the body or while waiting for the response depends on timing and on the body's size against the socket buffers.",
           "enum": ["respond", "close-before-headers", "close-unread"]
@@ -378,7 +383,13 @@
         "path": { "description": "A suffix of the request path.", "type": "string", "minLength": 1 },
         "model": { "type": "string", "minLength": 1 },
         "stream": { "type": "boolean" },
-        "bodyIncludes": { "type": "string", "minLength": 1 }
+        "bodyIncludes": { "type": "string", "minLength": 1 },
+        "headers": {
+          "description": "Request headers with these values; names in any case. The scenario services send a call's `kwargs.extra_headers`, so requests with the same body are told apart without depending on the order they arrive in.",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string" }
+        }
       }
     },
     "reply": {
@@ -472,6 +483,11 @@
         "eventsPerChunk": { "type": "integer", "minimum": 1 },
         "chunkDelaysMs": {
           "description": "Wait before each body chunk, by chunk index; 0 for chunks beyond the list.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "chunkAfterRequests": {
+          "description": "After its delay, hold each body chunk, by chunk index, until the server has received this many requests since the script was loaded; 0 for none and for chunks beyond the list. Past 20 s the server drops the connection and notes `waitTimedOut` on the request's log record.",
           "type": "array",
           "items": { "type": "integer", "minimum": 0 }
         },

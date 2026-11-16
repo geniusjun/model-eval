@@ -22,6 +22,8 @@ calls it received when it fails or is cut, and also takes:
   - The text kept is what was received up to and including the event where the cut happens.
 - `processMs`: an awaited pause after each event (asynchronous backends), the service's work on
   each chunk, so a time limit (`limitMs`) can fire while no read is awaited.
+- `processTextMs`: the same pause after each event that adds text only, so a time limit can be
+  placed inside the work on the first text, whatever number of events comes before it.
 - `streamHelper`: true reads a Chat Completions stream through the SDK's stream helper
   (`client.chat.completions.stream()`), whose text comes from its `content.delta` events and
   whose `content.done` event `{"event": "content.done"}` names.
@@ -301,7 +303,9 @@ class StreamReportFlow(ReportFlow):
         other styles signal `reached` and read on until the service cuts from outside."""
         taken.stream = stream
         pause_s = float(spec.get("processMs", 0)) / 1000
+        text_pause_s = float(spec.get("processTextMs", 0)) / 1000
         async for event in stream:
+            text_before = len(taken.text)
             taken.add(event)
             if cut is not None and not reached.is_set() and cut.reached(api, taken, event):
                 taken.cut = True
@@ -313,6 +317,8 @@ class StreamReportFlow(ReportFlow):
                 return
             if pause_s:
                 await asyncio.sleep(pause_s)
+            if text_pause_s and len(taken.text) > text_before:
+                await asyncio.sleep(text_pause_s)
 
     async def cut_from_outside(
         self, consume: Awaitable[None], taken: CutStream, cut: Cut, reached: asyncio.Event

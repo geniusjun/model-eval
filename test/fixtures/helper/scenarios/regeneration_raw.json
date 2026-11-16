@@ -13035,9 +13035,14 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "STOP"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13045,7 +13050,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13077,7 +13087,18 @@
               0,
               400,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              4
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13088,7 +13109,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13098,7 +13124,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 800
+          "delayMs": 800,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13144,9 +13175,14 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "STOP"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13154,7 +13190,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13184,7 +13225,18 @@
               0,
               400,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              4
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13195,7 +13247,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13205,7 +13262,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 800
+          "delayMs": 800,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13246,9 +13308,14 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "STOP"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13256,7 +13323,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13288,7 +13360,18 @@
               0,
               400,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              4
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13299,7 +13382,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13309,7 +13397,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 800
+          "delayMs": 800,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13350,9 +13443,14 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "STOP"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13360,7 +13458,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13388,7 +13491,18 @@
               0,
               400,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              4
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13399,7 +13513,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13409,7 +13528,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 800
+          "delayMs": 800,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13432,9 +13556,14 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "STOP"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13446,6 +13575,11 @@
                     "raise": {
                       "class": "ServiceError",
                       "message": "The answer failed."
+                    }
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
                     }
                   }
                 }
@@ -13472,7 +13606,18 @@
               0,
               400,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              4
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13483,7 +13628,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13493,7 +13643,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 800
+          "delayMs": 800,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13522,6 +13677,11 @@
                       "ms": 100
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13529,7 +13689,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13562,6 +13727,11 @@
               200,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13572,7 +13742,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13582,7 +13757,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 0
+          "delayMs": 0,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13611,6 +13791,11 @@
                       "ms": 100
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13618,7 +13803,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13649,6 +13839,11 @@
               200,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13659,7 +13854,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13669,7 +13869,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 0
+          "delayMs": 0,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13693,6 +13898,11 @@
                       "ms": 100
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13700,7 +13910,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13733,6 +13948,11 @@
               200,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13743,7 +13963,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13753,7 +13978,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 0
+          "delayMs": 0,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13777,6 +14007,11 @@
                       "ms": 100
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13784,7 +14019,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13813,6 +14053,11 @@
               200,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13823,7 +14068,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13833,7 +14083,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 0
+          "delayMs": 0,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13857,6 +14112,11 @@
                       "ms": 100
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
                   }
                 },
                 {
@@ -13864,7 +14124,12 @@
                   "stream": true,
                   "startAfterMs": 50,
                   "maxRetries": 2,
-                  "onError": "raise"
+                  "onError": "raise",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13890,6 +14155,11 @@
               200,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
           }
         },
         {
@@ -13900,7 +14170,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 2
+          "times": 2,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         },
         {
           "status": 429,
@@ -13910,7 +14185,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "delayMs": 0
+          "delayMs": 0,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -13934,16 +14214,26 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "the a"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "late"
+                    }
                   }
                 },
                 {
                   "name": "winner",
                   "stream": true,
                   "startAfterMs": 50,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "winner"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -13975,7 +14265,22 @@
               0,
               400,
               5000
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "late"
+            }
           }
         },
         {
@@ -13994,6 +14299,11 @@
               0,
               1500
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "winner"
+            }
           }
         }
       ],
@@ -14023,16 +14333,26 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "the a"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "late"
+                    }
                   }
                 },
                 {
                   "name": "winner",
                   "stream": true,
                   "startAfterMs": 50,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "winner"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -14059,8 +14379,23 @@
               0,
               0,
               400,
-              300
+              5000
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "late"
+            }
           }
         },
         {
@@ -14077,8 +14412,13 @@
               0,
               0,
               0,
-              600
+              1500
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "winner"
+            }
           }
         }
       ],
@@ -14105,16 +14445,26 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": " and"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "late"
+                    }
                   }
                 },
                 {
                   "name": "winner",
                   "stream": true,
                   "startAfterMs": 50,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "winner"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -14146,7 +14496,22 @@
               0,
               400,
               5000
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "late"
+            }
           }
         },
         {
@@ -14168,6 +14533,11 @@
               0,
               1500
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "winner"
+            }
           }
         }
       ],
@@ -14197,16 +14567,26 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": " and"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "late"
+                    }
                   }
                 },
                 {
                   "name": "winner",
                   "stream": true,
                   "startAfterMs": 50,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "winner"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -14233,8 +14613,23 @@
               0,
               0,
               400,
-              300
+              5000
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "late"
+            }
           }
         },
         {
@@ -14254,8 +14649,13 @@
               0,
               0,
               0,
-              600
+              1500
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "winner"
+            }
           }
         }
       ],
@@ -14282,16 +14682,26 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "then"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "late"
+                    }
                   }
                 },
                 {
                   "name": "winner",
                   "stream": true,
                   "startAfterMs": 50,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "winner"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -14323,7 +14733,22 @@
               0,
               400,
               5000
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "late"
+            }
           }
         },
         {
@@ -14345,6 +14770,11 @@
               0,
               1500
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "winner"
+            }
           }
         }
       ],
@@ -14374,16 +14804,26 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 300
+                      "text": "then"
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "late"
+                    }
                   }
                 },
                 {
                   "name": "winner",
                   "stream": true,
                   "startAfterMs": 50,
-                  "onError": "swallow"
+                  "onError": "swallow",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "winner"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -14410,8 +14850,23 @@
               0,
               0,
               400,
-              300
+              5000
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "late"
+            }
           }
         },
         {
@@ -14431,8 +14886,13 @@
               0,
               0,
               0,
-              600
+              1500
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "winner"
+            }
           }
         }
       ],
