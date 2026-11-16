@@ -19,7 +19,8 @@ message, with usage (examples/python-service, quickstart.md of 003). Other paths
 Once a script is loaded, a request no remaining entry matches gets a 500 naming the problem.
 
 The first line on stdout names the address it listens on. With --log every received request is
-also printed to stdout as one JSON line.
+also printed to stdout as one JSON line, and printed again with its `waitTimedOut` reason when a
+chunk held by `chunkAfterRequests` gives up waiting.
 """
 
 from __future__ import annotations
@@ -88,6 +89,9 @@ class ScriptBook:
         self._entries: list[JsonObject] | None = None
         self._remaining: list[int] = []
         self._log: list[JsonObject] = []
+        # Counts loads and resets, so a wait begun under one script gives up when it is replaced
+        # instead of counting the next case's requests.
+        self._generation = 0
         self._print_log = print_log
         self._ids = 0
 
@@ -98,12 +102,16 @@ class ScriptBook:
             self._entries = entries
             self._remaining = [int(entry.get("times", 1)) for entry in entries]
             self._log = []
+            self._generation += 1
+            self._received.notify_all()
 
     def reset(self) -> None:
         with self._lock:
             self._entries = None
             self._remaining = []
             self._log = []
+            self._generation += 1
+            self._received.notify_all()
 
     @property
     def loaded(self) -> bool:
@@ -144,10 +152,19 @@ class ScriptBook:
 
     def wait_for_requests(self, count: int, record: JsonObject, what: str) -> bool:
         """Waits until `count` requests were received since the script was loaded (`afterRequests`).
-        Past AFTER_REQUESTS_TIMEOUT_S it gives up, notes `waitTimedOut` on the request's record
-        and returns False."""
+        It gives up past AFTER_REQUESTS_TIMEOUT_S, or when the script is loaded again or reset,
+        and then notes `waitTimedOut` on the request's record and returns False."""
         with self._lock:
-            if self._received.wait_for(lambda: len(self._log) >= count, AFTER_REQUESTS_TIMEOUT_S):
+            generation = self._generation
+
+            def settled() -> bool:
+                return self._generation != generation or len(self._log) >= count
+
+            self._received.wait_for(settled, AFTER_REQUESTS_TIMEOUT_S)
+            if self._generation != generation:
+                record["waitTimedOut"] = f"{what} gave up waiting: the script was replaced"
+                return False
+            if len(self._log) >= count:
                 return True
             record["waitTimedOut"] = (
                 f"{what} waited {AFTER_REQUESTS_TIMEOUT_S:g} s for {count} requests; "
@@ -156,7 +173,8 @@ class ScriptBook:
             return False
 
     def publish(self, record: JsonObject) -> None:
-        """Prints a record with --log, once the response it describes is decided."""
+        """Prints a record with --log, once the response it describes is decided, and again when a
+        chunk held by `chunkAfterRequests` gives up waiting, with its `waitTimedOut` reason."""
         if self._print_log:
             with self._lock:
                 line = compact_json(record)
@@ -1155,6 +1173,8 @@ class Handler(BaseHTTPRequestHandler):
             if index < len(response.after_requests) and record is not None:
                 count = response.after_requests[index]
                 if not self.server.book.wait_for_requests(count, record, f"chunk {index}"):
+                    # The record was printed with the headers; print it again with the reason.
+                    self.server.book.publish(record)
                     self.drop_connection()
                     return
             self.wfile.write(frame(chunk) if chunked else chunk)

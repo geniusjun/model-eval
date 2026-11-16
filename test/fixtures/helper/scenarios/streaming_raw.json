@@ -2467,6 +2467,209 @@
           }
         ]
       }
+    },
+    {
+      "name": "break from the Responses stream helper's for await at the first of two events in one chunk: normal on every SDK, as its stream helper starts no read before the break (K8)",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hi. Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 4,
+            "eventsPerChunk": 2,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hi. Hello STOP. ",
+        "warnings": []
+      }
+    },
+    {
+      "name": "break from the Messages stream helper's for await at the first of two events in one chunk, on a release whose stream helper has started no read before the break: normal (K8)",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "messages"
+      ],
+      "sdks": [
+        "anthropic-sdk-0-first"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "eventsPerChunk": 2,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello STOP. ",
+        "warnings": []
+      }
+    },
+    {
+      "name": "the same on Messages with a release whose stream helper has started the next read before the break: the read is waiting, timeout with W6 (K8)",
+      "languages": [
+        "typescript"
+      ],
+      "apis": [
+        "messages"
+      ],
+      "sdks": [
+        "anthropic-sdk-0",
+        "anthropic-sdk-1"
+      ],
+      "service": {
+        "behaviour": "stream-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer",
+                "stream": true,
+                "streamHelper": true,
+                "cut": {
+                  "at": {
+                    "text": "STOP"
+                  },
+                  "style": "break"
+                }
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "stoppedEarly": true
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello STOP. More."
+          },
+          "stream": {
+            "deltas": 3,
+            "eventsPerChunk": 2,
+            "chunkDelaysMs": [
+              0,
+              0,
+              0,
+              900
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [
+          {
+            "message": "W6-stopped-early-honoured"
+          }
+        ]
+      }
     }
   ],
   "S-STR-18": [

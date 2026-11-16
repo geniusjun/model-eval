@@ -2631,9 +2631,20 @@
           "steps": [
             {
               "parallel": [
-                {},
                 {
-                  "startAfterMs": 50
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "first"
+                    }
+                  }
+                },
+                {
+                  "startAfterMs": 50,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "second"
+                    }
+                  }
                 }
               ],
               "wait": "first"
@@ -2646,13 +2657,23 @@
           "reply": {
             "text": "First answer."
           },
-          "delayMs": 300
+          "delayMs": 300,
+          "match": {
+            "headers": {
+              "x-mock-call": "first"
+            }
+          }
         },
         {
           "reply": {
             "text": "Second answer."
           },
-          "delayMs": 3000
+          "delayMs": 3000,
+          "match": {
+            "headers": {
+              "x-mock-call": "second"
+            }
+          }
         }
       ],
       "expect": {
@@ -2687,11 +2708,21 @@
             {
               "parallel": [
                 {
-                  "name": "early"
+                  "name": "early",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "early"
+                    }
+                  }
                 },
                 {
                   "name": "late",
-                  "startAfterMs": 200
+                  "startAfterMs": 200,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "late"
+                    }
+                  }
                 }
               ]
             }
@@ -2706,11 +2737,21 @@
           "reply": {
             "text": "First answer."
           },
-          "delayMs": 600
+          "delayMs": 600,
+          "match": {
+            "headers": {
+              "x-mock-call": "early"
+            }
+          }
         },
         {
           "reply": {
             "text": "Second answer."
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "late"
+            }
           }
         }
       ],

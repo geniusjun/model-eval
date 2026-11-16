@@ -12,15 +12,17 @@ import socket
 import ssl
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import zlib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import pytest
 from protocol_client import PYTHON_DIR, ROOT_CA, MockApi
 
+import mock_api.server as server_module
 from mock_api.server import CERTIFICATES, MockServer
 
 SERVER = PYTHON_DIR / "mock_api" / "server.py"
@@ -42,6 +44,7 @@ def send(
     body: Any = None,
     accept_encoding: str | None = "identity",
     method: str = "POST",
+    headers: dict[str, str] | None = None,
 ) -> http.client.HTTPResponse:
     """One request; `accept_encoding` None sends no accept-encoding header at all."""
     connection = http.client.HTTPConnection(*address(mock), timeout=10)
@@ -50,6 +53,8 @@ def send(
     connection.putrequest(method, path, skip_accept_encoding=True)
     if accept_encoding is not None:
         connection.putheader("accept-encoding", accept_encoding)
+    for name, value in (headers or {}).items():
+        connection.putheader(name, value)
     connection.putheader("content-type", "application/json")
     connection.putheader("content-length", str(len(payload)))
     connection.endheaders(payload)
@@ -381,7 +386,101 @@ def test_003_SC_002_entries_answer_in_send_order_with_times_and_match(mock_api: 
     assert answers == [b"first", b"first", b"model-a", b"last", b"messages"]
 
 
+def test_003_SC_002_match_headers_pick_the_entry_whatever_order_the_requests_arrive_in(
+    mock_api: MockApi,
+) -> None:
+    mock_api.load(
+        [
+            {"match": {"headers": {"X-Mock-Call": "late"}}, "text": "for late"},
+            {"match": {"headers": {"x-mock-call": "early"}}, "text": "for early"},
+        ]
+    )
+    early = send(mock_api, headers={"x-mock-call": "early"}).read()
+    late = send(mock_api, headers={"x-mock-call": "late"}).read()
+    assert (early, late) == (b"for early", b"for late")
+
+
 NO_ENTRY = ("mock_script_error", "mock server: no script entry for this request")
+STREAM = {"model": "model-b", "stream": True}
+# Far below the 20 s cap, so a wait that does not end early fails this bound.
+GIVE_UP_S = 5.0
+
+
+def in_thread(work: Callable[[], Any]) -> Callable[[], Any]:
+    """Runs `work` in a thread; the returned function joins it and gives its value or error."""
+    outcome: dict[str, Any] = {}
+
+    def run() -> None:
+        try:
+            outcome["value"] = work()
+        except Exception as error:
+            outcome["error"] = error
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+    def result() -> Any:
+        thread.join(timeout=30)
+        if "error" in outcome:
+            raise outcome["error"]
+        return outcome["value"]
+
+    return result
+
+
+def wait_for_log(mock: MockApi, count: int) -> None:
+    deadline = time.monotonic() + 10
+    while len(mock.log()) < count:
+        assert time.monotonic() < deadline, f"the server did not log {count} requests"
+        time.sleep(0.01)
+
+
+def read_all(response: http.client.HTTPResponse) -> bytes:
+    try:
+        return response.read()
+    except http.client.IncompleteRead as error:
+        return b"dropped:" + error.partial
+
+
+def test_003_SC_002_a_response_held_by_after_requests_gives_up_when_the_script_is_replaced(
+    mock_api: MockApi,
+) -> None:
+    mock_api.load([{"afterRequests": 2, "text": "late"}])
+    started = time.monotonic()
+    response = in_thread(lambda: script_error(send(mock_api)))
+    wait_for_log(mock_api, 1)
+    mock_api.reset()
+    message = "mock server: the response gave up waiting: the script was replaced"
+    assert response() == ("mock_script_error", message)
+    assert time.monotonic() - started < GIVE_UP_S
+
+
+def test_003_SC_002_a_chunk_held_by_chunk_after_requests_gives_up_when_the_script_is_replaced(
+    mock_api: MockApi,
+) -> None:
+    entry = {"reply": {"text": "Hello."}, "stream": {"chunkAfterRequests": [0, 2]}}
+    mock_api.load([entry])
+    started = time.monotonic()
+    body = in_thread(lambda: read_all(send(mock_api, body=STREAM)))
+    wait_for_log(mock_api, 1)
+    mock_api.load([])
+    assert body().startswith(b"dropped:")
+    assert time.monotonic() - started < GIVE_UP_S
+
+
+def test_003_SC_002_waits_past_the_cap_answer_500_or_drop_and_fail_the_log(
+    mock_api: MockApi, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(server_module, "AFTER_REQUESTS_TIMEOUT_S", 0.2)
+    mock_api.load([{"afterRequests": 2, "text": "late"}])
+    message = "the response waited 0.2 s for 2 requests; 1 arrived"
+    assert script_error(send(mock_api)) == ("mock_script_error", f"mock server: {message}")
+    with pytest.raises(AssertionError, match=f"request 1: {message}"):
+        mock_api.log()
+    mock_api.load([{"reply": {"text": "Hello."}, "stream": {"chunkAfterRequests": [0, 2]}}])
+    assert read_all(send(mock_api, body=STREAM)).startswith(b"dropped:")
+    with pytest.raises(AssertionError, match="request 1: chunk 1 waited 0.2 s for 2 requests"):
+        mock_api.log()
 
 
 def script_error(response: http.client.HTTPResponse) -> tuple[str, str]:

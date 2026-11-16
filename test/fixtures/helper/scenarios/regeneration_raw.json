@@ -7655,12 +7655,22 @@
               "parallel": [
                 {
                   "name": "a",
-                  "stream": true
+                  "stream": true,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "a"
+                    }
+                  }
                 },
                 {
                   "name": "b",
                   "stream": true,
-                  "startAfterMs": 100
+                  "startAfterMs": 100,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "b"
+                    }
+                  }
                 }
               ],
               "wait": "first"
@@ -7689,6 +7699,11 @@
               0,
               400
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "a"
+            }
           }
         },
         {
@@ -7708,6 +7723,11 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "b"
+            }
           }
         }
       ],
@@ -8394,12 +8414,22 @@
               "parallel": [
                 {
                   "name": "answer",
-                  "stream": true
+                  "stream": true,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "answer"
+                    }
+                  }
                 },
                 {
                   "name": "resent",
                   "stream": true,
-                  "startAfterMs": 300
+                  "startAfterMs": 300,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "resent"
+                    }
+                  }
                 }
               ],
               "wait": "first"
@@ -8436,11 +8466,21 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "answer"
+            }
           }
         },
         {
           "reply": {
             "text": "First answer."
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "resent"
+            }
           }
         }
       ],
@@ -10964,13 +11004,23 @@
               "parallel": [
                 {
                   "name": "original",
-                  "stream": true
+                  "stream": true,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "original"
+                    }
+                  }
                 },
                 {
                   "name": "short",
                   "stream": true,
                   "startAfterMs": 300,
-                  "user": "Answer in one sentence."
+                  "user": "Answer in one sentence.",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "short"
+                    }
+                  }
                 }
               ],
               "wait": "first"
@@ -11000,6 +11050,11 @@
               0,
               700
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "original"
+            }
           }
         },
         {
@@ -11019,6 +11074,11 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "short"
+            }
           }
         }
       ],
@@ -11054,13 +11114,23 @@
               "parallel": [
                 {
                   "name": "original",
-                  "stream": true
+                  "stream": true,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "original"
+                    }
+                  }
                 },
                 {
                   "name": "short",
                   "stream": true,
                   "startAfterMs": 300,
-                  "user": "Answer in one sentence."
+                  "user": "Answer in one sentence.",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "short"
+                    }
+                  }
                 }
               ],
               "wait": "first"
@@ -11089,6 +11159,11 @@
               0,
               700
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "original"
+            }
           }
         },
         {
@@ -11108,6 +11183,11 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "short"
+            }
           }
         }
       ],
@@ -11142,13 +11222,23 @@
               "parallel": [
                 {
                   "name": "original",
-                  "stream": true
+                  "stream": true,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "original"
+                    }
+                  }
                 },
                 {
                   "name": "short",
                   "stream": true,
                   "startAfterMs": 300,
-                  "user": "Answer in one sentence."
+                  "user": "Answer in one sentence.",
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "short"
+                    }
+                  }
                 }
               ],
               "wait": "first"
@@ -11178,6 +11268,11 @@
               0,
               700
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "original"
+            }
           }
         },
         {
@@ -11197,6 +11292,11 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "short"
+            }
           }
         }
       ],
@@ -13674,7 +13774,7 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 100
+                      "text": "STOP"
                     },
                     "style": "break"
                   },
@@ -13726,6 +13826,12 @@
               0,
               200,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              2
             ]
           },
           "match": {
@@ -13788,7 +13894,7 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 100
+                      "text": "STOP"
                     },
                     "style": "break"
                   },
@@ -13838,6 +13944,12 @@
               0,
               200,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              2
             ]
           },
           "match": {
@@ -13895,7 +14007,7 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 100
+                      "text": "STOP"
                     },
                     "style": "break"
                   },
@@ -13947,6 +14059,12 @@
               0,
               200,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              2
             ]
           },
           "match": {
@@ -14004,7 +14122,7 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 100
+                      "text": "STOP"
                     },
                     "style": "break"
                   },
@@ -14052,6 +14170,12 @@
               0,
               200,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              2
             ]
           },
           "match": {
@@ -14109,7 +14233,7 @@
                   "stream": true,
                   "cut": {
                     "at": {
-                      "ms": 100
+                      "text": "STOP"
                     },
                     "style": "break"
                   },
@@ -14154,6 +14278,12 @@
               0,
               200,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              2
             ]
           },
           "match": {
@@ -14921,14 +15051,24 @@
                   "name": "other",
                   "stream": true,
                   "onError": "swallow",
-                  "limitMs": 600
+                  "limitMs": 600,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "other"
+                    }
+                  }
                 },
                 {
                   "name": "failing",
                   "stream": true,
                   "maxRetries": 2,
                   "onError": "swallow",
-                  "startAfterMs": 150
+                  "startAfterMs": 150,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "failing"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -14959,6 +15099,11 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "other"
+            }
           }
         },
         {
@@ -14969,7 +15114,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 3
+          "times": 3,
+          "match": {
+            "headers": {
+              "x-mock-call": "failing"
+            }
+          }
         }
       ],
       "expect": {
@@ -15007,14 +15157,24 @@
                   "name": "other",
                   "stream": true,
                   "onError": "swallow",
-                  "limitMs": 600
+                  "limitMs": 600,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "other"
+                    }
+                  }
                 },
                 {
                   "name": "failing",
                   "stream": true,
                   "maxRetries": 2,
                   "onError": "swallow",
-                  "startAfterMs": 150
+                  "startAfterMs": 150,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "failing"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -15047,6 +15207,11 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "other"
+            }
           }
         },
         {
@@ -15057,7 +15222,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 3
+          "times": 3,
+          "match": {
+            "headers": {
+              "x-mock-call": "failing"
+            }
+          }
         }
       ],
       "expect": {
@@ -15095,14 +15265,24 @@
                   "name": "other",
                   "stream": true,
                   "onError": "swallow",
-                  "limitMs": 600
+                  "limitMs": 600,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "other"
+                    }
+                  }
                 },
                 {
                   "name": "failing",
                   "stream": true,
                   "maxRetries": 2,
                   "onError": "swallow",
-                  "startAfterMs": 150
+                  "startAfterMs": 150,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "failing"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -15135,6 +15315,11 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "other"
+            }
           }
         },
         {
@@ -15145,7 +15330,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 3
+          "times": 3,
+          "match": {
+            "headers": {
+              "x-mock-call": "failing"
+            }
+          }
         }
       ],
       "expect": {
@@ -15175,6 +15365,11 @@
                       "ms": 600
                     },
                     "style": "break"
+                  },
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "other"
+                    }
                   }
                 },
                 {
@@ -15182,7 +15377,12 @@
                   "stream": true,
                   "maxRetries": 2,
                   "onError": "swallow",
-                  "startAfterMs": 150
+                  "startAfterMs": 150,
+                  "kwargs": {
+                    "extra_headers": {
+                      "x-mock-call": "failing"
+                    }
+                  }
                 }
               ],
               "wait": "all"
@@ -15211,6 +15411,11 @@
               900,
               300
             ]
+          },
+          "match": {
+            "headers": {
+              "x-mock-call": "other"
+            }
           }
         },
         {
@@ -15221,7 +15426,12 @@
           "error": {
             "message": "Rate limited."
           },
-          "times": 3
+          "times": 3,
+          "match": {
+            "headers": {
+              "x-mock-call": "failing"
+            }
+          }
         }
       ],
       "expect": {
