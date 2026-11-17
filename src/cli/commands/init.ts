@@ -9,20 +9,31 @@ import type { ExitName } from '../exit-codes.js';
 import { initLines, type IgnoreState, type InitFile, type InitOutcome } from '../human/init.js';
 import { diagnosticLines } from '../human/swap.js';
 import type { CommandHandler, CommandInvocation } from '../main.js';
+import {
+  ADAPTER_SKELETONS,
+  isAdapterLanguage,
+  PYTHON_HELPER_FILE,
+  type AdapterLanguage,
+} from '../templates/adapter.js';
 import { CASES_TEMPLATE } from '../templates/cases.js';
-import { CONFIG_TEMPLATE, OUTPUT_DIR } from '../templates/config.js';
+import { configTemplate, OUTPUT_DIR } from '../templates/config.js';
 import { RULES_TEMPLATE } from '../templates/rules.js';
 import { printAll } from './run-setup.js';
 
-// `model-eval init` without `--adapter` (contracts/cli.md §Commands, FR-033). A new config comes
-// with example rules and cases; an existing config is kept and only its `output.dir` is added to
-// the `.gitignore` of the config folder. Existing files are never overwritten.
+// `model-eval init [--adapter python|node]` (contracts/cli.md §Commands, FR-033). A new config
+// comes with example rules and cases; an existing config is kept and only its `output.dir` is
+// added to the `.gitignore` of the config folder. With `--adapter`, an adapter skeleton that uses
+// the helper of feature 003 is written next to the config, and for Python the helper file the
+// package ships next to it. Existing files are never overwritten.
 
 /** The rule and case files go where the template's `files` globs look, from the config folder. */
 const EXAMPLE_FILES = [
   { relative: 'rules/example.yaml', content: RULES_TEMPLATE },
   { relative: 'cases/example.yaml', content: CASES_TEMPLATE },
 ] as const;
+
+/** The Python helper this package ships, from `dist/cli/commands/` and `src/cli/commands/`. */
+const PYTHON_HELPER = new URL(`../../../adapters/python/${PYTHON_HELPER_FILE}`, import.meta.url);
 
 /** A Node.js file system error, with a code such as `EEXIST`. */
 type SystemError = Error & { readonly code: string };
@@ -115,15 +126,42 @@ async function existingConfig(invocation: CommandInvocation): Promise<ExistingCo
   };
 }
 
+/** The adapter skeleton and, for Python, the helper file: written next to the config file. */
+async function adapterFiles(
+  language: AdapterLanguage,
+  configDir: string,
+): Promise<{ readonly file: string; readonly created: boolean }[]> {
+  const skeleton = ADAPTER_SKELETONS[language];
+  // The helper is read first, so a package without it writes no skeleton either.
+  const helper = language === 'python' ? await readFile(PYTHON_HELPER, 'utf8') : undefined;
+  const skeletonFile = path.join(configDir, skeleton.file);
+  const written = [
+    { file: skeletonFile, created: await createFile(skeletonFile, skeleton.content) },
+  ];
+  if (helper !== undefined) {
+    const helperFile = path.join(configDir, PYTHON_HELPER_FILE);
+    written.push({ file: helperFile, created: await createFile(helperFile, helper) });
+  }
+  return written;
+}
+
 async function init(invocation: CommandInvocation): Promise<ExitName> {
-  const { common, context, output } = invocation;
+  const { common, context, output, values } = invocation;
   const display = (file: string): string => slashes(path.relative(context.cwd, file)) || '.';
   const configFile = path.resolve(context.cwd, common.config);
   const configDir = path.dirname(configFile);
   const files: InitFile[] = [];
   let lang: Lang = common.lang ?? 'en';
+  const adapter = values.adapter;
+  if (typeof adapter === 'string' && !isAdapterLanguage(adapter)) {
+    output.progress(message(lang, 'cli.init.unknownAdapter', { value: adapter }));
+    output.envelope('init', 'config-error', null, []);
+    return 'config-error';
+  }
+  const language = typeof adapter === 'string' && isAdapterLanguage(adapter) ? adapter : undefined;
   try {
-    const newConfig = await createFile(configFile, CONFIG_TEMPLATE);
+    const command = language === undefined ? undefined : ADAPTER_SKELETONS[language].command;
+    const newConfig = await createFile(configFile, configTemplate(command));
     files.push({ path: display(configFile), created: newConfig });
     let outputDir = path.resolve(configDir, OUTPUT_DIR);
     if (newConfig) {
@@ -138,6 +176,11 @@ async function init(invocation: CommandInvocation): Promise<ExitName> {
       }
       ({ lang, outputDir } = existing.use);
     }
+    if (language !== undefined) {
+      for (const { file, created } of await adapterFiles(language, configDir)) {
+        files.push({ path: display(file), created });
+      }
+    }
     const gitignore = path.join(configDir, '.gitignore');
     const relative = path.relative(configDir, outputDir);
     const outcome: InitOutcome = {
@@ -149,6 +192,14 @@ async function init(invocation: CommandInvocation): Promise<ExitName> {
         state: isBelow(relative) ? await addIgnoreEntry(gitignore, slashes(relative)) : 'outside',
       },
       templateConfig: newConfig ? display(configFile) : undefined,
+      adapter:
+        language === undefined
+          ? undefined
+          : {
+              language,
+              file: display(path.join(configDir, ADAPTER_SKELETONS[language].file)),
+              config: display(configFile),
+            },
     };
     printAll(invocation, initLines(lang, outcome));
     output.envelope(
@@ -178,6 +229,8 @@ async function init(invocation: CommandInvocation): Promise<ExitName> {
 }
 
 export const initCommand: CommandHandler = {
-  options: {},
+  options: {
+    adapter: { type: 'string' },
+  },
   run: init,
 };

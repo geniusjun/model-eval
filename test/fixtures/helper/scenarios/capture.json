@@ -1,0 +1,4260 @@
+{
+  "S-PAR-07": [
+    {
+      "name": "a JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in gzip: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "data: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Compressed hello.\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{},\"logprobs\":null,\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+              }
+            ]
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in br: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "GxoBYIzDdKM9f4RyjNIUBHGO/HkV5xOMjtRh6bPc6YNqu/1e2pKntg8+/D0kcYgJBJhzkz3HkIUr7eiJ+nqpM5BW8Zb2Uyc+RPcMH09DMGJ4QBFgUyQpJsTeDbgvbaKQyVa8LGMXDU0GYfqEM/anOVyzaQj8rs/jDq58/dGN5bSMyYqogLlrqEQHUm3sC+ycpX720xb65bLCFpiRwKRjXQVxVXk="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in br: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "data: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Compressed hello.\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{},\"logprobs\":null,\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+              }
+            ]
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "GzECABwFbntE/cwg2GUH2QiYW6nK9YnZaoljCJvw8INYHKYCS1+x6KjbHqIhZqflPIlJONKPXUTBIlhqtjV1bhGCiQ2nB06wML059k21TirmXI57Dx/CiJ6rHRK5lOU9N5xmdlyetVvIaGUzVqixFz1DqcpiVYEUoKjnz37Nt7r8gGqCyTKmPTh+/NMEsSPW4ToeopgQ+rp1iJIR/yYcP7VcEg=="
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in br: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "GxoBYIzDdKM9f4RyjNIUBHGO/HkV5xOMjtRh6bPc6YNqu/1e2pKntg8+/D0kcYgJBJhzkz3HkIUr7eiJ+nqpM5BW8Zb2Uyc+RPcMH09DMGJ4QBFgUyQpJsTeDbgvbaKQyVa8LGMXDU0GYfqEM/anOVyzaQj8rs/jDq58/dGN5bSMyYqogLlrqEQHUm3sC+ycpX720xb65bLCFpiRwKRjXQVxVXk="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WAbAOUFACKNJh9gadoGEEDZbiYptjPI8KU1AlUQZArdAVjYAikAAMEDy4IASNPbt4CbwJ0VD7YTrZBdKrkVLFfb/LsuG1yJg5MmxY2NXWqxeVsyE72n4USB6/bDZuJRQMiMSyE7oNi6raY5MZvfMXdduePCMCMCIk1XCO6MJ+1hGO6JaJEb4o6wDa5zu25qTIXsOfRBA2NvTzCkQk6b4/yO0pULADQL55SA+jtgB5JJMzrG8bwqYEsNCCq0rAxiZhMP"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in zstd: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "data: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Compressed hello.\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{},\"logprobs\":null,\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+              }
+            ]
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WAyAcUFAMJLJB9gadoGEKBwtZEU2xkyYlujeAt3GroAA0hs5SQAB3A4hqEQGCAISJxt84/NRGVIyIyNJQtgGIti0eWDrUDx0mVwk7nQOyPb2MHmzXLF1m09zYv5/I657cr9dGJSwKTrSuLOiNYq5HBPTJvcIO4J+2BDN0/QhUKH7mpMliw6GiECsjdfOCRLUB+Ffk/riuFOnxQMAGZrVMkcECQ0ujHbQCWapIODr8amq8qGpRoEtdpXMEFmkww="
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WAbAOUFACKNJh9gadoGEEDZbiYptjPI8KU1AlUQZArdAVjYAikAAMEDy4IASNPbt4CbwJ0VD7YTrZBdKrkVLFfb/LsuG1yJg5MmxY2NXWqxeVsyE72n4USB6/bDZuJRQMiMSyE7oNi6raY5MZvfMXdduePCMCMCIk1XCO6MJ+1hGO6JaJEb4o6wDa5zu25qTIXsOfRBA2NvTzCkQk6b4/yO0pULADQL55SA+jtgB5JJMzrG8bwqYEsNCCq0rAxiZhMP"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in gzip: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"in_progress\",\"model\":\"model-b\",\"output\":[],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":null}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"sequence_number\":1,\"item_id\":\"msg_z\",\"output_index\":0,\"content_index\":0,\"delta\":\"Compressed hello.\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":2,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"completed\",\"model\":\"model-b\",\"output\":[{\"type\":\"message\",\"id\":\"msg_z\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Compressed hello.\",\"annotations\":[]}]}],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":3,\"total_tokens\":10}}}\n\n"
+              }
+            ]
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in br: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G5sBABwHdiyzjSA87WSrePjlTfubKTJot4yXfieSQeRYXLHoJAtM33oLubux+aRr39loRtAFpghRDaydgy9ZJNE77s9g8a2OVc9W7vix+ShIgdsU+bXDNYknBnqwtnYBRdVU0SsCDuDyWXY7r6lYTgqgYNNb1jguTsbo9qbrfBjCj52PBrNDMc23BEOklC93wAc5Znb9tN2FkjAkSCoUjWqdTMrfeymARMS8WEUDQ7elODK0JR6IrbXc9w=="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in br: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"in_progress\",\"model\":\"model-b\",\"output\":[],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":null}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"sequence_number\":1,\"item_id\":\"msg_z\",\"output_index\":0,\"content_index\":0,\"delta\":\"Compressed hello.\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":2,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"completed\",\"model\":\"model-b\",\"output\":[{\"type\":\"message\",\"id\":\"msg_z\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Compressed hello.\",\"annotations\":[]}]}],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":3,\"total_tokens\":10}}}\n\n"
+              }
+            ]
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G98DABwJdkyHG4/ggod4nrVhv5Lk5RNUg2CqIp+NwdoWbmnHNctQWpti0Rk456LchtxFXVT8LD5eyK5tDUqIHkKInee5TaFPRIytfv5fHM5ELibZOXXIfJVNBDLVuK1dqunCrlfbIX+AsuktxOHn8XPAhrRSn4zFx7hcy8P8BPgTr7sapaMcL+hYywD5u5svXpejBiUyclSZopbl2hObqlNtvTC8IT/HKAU0NiA54DIfBLEfvv3We4H01kpnShAMbu/EtmbIZ+Di+NusZZ2O+f2pmHld6T1xs0jto3qP1d5M8oYIPR2xCyFyyqW2bYj2+6SnaawVQIfcdt7kxUNxP44fmJqMNMRx/RsBOt10VrLwVc0DIaGW2JnFQUjeugzJAg=="
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in br: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G5sBABwHdiyzjSA87WSrePjlTfubKTJot4yXfieSQeRYXLHoJAtM33oLubux+aRr39loRtAFpghRDaydgy9ZJNE77s9g8a2OVc9W7vix+ShIgdsU+bXDNYknBnqwtnYBRdVU0SsCDuDyWXY7r6lYTgqgYNNb1jguTsbo9qbrfBjCj52PBrNDMc23BEOklC93wAc5Znb9tN2FkjAkSCoUjWqdTMrfeymARMS8WEUDQ7elODK0JR6IrbXc9w=="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WCcAI0HAIKPKx5waZoDsMi8Ew2SpKK4vklqZG//9xqpUZaYRQionhBJYhjIO0EBIujP21LJC2NM3DYX69uRVOGCjT3vOKn6k5h57NZmuiM6KrlkNmXMlDF0MRIjMQ7GqzT9rkqdiwU0ExUACHeRLUQNbBLwR+GVXt037V4qSyySuF1EbIxL4V4cjN/WGyLAOBEp4mKEx1yIHjbe9vu6GIx/B+EP2eFiXKU/8AChLl44a5HZGCUvAhkANGu0CldTIoToJnxwGi7AGQJ7l9Sc0mdYPYSr9BGoXCBq6YwBVHFaYeJYDWaKB3a0uUPAKqI1IWBZGVBlswk="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in zstd: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"in_progress\",\"model\":\"model-b\",\"output\":[],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":null}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"sequence_number\":1,\"item_id\":\"msg_z\",\"output_index\":0,\"content_index\":0,\"delta\":\"Compressed hello.\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":2,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"completed\",\"model\":\"model-b\",\"output\":[{\"type\":\"message\",\"id\":\"msg_z\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Compressed hello.\",\"annotations\":[]}]}],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":3,\"total_tokens\":10}}}\n\n"
+              }
+            ]
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WDgAm0LADbTNyBgiZoDQABrEu7YpKzoFlKprVyABgMvKyxAL5s5grwGKy8ALAAuAMkNFurjhaQoP5APAnl9sbRMT/IN4czHRj6jsH4Y0O0piPK9r+RwlsqwLwPafMIDeyV9j8yiSSofxJbIS9e6j6IAeRuzbQGAjFd08TFjXwxdTEplZNb2lu0lH2+pieNKqsRgS1q+yidxi1cO6/gmBGmaM441Zt12idKGz9tavCSh6iY84q1jGKoLCNI0DSKBtwIDP9BN5UejaFLV3mrm+azj3rxlijHU5cO+BPigiG8YlDOLEhg5vwE2ICBCohCrPdSaWwxXLYGQdAkKUoABSYCYhgZCOvInPwuXNaDCQc51pnvNNA48KoDIw5C6k+gC1CNggQbFTvROp1F8QX2AFL3gViKehPm7QMnFBa3oBQB6RlAXI5WOxgx8shzCEGgYIgwtORhuHhsh16b0haUelWeF5j4Z2HWv2TVt5k6GlArxgWAy"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WCcAI0HAIKPKx5waZoDsMi8Ew2SpKK4vklqZG//9xqpUZaYRQionhBJYhjIO0EBIujP21LJC2NM3DYX69uRVOGCjT3vOKn6k5h57NZmuiM6KrlkNmXMlDF0MRIjMQ7GqzT9rkqdiwU0ExUACHeRLUQNbBLwR+GVXt037V4qSyySuF1EbIxL4V4cjN/WGyLAOBEp4mKEx1yIHjbe9vu6GIx/B+EP2eFiXKU/8AChLl44a5HZGCUvAhkANGu0CldTIoToJnxwGi7AGQJ7l9Sc0mdYPYSr9BGoXCBq6YwBVHFaYeJYDWaKB3a0uUPAKqI1IWBZGVBlswk="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in gzip: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_z\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"model-b\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Compressed hello.\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+              }
+            ]
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in br: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G9UAQIzUYs0Z7kTA8qb95jcZtFtG6UsvKbxg4Pti0Xl64oFZtRVUVPTjt8O35G4nONQNd7MQuX6x+CzWpP1e4o/nO2cVYAiuvCnGiTGl182EZtuh9KBRhXV93i81fqF51DEA65HirflIEWlIiVRSpRl6y2Iviwp43XZBfp/YaGsF"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in br: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_z\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"model-b\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Compressed hello.\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+              }
+            ]
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G+MCABwHdiyzjWD1lM5WQQTX8hUcvmo9wc6vTB2WvgAZOKcOeMZjiWwcDiz7kXTA2/222VgtFvsUw27pqQV9QrF6JGMLOCPXk+iLWx4BwCBZBl+m9vjqOhQfmgILwcuxklGAG2qlhrGs1p1I/D+STOF6O06Fa1XkGLYQmUM04W4ESpMtEuLXFX4c99sqmZ90Eaa4OrbwVQW+ZTCXcPsHGO0G5jI4V6Phe0Ax+tKASMLyBZUWKcShpFo/PrbPYfQ/pVMhf9FxqtvjVMmbkblSTiUP6GJ6PrIp3d4WT8848e38t8J4AnahMSSf0o4ycRYB"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in br: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G9UAQIzUYs0Z7kTA8qb95jcZtFtG6UsvKbxg4Pti0Xl64oFZtRVUVPTjt8O35G4nONQNd7MQuX6x+CzWpP1e4o/nO2cVYAiuvCnGiTGl182EZtuh9KBRhXV93i81fqF51DEA65HirflIEWlIiVRSpRl6y2Iviwp43XZBfp/YaGsF"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/SDWtQQAEooeHYApzQFoXExEFm2Rjd62SOxEYaJUcSw6NUUToqiPSYLYli6Js+ILcs22hYeRay4pNTy/wDeDq5G1NQjvM6aeM7Ny1UUg8SFTOkEBXfVsqQTwHXyRgPPiF7Nw8YAhHaVy8eJZPVRPSubiG0f1yucvhHVxgjFU+YwOIwEJAGu4rby2ztOVitinYSgC7UqASMUaBfMJ"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "an SSE response in zstd: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_z\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"model-b\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Compressed hello.\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+              }
+            ]
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WDkAZUIAHJMJR9ga5oD8HRFItqxifzn/07bKScAKB64h3UmlNpiDVwCpTQTNONiexLeDkilnnCkq34lizRAq57sY3wFzownTNhYgaQ6nFJaawPL0qbgrHhF7lmWIDuCZwpXpRieMRV9nSRXbRAOzotfTMTGBwD1lIhWE6pI5bKxccNBaEq4cTb2+QnDunEcWpTKLrR6jkCqXxy3+IUHMiAgQoIgUw8fB88pvDyoJr7n9gDHuN/7MNsDOowDH6FkHxyEAGND4QblBVsfcC6EqgLwALu2DpQawCmhCgYcGHMBRI3THX2A1c6JCQRaMAwQe+FmEt5W5ZJBmllZcBBsi9Vi2BdnzmmvvV3kJ3wgKLJdRmwZCUxwzCc="
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a with_streaming_response JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/SDWtQQAEooeHYApzQFoXExEFm2Rjd62SOxEYaJUcSw6NUUToqiPSYLYli6Js+ILcs22hYeRay4pNTy/wDeDq5G1NQjvM6aeM7Ny1UUg8SFTOkEBXfVsqQTwHXyRgPPiF7Nw8YAhHaVy8eJZPVRPSubiG0f1yucvhHVxgjFU+YwOIwEJAGu4rby2ztOVitinYSgC7UqASMUaBfMJ"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      }
+    },
+    {
+      "name": "a JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in gzip: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "data: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Compressed hello.\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{},\"logprobs\":null,\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+              }
+            ]
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a JSON response in br: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "GxoBYIzDdKM9f4RyjNIUBHGO/HkV5xOMjtRh6bPc6YNqu/1e2pKntg8+/D0kcYgJBJhzkz3HkIUr7eiJ+nqpM5BW8Zb2Uyc+RPcMH09DMGJ4QBFgUyQpJsTeDbgvbaKQyVa8LGMXDU0GYfqEM/anOVyzaQj8rs/jDq58/dGN5bSMyYqogLlrqEQHUm3sC+ycpX720xb65bLCFpiRwKRjXQVxVXk="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in br: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "data: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Compressed hello.\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{},\"logprobs\":null,\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+              }
+            ]
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "GzECABwFbntE/cwg2GUH2QiYW6nK9YnZaoljCJvw8INYHKYCS1+x6KjbHqIhZqflPIlJONKPXUTBIlhqtjV1bhGCiQ2nB06wML059k21TirmXI57Dx/CiJ6rHRK5lOU9N5xmdlyetVvIaGUzVqixFz1DqcpiVYEUoKjnz37Nt7r8gGqCyTKmPTh+/NMEsSPW4ToeopgQ+rp1iJIR/yYcP7VcEg=="
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in br: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "GxoBYIzDdKM9f4RyjNIUBHGO/HkV5xOMjtRh6bPc6YNqu/1e2pKntg8+/D0kcYgJBJhzkz3HkIUr7eiJ+nqpM5BW8Zb2Uyc+RPcMH09DMGJ4QBFgUyQpJsTeDbgvbaKQyVa8LGMXDU0GYfqEM/anOVyzaQj8rs/jDq58/dGN5bSMyYqogLlrqEQHUm3sC+ycpX720xb65bLCFpiRwKRjXQVxVXk="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WAbAOUFACKNJh9gadoGEEDZbiYptjPI8KU1AlUQZArdAVjYAikAAMEDy4IASNPbt4CbwJ0VD7YTrZBdKrkVLFfb/LsuG1yJg5MmxY2NXWqxeVsyE72n4USB6/bDZuJRQMiMSyE7oNi6raY5MZvfMXdduePCMCMCIk1XCO6MJ+1hGO6JaJEb4o6wDa5zu25qTIXsOfRBA2NvTzCkQk6b4/yO0pULADQL55SA+jtgB5JJMzrG8bwqYEsNCCq0rAxiZhMP"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in zstd: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "data: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Compressed hello.\"},\"logprobs\":null,\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-z\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"model-b\",\"choices\":[{\"index\":0,\"delta\":{},\"logprobs\":null,\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+              }
+            ]
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WAyAcUFAMJLJB9gadoGEKBwtZEU2xkyYlujeAt3GroAA0hs5SQAB3A4hqEQGCAISJxt84/NRGVIyIyNJQtgGIti0eWDrUDx0mVwk7nQOyPb2MHmzXLF1m09zYv5/I657cr9dGJSwKTrSuLOiNYq5HBPTJvcIO4J+2BDN0/QhUKH7mpMliw6GiECsjdfOCRLUB+Ffk/riuFOnxQMAGZrVMkcECQ0ujHbQCWapIODr8amq8qGpRoEtdpXMEFmkww="
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-z",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Compressed hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 7,
+              "completion_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WAbAOUFACKNJh9gadoGEEDZbiYptjPI8KU1AlUQZArdAVjYAikAAMEDy4IASNPbt4CbwJ0VD7YTrZBdKrkVLFfb/LsuG1yJg5MmxY2NXWqxeVsyE72n4USB6/bDZuJRQMiMSyE7oNi6raY5MZvfMXdduePCMCMCIk1XCO6MJ+1hGO6JaJEb4o6wDa5zu25qTIXsOfRBA2NvTzCkQk6b4/yO0pULADQL55SA+jtgB5JJMzrG8bwqYEsNCCq0rAxiZhMP"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in gzip: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"in_progress\",\"model\":\"model-b\",\"output\":[],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":null}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"sequence_number\":1,\"item_id\":\"msg_z\",\"output_index\":0,\"content_index\":0,\"delta\":\"Compressed hello.\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":2,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"completed\",\"model\":\"model-b\",\"output\":[{\"type\":\"message\",\"id\":\"msg_z\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Compressed hello.\",\"annotations\":[]}]}],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":3,\"total_tokens\":10}}}\n\n"
+              }
+            ]
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a JSON response in br: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G5sBABwHdiyzjSA87WSrePjlTfubKTJot4yXfieSQeRYXLHoJAtM33oLubux+aRr39loRtAFpghRDaydgy9ZJNE77s9g8a2OVc9W7vix+ShIgdsU+bXDNYknBnqwtnYBRdVU0SsCDuDyWXY7r6lYTgqgYNNb1jguTsbo9qbrfBjCj52PBrNDMc23BEOklC93wAc5Znb9tN2FkjAkSCoUjWqdTMrfeymARMS8WEUDQ7elODK0JR6IrbXc9w=="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in br: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"in_progress\",\"model\":\"model-b\",\"output\":[],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":null}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"sequence_number\":1,\"item_id\":\"msg_z\",\"output_index\":0,\"content_index\":0,\"delta\":\"Compressed hello.\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":2,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"completed\",\"model\":\"model-b\",\"output\":[{\"type\":\"message\",\"id\":\"msg_z\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Compressed hello.\",\"annotations\":[]}]}],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":3,\"total_tokens\":10}}}\n\n"
+              }
+            ]
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G98DABwJdkyHG4/ggod4nrVhv5Lk5RNUg2CqIp+NwdoWbmnHNctQWpti0Rk456LchtxFXVT8LD5eyK5tDUqIHkKInee5TaFPRIytfv5fHM5ELibZOXXIfJVNBDLVuK1dqunCrlfbIX+AsuktxOHn8XPAhrRSn4zFx7hcy8P8BPgTr7sapaMcL+hYywD5u5svXpejBiUyclSZopbl2hObqlNtvTC8IT/HKAU0NiA54DIfBLEfvv3We4H01kpnShAMbu/EtmbIZ+Di+NusZZ2O+f2pmHld6T1xs0jto3qP1d5M8oYIPR2xCyFyyqW2bYj2+6SnaawVQIfcdt7kxUNxP44fmJqMNMRx/RsBOt10VrLwVc0DIaGW2JnFQUjeugzJAg=="
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in br: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G5sBABwHdiyzjSA87WSrePjlTfubKTJot4yXfieSQeRYXLHoJAtM33oLubux+aRr39loRtAFpghRDaydgy9ZJNE77s9g8a2OVc9W7vix+ShIgdsU+bXDNYknBnqwtnYBRdVU0SsCDuDyWXY7r6lYTgqgYNNb1jguTsbo9qbrfBjCj52PBrNDMc23BEOklC93wAc5Znb9tN2FkjAkSCoUjWqdTMrfeymARMS8WEUDQ7elODK0JR6IrbXc9w=="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WCcAI0HAIKPKx5waZoDsMi8Ew2SpKK4vklqZG//9xqpUZaYRQionhBJYhjIO0EBIujP21LJC2NM3DYX69uRVOGCjT3vOKn6k5h57NZmuiM6KrlkNmXMlDF0MRIjMQ7GqzT9rkqdiwU0ExUACHeRLUQNbBLwR+GVXt037V4qSyySuF1EbIxL4V4cjN/WGyLAOBEp4mKEx1yIHjbe9vu6GIx/B+EP2eFiXKU/8AChLl44a5HZGCUvAhkANGu0CldTIoToJnxwGi7AGQJ7l9Sc0mdYPYSr9BGoXCBq6YwBVHFaYeJYDWaKB3a0uUPAKqI1IWBZGVBlswk="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in zstd: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"in_progress\",\"model\":\"model-b\",\"output\":[],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":null}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"sequence_number\":1,\"item_id\":\"msg_z\",\"output_index\":0,\"content_index\":0,\"delta\":\"Compressed hello.\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":2,\"response\":{\"id\":\"resp_z\",\"object\":\"response\",\"created_at\":0,\"status\":\"completed\",\"model\":\"model-b\",\"output\":[{\"type\":\"message\",\"id\":\"msg_z\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Compressed hello.\",\"annotations\":[]}]}],\"error\":null,\"incomplete_details\":null,\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":3,\"total_tokens\":10}}}\n\n"
+              }
+            ]
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WDgAm0LADbTNyBgiZoDQABrEu7YpKzoFlKprVyABgMvKyxAL5s5grwGKy8ALAAuAMkNFurjhaQoP5APAnl9sbRMT/IN4czHRj6jsH4Y0O0piPK9r+RwlsqwLwPafMIDeyV9j8yiSSofxJbIS9e6j6IAeRuzbQGAjFd08TFjXwxdTEplZNb2lu0lH2+pieNKqsRgS1q+yidxi1cO6/gmBGmaM441Zt12idKGz9tavCSh6iY84q1jGKoLCNI0DSKBtwIDP9BN5UejaFLV3mrm+azj3rxlijHU5cO+BPigiG8YlDOLEhg5vwE2ICBCohCrPdSaWwxXLYGQdAkKUoABSYCYhgZCOvInPwuXNaDCQc51pnvNNA48KoDIw5C6k+gC1CNggQbFTvROp1F8QX2AFL3gViKehPm7QMnFBa3oBQB6RlAXI5WOxgx8shzCEGgYIgwtORhuHhsh16b0haUelWeF5j4Z2HWv2TVt5k6GlArxgWAy"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_z",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "model-b",
+            "output": [
+              {
+                "type": "message",
+                "id": "msg_z",
+                "status": "completed",
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "output_text",
+                    "text": "Compressed hello.",
+                    "annotations": []
+                  }
+                ]
+              }
+            ],
+            "error": null,
+            "incomplete_details": null,
+            "parallel_tool_calls": true,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3,
+              "total_tokens": 10
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WCcAI0HAIKPKx5waZoDsMi8Ew2SpKK4vklqZG//9xqpUZaYRQionhBJYhjIO0EBIujP21LJC2NM3DYX69uRVOGCjT3vOKn6k5h57NZmuiM6KrlkNmXMlDF0MRIjMQ7GqzT9rkqdiwU0ExUACHeRLUQNbBLwR+GVXt037V4qSyySuF1EbIxL4V4cjN/WGyLAOBEp4mKEx1yIHjbe9vu6GIx/B+EP2eFiXKU/8AChLl44a5HZGCUvAhkANGu0CldTIoToJnxwGi7AGQJ7l9Sc0mdYPYSr9BGoXCBq6YwBVHFaYeJYDWaKB3a0uUPAKqI1IWBZGVBlswk="
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in gzip: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_z\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"model-b\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Compressed hello.\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+              }
+            ]
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in gzip: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "gzip"
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a JSON response in br: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G9UAQIzUYs0Z7kTA8qb95jcZtFtG6UsvKbxg4Pti0Xl64oFZtRVUVPTjt8O35G4nONQNd7MQuX6x+CzWpP1e4o/nO2cVYAiuvCnGiTGl182EZtuh9KBRhXV93i81fqF51DEA65HirflIEWlIiVRSpRl6y2Iviwp43XZBfp/YaGsF"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in br: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_z\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"model-b\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Compressed hello.\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+              }
+            ]
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G+MCABwHdiyzjWD1lM5WQQTX8hUcvmo9wc6vTB2WvgAZOKcOeMZjiWwcDiz7kXTA2/222VgtFvsUw27pqQV9QrF6JGMLOCPXk+iLWx4BwCBZBl+m9vjqOhQfmgILwcuxklGAG2qlhrGs1p1I/D+STOF6O06Fa1XkGLYQmUM04W4ESpMtEuLXFX4c99sqmZ90Eaa4OrbwVQW+ZTCXcPsHGO0G5jI4V6Phe0Ax+tKASMLyBZUWKcShpFo/PrbPYfQ/pVMhf9FxqtvjVMmbkblSTiUP6GJ6PrIp3d4WT8848e38t8J4AnahMSSf0o4ycRYB"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in br: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "br",
+          "compressed": {
+            "br": "G9UAQIzUYs0Z7kTA8qb95jcZtFtG6UsvKbxg4Pti0Xl64oFZtRVUVPTjt8O35G4nONQNd7MQuX6x+CzWpP1e4o/nO2cVYAiuvCnGiTGl182EZtuh9KBRhXV93i81fqF51DEA65HirflIEWlIiVRSpRl6y2Iviwp43XZBfp/YaGsF"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/SDWtQQAEooeHYApzQFoXExEFm2Rjd62SOxEYaJUcSw6NUUToqiPSYLYli6Js+ILcs22hYeRay4pNTy/wDeDq5G1NQjvM6aeM7Ny1UUg8SFTOkEBXfVsqQTwHXyRgPPiF7Nw8YAhHaVy8eJZPVRPSubiG0f1yucvhHVxgjFU+YwOIwEJAGu4rby2ztOVitinYSgC7UqASMUaBfMJ"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "an SSE response in zstd: its end event read, an unread response (A5 without raw)",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "sse": {
+            "chunks": [
+              {
+                "text": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_z\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"model-b\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Compressed hello.\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+              }
+            ]
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/WDkAZUIAHJMJR9ga5oD8HRFItqxifzn/07bKScAKB64h3UmlNpiDVwCpTQTNONiexLeDkilnnCkq34lizRAq57sY3wFzownTNhYgaQ6nFJaawPL0qbgrHhF7lmWIDuCZwpXpRieMRV9nSRXbRAOzotfTMTGBwD1lIhWE6pI5bKxccNBaEq4cTb2+QnDunEcWpTKLrR6jkCqXxy3+IUHMiAgQoIgUw8fB88pvDyoJr7n9gDHuN/7MNsDOowDH6FkHxyEAGND4QblBVsfcC6EqgLwALu2DpQawCmhCgYcGHMBRI3THX2A1c6JCQRaMAwQe+FmEt5W5ZJBmllZcBBsi9Vi2BdnzmmvvV3kJ3wgKLJdRmwZCUxwzCc="
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    },
+    {
+      "name": "a withResponse() JSON response in zstd: raw and usage decoded",
+      "apis": [
+        "messages"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "streamingResponse": "all"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "msg_z",
+            "type": "message",
+            "role": "assistant",
+            "model": "model-b",
+            "content": [
+              {
+                "type": "text",
+                "text": "Compressed hello."
+              }
+            ],
+            "stop_reason": "end_turn",
+            "stop_sequence": null,
+            "usage": {
+              "input_tokens": 7,
+              "output_tokens": 3
+            }
+          },
+          "encoding": "zstd",
+          "compressed": {
+            "zstd": "KLUv/SDWtQQAEooeHYApzQFoXExEFm2Rjd62SOxEYaJUcSw6NUUToqiPSYLYli6Js+ILcs22hYeRay4pNTy/wDeDq5G1NQjvM6aeM7Ny1UUg8SFTOkEBXfVsqQTwHXyRgPPiF7Nw8YAhHaVy8eJZPVRPSubiG0f1yucvhHVxgjFU+YwOIwEJAGu4rby2ztOVitinYSgC7UqASMUaBfMJ"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Compressed hello.",
+        "final": "Compressed hello.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 7,
+              "output": 3
+            }
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 7,
+          "output": 3
+        }
+      },
+      "languages": [
+        "typescript"
+      ]
+    }
+  ],
+  "S-RESP-01": [
+    {
+      "name": "a normal response: raw, shipped text, usage, finish reason and snapshot recorded (acceptance scenario 1)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server.",
+            "model": "model-b-2026-10-01",
+            "usage": {
+              "input": 12,
+              "output": 6
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the mock server.",
+        "final": "Hello from the mock server.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": {
+              "input": 12,
+              "output": 6
+            },
+            "responseModel": "model-b-2026-10-01"
+          }
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "input": 12,
+          "output": 6
+        },
+        "modelSnapshot": "model-b-2026-10-01"
+      }
+    },
+    {
+      "name": "a stream=False caller of the transport gets the whole body, and a response whose read fails is closed",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "http": {
+                "method": "POST",
+                "path": "/chat/completions",
+                "json": {
+                  "model": "model-b",
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": "Say hello."
+                    }
+                  ]
+                },
+                "onError": "swallow"
+              }
+            },
+            {
+              "http": {
+                "method": "POST",
+                "path": "/chat/completions",
+                "json": {
+                  "model": "model-b",
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": "Say hello."
+                    }
+                  ]
+                },
+                "status": 200,
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          },
+          "drop": {
+            "chunks": 0,
+            "bytes": 20
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the mock server.",
+        "final": "Hello from the mock server.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-UNC-01": [
+    {
+      "name": "an SDK imported at module level after the helper: captured",
+      "service": {
+        "behaviour": "sdk-at-import",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the mock server.",
+        "final": "Hello from the mock server.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "an SDK imported inside the service function: captured",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "notLoaded": [
+                "openai",
+                "anthropic",
+                "httpx",
+                "httpx2"
+              ]
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the mock server.",
+        "final": "Hello from the mock server.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "only POST requests to a captured path suffix whose body has model are captured; the rest pass untouched",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "http": {
+                "method": "GET",
+                "path": "/models",
+                "status": 200
+              }
+            },
+            {
+              "http": {
+                "method": "GET",
+                "path": "/chat/completions",
+                "status": 200
+              }
+            },
+            {
+              "http": {
+                "method": "POST",
+                "path": "/embeddings",
+                "json": {
+                  "model": "model-e",
+                  "input": "hello"
+                },
+                "status": 200
+              }
+            },
+            {
+              "http": {
+                "method": "POST",
+                "path": "/chat/completions",
+                "json": {
+                  "messages": []
+                },
+                "status": 200
+              }
+            },
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "method": "GET"
+          },
+          "times": 2,
+          "body": {
+            "object": "list",
+            "data": []
+          }
+        },
+        {
+          "match": {
+            "path": "/embeddings"
+          },
+          "body": {
+            "object": "list",
+            "data": []
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "\"messages\":[]"
+          },
+          "body": {
+            "ok": true
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the mock server.",
+        "final": "Hello from the mock server.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "requests": [
+          {
+            "method": "GET"
+          },
+          {
+            "method": "GET"
+          },
+          {
+            "method": "POST",
+            "model": "model-e"
+          },
+          {
+            "method": "POST",
+            "api": "chat-completions",
+            "model": null
+          },
+          {
+            "method": "POST",
+            "model": "model-b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a changed base_url: the path suffix still matches behind it",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "basePath": "/proxy"
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the mock server.",
+        "final": "Hello from the mock server.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "requests": [
+          {
+            "method": "POST",
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-UNC-02": [
+    {
+      "name": "httpx and httpx2 both installed: the OpenAI call on httpx and the Anthropic call on httpx2 are both captured",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "api": "messages",
+                "model": "model-x",
+                "system": "Write the memory note."
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "sdks": [
+        "both-transports"
+      ],
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        },
+        {
+          "reply": {
+            "text": "Noted."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the mock server.",
+        "final": "Hello from the mock server.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "requests": [
+          {
+            "api": "chat-completions",
+            "model": "model-b"
+          },
+          {
+            "api": "messages",
+            "model": "model-x"
+          }
+        ]
+      }
+    }
+  ],
+  "S-UNC-03": [
+    {
+      "name": "a service that calls httpx2.alias_httpx(): it starts normally and each call is recorded once",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "alias-httpx",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "call": {
+                "api": "messages",
+                "model": "model-x",
+                "system": "Write the memory note."
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "sdks": [
+        "both-transports"
+      ],
+      "languages": [
+        "python"
+      ],
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        },
+        {
+          "reply": {
+            "text": "Noted."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello from the mock server.",
+        "final": "Hello from the mock server.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ]
+      }
+    }
+  ],
+  "S-UNC-04": [
+    {
+      "name": "Node: an SDK client created before the helper import: Outcome row 2 (A1) with its guidance",
+      "languages": [
+        "typescript"
+      ],
+      "service": {
+        "behaviour": "client-before-helper"
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1"
+        },
+        "calls": null,
+        "requests": [
+          {
+            "method": "POST",
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-UNC-05": [
+    {
+      "name": "a service that calls the model from a child process: Outcome row 2 (A1)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "child": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1"
+        },
+        "calls": null,
+        "requests": [
+          {
+            "method": "POST",
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-UNC-07": [
+    {
+      "name": "the answer through an uncaptured transport, only another model's call captured: Outcome row 4 (A2)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Detect the language."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "en"
+          }
+        },
+        {
+          "reply": {
+            "text": "Hello from the mock server."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-x`"
+          }
+        },
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-CONN-22": [
+    {
+      "name": "a with_streaming_response body dropped mid-body: the SDK's resends and the service's exception are those without the helper",
+      "languages": [
+        "python"
+      ],
+      "service": {
+        "behaviour": "streaming-drop"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_drop",
+            "object": "response",
+            "status": "completed",
+            "output": []
+          },
+          "drop": {
+            "chunks": 0,
+            "bytes": 20
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient"
+      }
+    },
+    {
+      "name": "Node: an .asResponse() body dropped mid-body: the SDK's resends and the service's exception are those without the helper",
+      "service": {
+        "behaviour": "streaming-drop"
+      },
+      "script": [
+        {
+          "body": {
+            "id": "resp_drop",
+            "object": "response",
+            "status": "completed",
+            "output": []
+          },
+          "drop": {
+            "chunks": 0,
+            "bytes": 20
+          },
+          "times": 3
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient"
+      },
+      "languages": [
+        "typescript"
+      ]
+    }
+  ]
+}

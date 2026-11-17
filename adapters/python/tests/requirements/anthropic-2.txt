@@ -1,0 +1,5 @@
+anthropic[aiohttp]==2.8.0
+pytest==9.2.0
+# Decoders of the httpx2 brotli and zstd extras; Python 3.14 decodes zstd itself
+brotli==1.2.1
+backports-zstd==1.8.0; python_version <= "3.13"

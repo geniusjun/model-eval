@@ -1,0 +1,673 @@
+{
+  "description": "Values both helpers must produce byte for byte (spec FR-024): data-model \u00a7Comparing Text, 001 data-model \u00a7Canonical JSON, data-model Outcome row 8 (discardReason) and helper-api \u00a7retryAfterMs. A retryAfter case without its own nowMs is read at retryAfter.nowMs.",
+  "whitespace": [
+    {
+      "name": "U+FEFF at both ends is not White_Space",
+      "text": "\ufeffHi\ufeff",
+      "trimmed": "\ufeffHi\ufeff",
+      "empty": false
+    },
+    {
+      "name": "U+0085 at both ends is White_Space",
+      "text": "\u0085Hi\u0085",
+      "trimmed": "Hi",
+      "empty": false
+    },
+    {
+      "name": "U+001F at the start is not White_Space",
+      "text": "\u001fHi\u001f",
+      "trimmed": "\u001fHi\u001f",
+      "empty": false
+    },
+    {
+      "name": "U+FEFF alone is not empty",
+      "text": "\ufeff",
+      "trimmed": "\ufeff",
+      "empty": false
+    },
+    {
+      "name": "U+0085 alone is empty",
+      "text": "\u0085",
+      "trimmed": "",
+      "empty": true
+    },
+    {
+      "name": "U+001F alone is not empty",
+      "text": "\u001f",
+      "trimmed": "\u001f",
+      "empty": false
+    },
+    {
+      "name": "the empty string",
+      "text": "",
+      "trimmed": "",
+      "empty": true
+    },
+    {
+      "name": "all 25 White_Space code points",
+      "text": "\t\n\u000b\f\r \u0085\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000",
+      "trimmed": "",
+      "empty": true
+    },
+    {
+      "name": "all 25 around text",
+      "text": "\t\n\u000b\f\r \u0085\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000a b\u3000\u205f\u202f\u2029\u2028\u200a\u2009\u2008\u2007\u2006\u2005\u2004\u2003\u2002\u2001\u2000\u1680\u00a0\u0085 \r\f\u000b\n\t",
+      "trimmed": "a b",
+      "empty": false
+    },
+    {
+      "name": "U+200B is not White_Space",
+      "text": "\u200b",
+      "trimmed": "\u200b",
+      "empty": false
+    },
+    {
+      "name": "U+180E is not White_Space",
+      "text": "\u180e",
+      "trimmed": "\u180e",
+      "empty": false
+    },
+    {
+      "name": "U+00A0 and U+3000 at the end",
+      "text": "a\u00a0\u3000",
+      "trimmed": "a",
+      "empty": false
+    },
+    {
+      "name": "inner whitespace stays",
+      "text": " a\u0085b ",
+      "trimmed": "a\u0085b",
+      "empty": false
+    }
+  ],
+  "canonicalJson": [
+    {
+      "name": "1.0 is 1",
+      "text": "1.0",
+      "canonical": "1",
+      "sha256": "sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+    },
+    {
+      "name": "1e-07",
+      "text": "1e-07",
+      "canonical": "1e-7",
+      "sha256": "sha256:5b33e02f2c5103a05d32f6ba9cb058294452bfbf393967f68bb30c1bdcbbab22"
+    },
+    {
+      "name": "-0.0 is 0",
+      "text": "-0.0",
+      "canonical": "0",
+      "sha256": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "name": "an integer above 2^53 becomes the nearest double",
+      "text": "9007199254740993",
+      "canonical": "9007199254740992",
+      "sha256": "sha256:c681da39d7273a6a24c15c9cac3a75526ff2ecf8ba4ee60346a0c70c8163bdb2"
+    },
+    {
+      "name": "1e21 in exponent form",
+      "text": "1e21",
+      "canonical": "1e+21",
+      "sha256": "sha256:241c4643fa70b1dcde1205b71be4e3bebb17e9f880c8e1a33d0ead6c27271d3c"
+    },
+    {
+      "name": "1e-6 in decimal form",
+      "text": "1e-6",
+      "canonical": "0.000001",
+      "sha256": "sha256:159fb29a827ad04b260aa6c8ab6d8637f8f2b38af5c4f3cb49d6a21205e040f8"
+    },
+    {
+      "name": "123e-20",
+      "text": "123e-20",
+      "canonical": "1.23e-18",
+      "sha256": "sha256:215795364cea430fa4fdb6c2b3ce62b9c3bf2f6984f946a85c4f501c08077a98"
+    },
+    {
+      "name": "0.1 plus 0.2",
+      "text": "0.30000000000000004",
+      "canonical": "0.30000000000000004",
+      "sha256": "sha256:06bad31060c1212ae832de4c031f7b31e3b48aed57858294478cb19450cf34ca"
+    },
+    {
+      "name": "the smallest double",
+      "text": "5e-324",
+      "canonical": "5e-324",
+      "sha256": "sha256:c46e7ca1be4c8734f373a56530787288fa2058d73d07855e9247e949f811a42a"
+    },
+    {
+      "name": "the largest double",
+      "text": "1.7976931348623157e308",
+      "canonical": "1.7976931348623157e+308",
+      "sha256": "sha256:c2784e1abd6317452708f3fbf9641c16b959561bc621a1d408c23a20aa2cb585"
+    },
+    {
+      "name": "1e-400 underflows to 0",
+      "text": "1e-400",
+      "canonical": "0",
+      "sha256": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "name": "-1.5e-7",
+      "text": "-1.5e-7",
+      "canonical": "-1.5e-7",
+      "sha256": "sha256:5d1523c3c7ec2cb017ae6d4de39dadc71a857a10a05fa897aee1bb71213a9168"
+    },
+    {
+      "name": "1e20 has 21 digits, the last plain form",
+      "text": "100000000000000000000",
+      "canonical": "100000000000000000000",
+      "sha256": "sha256:c344e9487bfbd5c4e03c9fb90d62a5dde5e00b54d55c46e9f4a803aea162b80c"
+    },
+    {
+      "name": "1e20 written with an exponent",
+      "text": "1e20",
+      "canonical": "100000000000000000000",
+      "sha256": "sha256:c344e9487bfbd5c4e03c9fb90d62a5dde5e00b54d55c46e9f4a803aea162b80c"
+    },
+    {
+      "name": "arguments with 1.0, 1e-07, -0.0 and an integer above 2^53",
+      "text": "{\"a\": 1.0, \"b\": 1e-07, \"c\": -0.0, \"d\": 9007199254740993}",
+      "canonical": "{\"a\":1,\"b\":1e-7,\"c\":0,\"d\":9007199254740992}",
+      "sha256": "sha256:08be7709d2d4f856f4073f9f4df926fe6cdeb8d82723b3b65566af0b2896d166"
+    },
+    {
+      "name": "keys U+FF01 and U+1F600: U+1F600 first by UTF-16 code units",
+      "text": "{\"\\uff01\": 1, \"\\ud83d\\ude00\": 2, \"a\": 3, \"B\": 4}",
+      "canonical": "{\"B\":4,\"a\":3,\"\ud83d\ude00\":2,\"\uff01\":1}",
+      "sha256": "sha256:c6d1d6572e83bd9479d5b4059498228912c47cdb622ec27d9508894a35699269"
+    },
+    {
+      "name": "lone surrogates in keys and values",
+      "text": "{\"\\udc00\": \"x\\ud800\", \"k\": [\"\\udfff\"]}",
+      "canonical": "{\"k\":[\"\\udfff\"],\"\\udc00\":\"x\\ud800\"}",
+      "sha256": "sha256:65ef73a9b87d2ae001afe0a1c33e1acf08b10419b856df6e018e5ddeb3e9f6d4"
+    },
+    {
+      "name": "string escapes",
+      "text": "\"\\u0000\\u001f\\b\\t\\n\\f\\r\\\"\\\\\\/\\u007f\\u2028\\u00e9\\ud83d\\ude00\"",
+      "canonical": "\"\\u0000\\u001f\\b\\t\\n\\f\\r\\\"\\\\/\u007f\u2028\u00e9\ud83d\ude00\"",
+      "sha256": "sha256:bbdd26fcacd57aab29a5e2b2ca87fbd8f84973cb9656352e70ddf703f246d729"
+    },
+    {
+      "name": "duplicate names keep the last value",
+      "text": "{\"a\": 1, \"a\": 2}",
+      "canonical": "{\"a\":2}",
+      "sha256": "sha256:7e8059f495589fcd981232cc11d00b00da3802c01d688fa1cf1f6bed6e5bb33c"
+    },
+    {
+      "name": "nested values and JSON whitespace around them",
+      "text": " \t{\"z\": [1.0, {\"b\": null, \"a\": true}], \"y\": \"\"}\r\n",
+      "canonical": "{\"y\":\"\",\"z\":[1,{\"a\":true,\"b\":null}]}",
+      "sha256": "sha256:911cc2b185e46c57132fd9968e034496e9b990b73ef1ed29b67e717da1dc6fa0"
+    }
+  ],
+  "notJson": [
+    {
+      "name": "NaN",
+      "text": "NaN"
+    },
+    {
+      "name": "Infinity",
+      "text": "Infinity"
+    },
+    {
+      "name": "-Infinity",
+      "text": "-Infinity"
+    },
+    {
+      "name": "NaN in arguments",
+      "text": "{\"text\": NaN}"
+    },
+    {
+      "name": "1e400",
+      "text": "1e400"
+    },
+    {
+      "name": "a 401-digit integer does not fit in a double",
+      "text": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "name": "a 401-digit integer in arguments",
+      "text": "{\"n\": -10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}"
+    },
+    {
+      "name": "-1e400",
+      "text": "-1e400"
+    },
+    {
+      "name": "1e400 in arguments",
+      "text": "{\"text\": \"a\", \"n\": 1e400}"
+    },
+    {
+      "name": "the empty string",
+      "text": ""
+    },
+    {
+      "name": "an unfinished object",
+      "text": "{"
+    },
+    {
+      "name": "a leading U+FEFF",
+      "text": "\ufeff{}"
+    }
+  ],
+  "discardReason": [
+    {
+      "name": "class name and message",
+      "exceptionName": "EmptyReply",
+      "message": "nothing to send",
+      "discardReason": "EmptyReply: nothing to send"
+    },
+    {
+      "name": "class name alone when the message is empty",
+      "exceptionName": "EmptyReply",
+      "message": "",
+      "discardReason": "EmptyReply"
+    },
+    {
+      "name": "exactly 200 code points",
+      "exceptionName": "E",
+      "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "discardReason": "E: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "name": "an emoji as code point 200 stays whole",
+      "exceptionName": "E",
+      "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\ud83d\ude00tail",
+      "discardReason": "E: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\ud83d\ude00"
+    },
+    {
+      "name": "over 200 code points of emoji",
+      "exceptionName": "Discarded",
+      "message": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+      "discardReason": "Discarded: \ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00"
+    },
+    {
+      "name": "a whitespace-only message is empty, so the class name alone",
+      "exceptionName": "E",
+      "message": " \t\u3000",
+      "discardReason": "E"
+    },
+    {
+      "name": "whitespace around a message is trimmed before the class name is joined",
+      "exceptionName": "E",
+      "message": "  x ",
+      "discardReason": "E: x"
+    },
+    {
+      "name": "a joined emoji sequence is cut between code points",
+      "exceptionName": "E",
+      "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\ud83d\udc68\u200d\ud83d\udc69",
+      "discardReason": "E: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\ud83d\udc68"
+    }
+  ],
+  "retryAfter": {
+    "now": "Sun, 06 Nov 1994 08:49:07 GMT",
+    "nowMs": 784111747000,
+    "cases": [
+      {
+        "name": "retry-after-ms and retry-after together: the first",
+        "headers": {
+          "retry-after-ms": "250",
+          "retry-after": "5"
+        },
+        "retryAfterMs": 250
+      },
+      {
+        "name": "retry-after-ms unreadable: retry-after",
+        "headers": {
+          "retry-after-ms": "soon",
+          "retry-after": "2"
+        },
+        "retryAfterMs": 2000
+      },
+      {
+        "name": "retry-after-ms halves round up",
+        "headers": {
+          "retry-after-ms": "2.5"
+        },
+        "retryAfterMs": 3
+      },
+      {
+        "name": "retry-after-ms 0.5",
+        "headers": {
+          "retry-after-ms": "0.5"
+        },
+        "retryAfterMs": 1
+      },
+      {
+        "name": "retry-after-ms 1.4999",
+        "headers": {
+          "retry-after-ms": "1.4999"
+        },
+        "retryAfterMs": 1
+      },
+      {
+        "name": "retry-after 1.5",
+        "headers": {
+          "retry-after": "1.5"
+        },
+        "retryAfterMs": 1500
+      },
+      {
+        "name": "retry-after 30s",
+        "headers": {
+          "retry-after": "30s"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after -1",
+        "headers": {
+          "retry-after": "-1"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after 1e3",
+        "headers": {
+          "retry-after": "1e3"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after 0.5005",
+        "headers": {
+          "retry-after": "0.5005"
+        },
+        "retryAfterMs": 500
+      },
+      {
+        "name": "retry-after of 400 nines",
+        "headers": {
+          "retry-after": "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after with spaces and tabs around it",
+        "headers": {
+          "retry-after": " 2\t"
+        },
+        "retryAfterMs": 2000
+      },
+      {
+        "name": "retry-after with spaces on both sides",
+        "headers": {
+          "retry-after": " 5 "
+        },
+        "retryAfterMs": 5000
+      },
+      {
+        "name": "retry-after-ms with a space and a tab",
+        "headers": {
+          "retry-after-ms": " 7\t"
+        },
+        "retryAfterMs": 7
+      },
+      {
+        "name": "retry-after with U+00A0 after it: only SP and HTAB are trimmed",
+        "headers": {
+          "retry-after": "5\u00a0"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after with U+3000 before it",
+        "headers": {
+          "retry-after": "\u30005"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after with a line feed after it",
+        "headers": {
+          "retry-after": "5\n"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after of a 400-digit integer is not finite",
+        "headers": {
+          "retry-after": "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after-ms of a 400-digit integer is not finite",
+        "headers": {
+          "retry-after-ms": "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after .5",
+        "headers": {
+          "retry-after": ".5"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after 5.",
+        "headers": {
+          "retry-after": "5."
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after +1",
+        "headers": {
+          "retry-after": "+1"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after empty",
+        "headers": {
+          "retry-after": ""
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "an IMF-fixdate 30 s ahead",
+        "headers": {
+          "retry-after": "Sun, 06 Nov 1994 08:49:37 GMT"
+        },
+        "retryAfterMs": 30000
+      },
+      {
+        "name": "an RFC 850 date 30 s ahead",
+        "headers": {
+          "retry-after": "Sunday, 06-Nov-94 08:49:37 GMT"
+        },
+        "retryAfterMs": 30000
+      },
+      {
+        "name": "an asctime date 30 s ahead, read as GMT",
+        "headers": {
+          "retry-after": "Sun Nov  6 08:49:37 1994"
+        },
+        "retryAfterMs": 30000
+      },
+      {
+        "name": "a past date",
+        "headers": {
+          "retry-after": "Sun, 06 Nov 1994 08:48:37 GMT"
+        },
+        "retryAfterMs": 0
+      },
+      {
+        "name": "an IMF-fixdate with spaces around it",
+        "headers": {
+          "retry-after": " Sun, 06 Nov 1994 08:49:37 GMT\t"
+        },
+        "retryAfterMs": 30000
+      },
+      {
+        "name": "a weekday that does not match the date is not checked",
+        "headers": {
+          "retry-after": "Mon, 06 Nov 1994 08:49:37 GMT"
+        },
+        "retryAfterMs": 30000
+      },
+      {
+        "name": "30 February does not exist",
+        "headers": {
+          "retry-after": "Mon, 30 Feb 1995 08:49:37 GMT"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "second 60 does not exist",
+        "headers": {
+          "retry-after": "Sun, 06 Nov 1994 08:49:60 GMT"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "hour 24 does not exist",
+        "headers": {
+          "retry-after": "Sun, 06 Nov 1994 24:00:00 GMT"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "31 November in the asctime form does not exist",
+        "headers": {
+          "retry-after": "Sun Nov 31 08:49:37 1994"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "29-Feb-00 in RFC 850 form when the year is 2100",
+        "headers": {
+          "retry-after": "Monday, 29-Feb-00 00:00:00 GMT"
+        },
+        "retryAfterMs": null,
+        "nowMs": 2556144000000
+      },
+      {
+        "name": "an RFC 850 year 00 at now 2051 is 2100",
+        "headers": {
+          "retry-after": "Friday, 01-Jan-00 00:00:00 GMT"
+        },
+        "retryAfterMs": 1546300800000,
+        "nowMs": 2556144000000
+      },
+      {
+        "name": "an RFC 850 year 01 exactly 50 years before now is 2101",
+        "headers": {
+          "retry-after": "Monday, 01-Jan-01 00:00:00 GMT"
+        },
+        "retryAfterMs": 1577836800000,
+        "nowMs": 2556144000000
+      },
+      {
+        "name": "an RFC 850 year 01 one second past 50 years ahead is 2001",
+        "headers": {
+          "retry-after": "Monday, 01-Jan-01 00:00:01 GMT"
+        },
+        "retryAfterMs": 0,
+        "nowMs": 2556144000000
+      },
+      {
+        "name": "an RFC 850 year 60 at now 2001 is 1960, a past date",
+        "headers": {
+          "retry-after": "Friday, 01-Jan-60 00:00:00 GMT"
+        },
+        "retryAfterMs": 0,
+        "nowMs": 978307200000
+      },
+      {
+        "name": "now on 29 February: 50 years later is 28 February, so 28-Feb-74 is 2074",
+        "headers": {
+          "retry-after": "Thursday, 28-Feb-74 00:00:00 GMT"
+        },
+        "retryAfterMs": 1577836800000,
+        "nowMs": 1709164800000
+      },
+      {
+        "name": "now on 29 February: 01-Mar-74 is past 28 February 2074, so 1974",
+        "headers": {
+          "retry-after": "Friday, 01-Mar-74 00:00:00 GMT"
+        },
+        "retryAfterMs": 0,
+        "nowMs": 1709164800000
+      },
+      {
+        "name": "now 2048-02-29: 28-Feb-98 00:00:00 is 50 years ahead counted from 28 February, so 2098",
+        "headers": {
+          "retry-after": "Saturday, 28-Feb-98 00:00:00 GMT"
+        },
+        "retryAfterMs": 1577836800000,
+        "nowMs": 2466547200000
+      },
+      {
+        "name": "now 2048-02-29: a second before that boundary is 2098",
+        "headers": {
+          "retry-after": "Friday, 27-Feb-98 23:59:59 GMT"
+        },
+        "retryAfterMs": 1577836799000,
+        "nowMs": 2466547200000
+      },
+      {
+        "name": "now 2048-02-29: a second after that boundary is 1998, a past date",
+        "headers": {
+          "retry-after": "Saturday, 28-Feb-98 00:00:01 GMT"
+        },
+        "retryAfterMs": 0,
+        "nowMs": 2466547200000
+      },
+      {
+        "name": "an RFC 850 year 50 at now 2051 is 2050",
+        "headers": {
+          "retry-after": "Saturday, 01-Jan-50 00:00:00 GMT"
+        },
+        "retryAfterMs": 0,
+        "nowMs": 2556144000000
+      },
+      {
+        "name": "retry-after past 2^53 - 1 ms is not read",
+        "headers": {
+          "retry-after": "99999999999999"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after just below 2^53 - 1 ms: 9007199254740.991 s is the double 9007199254740990 ms",
+        "headers": {
+          "retry-after": "9007199254740.991"
+        },
+        "retryAfterMs": 9007199254740990
+      },
+      {
+        "name": "retry-after-ms of 2^53 is not read",
+        "headers": {
+          "retry-after-ms": "9007199254740992"
+        },
+        "retryAfterMs": null
+      },
+      {
+        "name": "retry-after-ms of 2^53 is not read, so retry-after decides",
+        "headers": {
+          "retry-after-ms": "9007199254740992",
+          "retry-after": "2"
+        },
+        "retryAfterMs": 2000
+      },
+      {
+        "name": "retry-after-ms of exactly 2^53 - 1 is read: floor(x + 0.5) is x for an integer x, so it must not be computed as a double sum, which rounds to 2^53",
+        "headers": {
+          "retry-after-ms": "9007199254740991"
+        },
+        "retryAfterMs": 9007199254740991
+      },
+      {
+        "name": "neither header",
+        "headers": {},
+        "retryAfterMs": null
+      }
+    ]
+  }
+}

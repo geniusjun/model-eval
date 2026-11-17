@@ -1,0 +1,1101 @@
+{
+  "S-COST-01": [
+    {
+      "name": "a call outside the captured transports with Result(raw=, finish_reason=, usage=, model=): no calls, priced from usage",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 20,
+                "output": 6
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 20,
+          "output": 6
+        },
+        "calls": null
+      }
+    }
+  ],
+  "S-COST-02": [
+    {
+      "name": "the same without usage: no calls and no usage, so the tool charges the reservation",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "usage": null,
+        "calls": null
+      }
+    }
+  ],
+  "S-COST-03": [
+    {
+      "name": "a stream response with Result(raw=, finish_reason=, usage=): the raw call's usage (acceptance scenario 2 with usage)",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 20,
+                "output": 6
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          },
+          "stream": {
+            "deltas": 3
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 20,
+          "output": 6
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 6
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-COST-04": [
+    {
+      "name": "the answer outside the captured transports, only another model's side call captured: Result(usage=) is added to calls as the uncaptured call",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Classify the message."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 20,
+                "output": 6
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Classify"
+          },
+          "reply": {
+            "text": "chat",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "helpful assistant"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 25,
+          "output": 7
+        },
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same without usage: that call is charged its reservation",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Classify the message."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Classify"
+          },
+          "reply": {
+            "text": "chat",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "helpful assistant"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 5,
+          "output": 1
+        },
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "the side call uses the variant model and ends in a tool call, one branch: the same, and the side call's usage stays",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Route the message.",
+                "tools": [
+                  "route"
+                ],
+                "toolChoice": "route"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 20,
+                "output": 6
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Route the message"
+          },
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "route",
+                "arguments": "{\"text\":\"chat\"}"
+              }
+            ],
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "helpful assistant"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 25,
+          "output": 7
+        },
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "two variant model side calls in two branches, both ending in tool calls: the same",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Route the message.",
+                "tools": [
+                  "route"
+                ],
+                "toolChoice": "route"
+              }
+            },
+            {
+              "call": {
+                "system": "Pick a route.",
+                "tools": [
+                  "route"
+                ],
+                "toolChoice": "route"
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 20,
+                "output": 6
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Route the message"
+          },
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "route",
+                "arguments": "{\"text\":\"chat\"}"
+              }
+            ],
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "Pick a route"
+          },
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "route",
+                "arguments": "{\"text\":\"chat\"}"
+              }
+            ],
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "helpful assistant"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 30,
+          "output": 8
+        },
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a variant model side call that answers in text: W4",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the message."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 20,
+                "output": 6
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Classify"
+          },
+          "reply": {
+            "text": "chat",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "helpful assistant"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 25,
+          "output": 7
+        },
+        "warnings": [
+          {
+            "message": "W4"
+          }
+        ],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same side call excluded by reply_call: no warning",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the message."
+              }
+            },
+            {
+              "uncaptured": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "answer"
+              },
+              "final": {
+                "callText": "answer"
+              },
+              "finishReason": "stop",
+              "usage": {
+                "input": 20,
+                "output": 6
+              },
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "target": {
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Classify"
+          },
+          "reply": {
+            "text": "chat",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "helpful assistant"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 25,
+          "output": 7
+        },
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 6
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-COST-05": [
+    {
+      "name": "a captured answer refined and given as Result(raw=, finish_reason=, model=): added as an uncaptured call with W4",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Here is the answer, refined.",
+              "final": "Here is the answer, refined.",
+              "finishReason": "stop",
+              "model": "model-b"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer, refined.",
+        "warnings": [
+          {
+            "message": "W4"
+          }
+        ],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same without model=: the uncaptured call has no model, A7",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Here is the answer, refined.",
+              "final": "Here is the answer, refined.",
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A7",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-b`"
+          }
+        }
+      }
+    }
+  ],
+  "S-COST-06": [
+    {
+      "name": "a Responses background response (first request queued) with Result(raw=, finish_reason=, usage=): the first request's usage, not counted twice",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "kwargs": {
+                  "background": true
+                }
+              }
+            },
+            {
+              "http": {
+                "method": "GET",
+                "path": "/responses/resp-background",
+                "status": 200
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": "Here is the answer.",
+              "final": "Here is the answer.",
+              "finishReason": "stop",
+              "usage": {
+                "input": 20,
+                "output": 6
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "method": "POST"
+          },
+          "reply": {
+            "status": "queued"
+          }
+        },
+        {
+          "match": {
+            "method": "GET"
+          },
+          "body": {
+            "id": "resp-background",
+            "object": "response",
+            "status": "completed"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer.",
+        "usage": {
+          "input": 20,
+          "output": 6
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 6
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-COST-07": [
+    {
+      "name": "a streaming service with an empty raw and a variant side call that ended only in tool calls: the side call is not chosen as the raw call and its usage stays",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Route the message.",
+                "tools": [
+                  "route"
+                ],
+                "toolChoice": "route"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "result": {
+              "raw": "",
+              "final": "Sorry, I cannot answer right now.",
+              "kind": "fallback",
+              "finishReason": "other",
+              "usage": {
+                "input": 20,
+                "output": 6
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "bodyIncludes": "Route the message"
+          },
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "route",
+                "arguments": "{\"text\":\"chat\"}"
+              }
+            ],
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          }
+        },
+        {
+          "match": {
+            "bodyIncludes": "helpful assistant"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          },
+          "stream": {
+            "deltas": 3
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "",
+        "final": "Sorry, I cannot answer right now.",
+        "usage": {
+          "input": 25,
+          "output": 7
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 5,
+              "output": 1
+            }
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "usage": {
+              "input": 20,
+              "output": 6
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-COST-08": [
+    {
+      "name": "a streaming tool loop of three calls with Result(raw=, finish_reason=): fingerprint from the first request, all three answer calls, the first two at their reservation",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "tools": [
+                  "lookup"
+                ],
+                "name": "step1"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "after": "step1",
+                "name": "step2"
+              }
+            },
+            {
+              "call": {
+                "stream": true,
+                "after": "step2",
+                "name": "step3"
+              }
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "step3"
+              },
+              "final": {
+                "callText": "step3"
+              },
+              "finishReason": "stop"
+            }
+          }
+        }
+      },
+      "target": {
+        "render": true
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          },
+          "stream": {}
+        },
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"weather\"}"
+              }
+            ]
+          },
+          "stream": {}
+        },
+        {
+          "reply": {
+            "text": "Here is the answer."
+          },
+          "stream": {
+            "deltas": 3
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Here is the answer.",
+        "fingerprint": "render",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": null
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer",
+            "usage": null
+          }
+        ]
+      }
+    }
+  ]
+}

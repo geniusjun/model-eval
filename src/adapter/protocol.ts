@@ -6,7 +6,7 @@ import { jsonObjectSchema, jsonValueSchema } from './json-value.js';
 // Adapter protocol v1 (contracts/adapter-protocol.md). Unknown fields are ignored on
 // both sides, so these objects strip them instead of rejecting them.
 
-export const PROTOCOL_VERSION = '1';
+export { PROTOCOL_VERSION } from './protocol-version.js';
 
 const tokenCount = z.int().min(0);
 /** The per-trial seed is an unsigned 32-bit integer (data-model §Identifiers and Hashing). */

@@ -1,0 +1,1376 @@
+{
+  "S-UNC-05": [
+    {
+      "name": "A1: the model called from a child process, in English with lang ko",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "child-request": {}
+            },
+            {
+              "return": "Hello from the child."
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1"
+        },
+        "calls": null,
+        "requests": [
+          {
+            "model": "model-b"
+          }
+        ]
+      }
+    }
+  ],
+  "S-EXC-01": [
+    {
+      "name": "A1 raised: the exception's class and message, no second period",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "raise": {
+                "class": "StorageError",
+                "message": "query rejected.\n"
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ja",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1-raised",
+          "placeholders": {
+            "exception": "StorageError: query rejected."
+          }
+        },
+        "calls": null
+      }
+    },
+    {
+      "name": "A1 raised: the class name alone for an empty message",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "raise": {
+                "class": "StorageError",
+                "message": ""
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A1-raised",
+          "placeholders": {
+            "exception": "StorageError"
+          }
+        }
+      }
+    }
+  ],
+  "S-UNC-07": [
+    {
+      "name": "A2: distinct other models in the order first sent",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a"
+              }
+            },
+            {
+              "call": {
+                "model": "model-c"
+              }
+            },
+            {
+              "call": {
+                "model": "model-a"
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "times": 3,
+          "reply": {
+            "text": "Other."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-a`, `model-c`"
+          }
+        }
+      }
+    }
+  ],
+  "S-EXC-02": [
+    {
+      "name": "A2 raised: the exception follows",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a"
+              }
+            },
+            {
+              "raise": {
+                "class": "StorageError",
+                "message": "query rejected"
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Other."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A2-raised",
+          "placeholders": {
+            "model": "model-b",
+            "models": "`model-a`",
+            "exception": "StorageError: query rejected"
+          }
+        }
+      }
+    }
+  ],
+  "S-ANS-30": [
+    {
+      "name": "A3 (a): reply_call true only for another model's calls",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a"
+              }
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "target": {
+        "replyCall": {
+          "model": "model-a"
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "times": 2,
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-a",
+          "placeholders": {
+            "models": "`model-a`"
+          }
+        }
+      }
+    },
+    {
+      "name": "A3 (a) raised: the exception follows",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a"
+              }
+            },
+            {
+              "call": {}
+            },
+            {
+              "raise": {
+                "class": "PipelineError",
+                "message": "stage failed"
+              }
+            }
+          ]
+        }
+      },
+      "target": {
+        "replyCall": {
+          "model": "model-a"
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "times": 2,
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-a-raised",
+          "placeholders": {
+            "models": "`model-a`",
+            "exception": "PipelineError: stage failed"
+          }
+        }
+      }
+    }
+  ],
+  "S-ANS-26": [
+    {
+      "name": "A3 (b): no call is true for reply_call",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "target": {
+        "replyCall": false
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-b"
+        }
+      }
+    },
+    {
+      "name": "A3 (b) raised: the exception follows",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "raise": {
+                "class": "PipelineError",
+                "message": "stage failed"
+              }
+            }
+          ]
+        }
+      },
+      "target": {
+        "replyCall": false
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-b-raised",
+          "placeholders": {
+            "exception": "PipelineError: stage failed"
+          }
+        }
+      }
+    }
+  ],
+  "S-ANS-10": [
+    {
+      "name": "A3 (d): answers from branches with different system prompts",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request."
+              }
+            },
+            {
+              "call": {
+                "system": "Answer the user."
+              }
+            }
+          ]
+        }
+      },
+      "target": {
+        "replyCall": true
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "times": 2,
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-d"
+        }
+      }
+    },
+    {
+      "name": "A3 (d) raised: the exception follows",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request."
+              }
+            },
+            {
+              "call": {
+                "system": "Answer the user."
+              }
+            },
+            {
+              "raise": {
+                "class": "PipelineError",
+                "message": "stage failed!"
+              }
+            }
+          ]
+        }
+      },
+      "target": {
+        "replyCall": true
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "times": 2,
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-d-raised",
+          "placeholders": {
+            "exception": "PipelineError: stage failed!"
+          }
+        }
+      }
+    }
+  ],
+  "S-ANS-01": [
+    {
+      "name": "A3 (c): a same-model side call after the answer without reply_call",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "user": "Remember this."
+              }
+            },
+            {
+              "return": "Hello."
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "times": 2,
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c"
+        }
+      }
+    },
+    {
+      "name": "A3 (c) raised: the exception follows",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "user": "Remember this."
+              }
+            },
+            {
+              "raise": {
+                "class": "PipelineError",
+                "message": "stage failed"
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "times": 2,
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c-raised",
+          "placeholders": {
+            "exception": "PipelineError: stage failed"
+          }
+        }
+      }
+    }
+  ],
+  "S-RESP-04": [
+    {
+      "name": "A4: every answer call ended in a tool call",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "tools": [
+                  "lookup"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "toolCalls": [
+              {
+                "name": "lookup",
+                "arguments": "{\"text\":\"a\"}"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A4"
+        }
+      }
+    }
+  ],
+  "S-RESP-06": [
+    {
+      "name": "A5: a stream response without raw",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        }
+      }
+    }
+  ],
+  "S-RESP-12": [
+    {
+      "name": "A6: a Responses background response without raw",
+      "apis": [
+        "responses"
+      ],
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "return": "Hello."
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "status": "queued"
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A6"
+        }
+      }
+    }
+  ],
+  "S-RESP-07": [
+    {
+      "name": "Outcome row 9: an undeclared exception after the answer",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "raise": {
+                "class": "UnexpectedError",
+                "message": "boom"
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "UnexpectedError: boom"
+          }
+        },
+        "capturedRaw": "Hello."
+      }
+    }
+  ],
+  "S-PAR-08": [
+    {
+      "name": "W9 attached: input minus cache hits and writes is negative",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-fixture-1",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Hello.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 5,
+              "completion_tokens": 3,
+              "total_tokens": 8,
+              "prompt_tokens_details": {
+                "cached_tokens": 4,
+                "cache_write_tokens": 3
+              }
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello.",
+        "final": "Hello.",
+        "finishReason": "stop",
+        "warnings": [
+          {
+            "message": "W9"
+          }
+        ]
+      }
+    },
+    {
+      "name": "W9 condition absent: the same outcome without the warning",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello.",
+            "usage": {
+              "input": 1,
+              "cachedInput": 1,
+              "cacheWrite": 1,
+              "output": 3
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Hello.",
+        "final": "Hello.",
+        "finishReason": "stop",
+        "warnings": []
+      }
+    },
+    {
+      "name": "W3 and W9 together: the warnings in ascending ID order",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "body": {
+            "id": "chatcmpl-fixture-2",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "model-b",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Complete.",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              },
+              {
+                "index": 1,
+                "message": {
+                  "role": "assistant",
+                  "content": "Cut",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "length"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 5,
+              "completion_tokens": 3,
+              "total_tokens": 8,
+              "prompt_tokens_details": {
+                "cached_tokens": 4,
+                "cache_write_tokens": 3
+              }
+            }
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Complete.",
+        "answers": 2,
+        "finishReason": "length",
+        "warnings": [
+          {
+            "message": "W3"
+          },
+          {
+            "message": "W9"
+          }
+        ]
+      }
+    }
+  ],
+  "S-ANS-33": [
+    {
+      "name": "W1 attached: another model's regeneration failed transiently and a fallback was shipped",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "model": "model-c"
+              },
+              "swallow": true
+            },
+            {
+              "fallback": "Fixed message."
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "status": 503,
+          "error": {
+            "message": "unavailable"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "Fixed message.",
+        "warnings": [
+          {
+            "message": "W1",
+            "placeholders": {
+              "model": "model-c"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "W1 condition absent: the same outcome without the warning",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "fallback": "Fixed message."
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "Fixed message.",
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-36": [
+    {
+      "name": "W1 attached for the variant model: a re-draw of the same request failed transiently",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {},
+              "swallow": true
+            },
+            {
+              "fallback": "Fixed message."
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        },
+        {
+          "status": 503,
+          "error": {
+            "message": "unavailable"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "Fixed message.",
+        "warnings": [
+          {
+            "message": "W1-variant"
+          }
+        ]
+      }
+    },
+    {
+      "name": "W1 condition absent: the same outcome without the warning",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "fallback": "Fixed message."
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "First answer.",
+        "final": "Fixed message.",
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-23": [
+    {
+      "name": "W2 attached: another model's answer shipped without fallback",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "model": "model-a"
+              }
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Variant answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Other answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Variant answer.",
+        "final": "Other answer.",
+        "warnings": [
+          {
+            "message": "W2",
+            "placeholders": {
+              "model": "model-a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "W2 condition absent: another model's answer with another system and other text",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {
+                "model": "model-a",
+                "system": "Summarise."
+              }
+            },
+            {
+              "return": "Shipped text."
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Variant answer."
+          }
+        },
+        {
+          "reply": {
+            "text": "Other answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Variant answer.",
+        "final": "Shipped text.",
+        "warnings": []
+      }
+    }
+  ],
+  "S-ANS-18": [
+    {
+      "name": "W3 attached: the last choice cut by the output limit, an earlier choice complete",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "params": {
+        "lang": "ja",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "choices": [
+              {
+                "text": "Complete.",
+                "finishReason": "stop"
+              },
+              {
+                "text": "Cut",
+                "finishReason": "length"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Complete.",
+        "answers": 2,
+        "finishReason": "length",
+        "warnings": [
+          {
+            "message": "W3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "W3 condition absent: no earlier choice ended with stop",
+      "apis": [
+        "chat-completions"
+      ],
+      "service": {
+        "behaviour": "reply"
+      },
+      "params": {
+        "lang": "ja",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "choices": [
+              {
+                "text": "Complete.",
+                "finishReason": "length"
+              },
+              {
+                "text": "Cut",
+                "finishReason": "length"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Complete.",
+        "answers": 2,
+        "finishReason": "length",
+        "warnings": []
+      }
+    },
+    {
+      "name": "W3 attached: a re-draw of the same request cut after a complete answer",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {}
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Complete.",
+            "finishReason": "stop"
+          }
+        },
+        {
+          "reply": {
+            "text": "Cut",
+            "finishReason": "length"
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Complete.",
+        "answers": 2,
+        "finishReason": "length",
+        "warnings": [
+          {
+            "message": "W3"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-24": [
+    {
+      "name": "L2: an exception in background work, logged in English",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "background": {
+                "raise": {
+                  "class": "MemoryWriteError",
+                  "message": "store unavailable"
+                }
+              }
+            },
+            {
+              "sleep": 200
+            },
+            {
+              "call": {}
+            }
+          ]
+        }
+      },
+      "params": {
+        "lang": "ko",
+        "input": {
+          "user": "Say hello."
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Hello.",
+        "log": [
+          {
+            "message": "L2",
+            "placeholders": {
+              "exception": "MemoryWriteError: store unavailable"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

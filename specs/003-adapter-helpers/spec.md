@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: In Progress
 
 **Input**: User description: "Python and TypeScript adapter helpers that run the service's own code, capture its OpenAI and Anthropic API calls at the HTTP layer, and derive each trial's outcome, so a service connects with a short adapter and no code change."
 

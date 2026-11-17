@@ -29,11 +29,11 @@ Recorded per call: the request's model, messages, tool definitions and output li
 
 ### When a Call Ended
 
-The order of calls is the order their requests were sent. Two calls overlap when the later one was sent before the earlier one ended. Chunks read after the service function returned are ignored.
+The order of calls is the order their requests were sent. A request is sent when the SDK hands it to the HTTP client (the wrapped `send` or `fetch` is called), so waiting for a pooled connection and connecting belong to the call. A call's `latencyMs` runs from that moment to when it ended (below); calls that had not ended when the service function returned, and calls cut on the tool's `cancel`, have none. Two calls overlap when the later one was sent before the earlier one ended. Chunks read after the service function returned are ignored.
 
 | Call | Ended when |
 |---|---|
-| Failed call | It failed: an error-status response when its headers arrived, a failure end event when it was received ([helper-api §End Events](contracts/helper-api.md#end-events)) |
+| Failed call | It failed: an error-status response when its headers arrived, a failure end event when it was received, a 2xx body that is not a JSON object, or a 2xx JSON object with a non-null top-level `error`, when it was fully received ([helper-api §End Events](contracts/helper-api.md#end-events)) |
 | Non-stream response | Its body was fully received |
 | Unread response | The service, SDK included, read the last chunk of the body; with no chunk read, when the headers arrived. Closing the body does not end it |
 | SSE response whose copy holds a generation-end marker | The chunk with the marker was read, even when the response is unread. If it fails later and counts as a failed call, when it failed |
@@ -48,7 +48,7 @@ A 2xx response whose text, finish reason and usage the helper does not know and 
 2. A body not fully read by the time the service function returned ([helper-api §Reading Response Bodies](contracts/helper-api.md#reading-response-bodies)).
 3. A Responses response with status `queued` or `in_progress` (background mode).
 
-Error-status responses, responses whose body failed while being read, and streams that ended in a failure end event are failed calls, not unread responses.
+Error-status responses, responses whose body failed while being read, streams that ended in a failure end event, non-stream 2xx bodies read to the end that are not a JSON object, and 2xx JSON objects with a non-null top-level `error` are failed calls, not unread responses.
 
 ### Call Outcome
 
@@ -58,8 +58,8 @@ The `outcome` of a failed call ([001 data-model §Trial](../001-swap-check/data-
 |---|---|
 | Any failure with `usage` | `failed`, priced at that usage |
 | Possibly billed, no `usage`: a failed 200 response, a drop, time-out or cancel after the request was sent | `unanswered`, charged the call reservation |
-| Not billed: a non-200 error status, a request that never arrived, a certificate failure | `failed` |
-| A call the helper cut on the tool's `cancel` | `unanswered`, not classified |
+| Not billed: a non-200 error status, a request that never arrived (a URL scheme other than `http` or `https` included), a certificate failure | `failed` |
+| A call the helper cut on the tool's `cancel` (asynchronous target functions only; the calls of a synchronous one end as they ended, [helper-api §Cancel](contracts/helper-api.md#cancel)) | `unanswered`, not classified |
 
 Calls the helper corrects or adds from a `ModelCallError` follow §Matching Reported Failures.
 
@@ -90,7 +90,7 @@ A later call joins an earlier call's branch only in the two cases below; any oth
 2. **Tool loop**: the earlier response ended in a tool call or Anthropic `pause_turn`; the later request has the same system and tool definitions; its message list starts with the earlier request's message list; and what follows is only the earlier response's output items, copied, and tool results.
    - Responses chained with `previous_response_id`: that ID names the earlier response. Chained with `conversation`: the earlier response is the latest call sent earlier in the same conversation. Either way the system (`instructions`) and tool definitions must equal the earlier request's, and the input must be only tool results (the result items of §Finish Reasons).
    - Output items include reasoning items next to text and tool calls (Anthropic `thinking` and `redacted_thinking` blocks, Responses `reasoning` items).
-   - An item is copied when its kind and position, text, tool-call ID, name and arguments, and reasoning `signature`, `data` and `encrypted_content` are equal. The ID of a Responses tool call is `call_id`, not the item `id` (only `mcp_approval_request` uses `id`); `id` is optional and hand-written loops drop it when copying. Other fields that SDKs drop or add when copying are ignored.
+   - An item is copied when its kind and position, text, tool-call ID, name and arguments, and reasoning `signature`, `data` and `encrypted_content` are equal. The ID of a Responses tool call is `call_id`, not the item `id` (only `mcp_approval_request` uses `id`, and an item whose `call_id` is missing, `null` or empty uses `id` as in §Finish Reasons); `id` is optional and hand-written loops drop it when copying. Other fields that SDKs drop or add when copying are ignored.
 
 A request that continues the conversation after a call that ended in text (answer validation, memory writes) is a new branch.
 
@@ -106,7 +106,7 @@ Answers, successful calls, unrecovered failures and unread responses are decided
 
 ### Answer
 
-A successful response of an answer candidate call that did not end in a tool call, that is, one whose finish reason maps to `stop`, `length` or `content_filter` (§Finish Reasons). Each `choices` item of a Chat Completions response is one answer (`n` > 1). An unread response cannot be classified because its end was not seen.
+A successful response of an answer candidate call that did not end in a tool call (§Finish Reasons), whatever its finish reason: a text response with no tool call in its content is an answer, and its finish reason maps by §Finish Reasons, so an unknown value is `other`. The exception is an Anthropic response with `pause_turn`, which continues a tool loop (§Call Branches, [helper-api §End Events](contracts/helper-api.md#end-events)) and is not an answer. Each `choices` item of a Chat Completions response is one answer (`n` > 1). A response with no text and no tool call is an answer with empty text, and so not §Raw Cannot Be Determined row 1: an Anthropic `content` without `text` blocks, a Responses `output` without a message item (only `reasoning` items, or none), and a Chat Completions response whose `choices` list is empty, which counts as one answer with finish reason `other`. A JSON object without a top-level `error` and without the `choices`, `output` or `content` key is the same as an empty list, so such a response is one empty answer, a completion failure. One whose top-level `error` is not `null` is a failed call with status 200, classified by that error object ([helper-api §Reading Response Bodies](contracts/helper-api.md#reading-response-bodies) item 4). An unread response cannot be classified because its end was not seen.
 
 With `answer_tool` (a tool name and the argument key holding the text), a response that calls that tool is also an answer:
 
@@ -133,7 +133,7 @@ The earliest sent answer; within one response, the first `choices` item. The raw
 
 ## Outcome Decision
 
-When the service function ends, the first matching row decides. When the adapter gives a raw answer, §When the Adapter Gives Raw decides instead. When the target function throws `ModelCallError`, only Outcome row 1 is checked, and otherwise that error decides through §Matching Reported Failures; rethrowing a failure the helper already captured takes that call's kind. These rows are cited as "Outcome row N".
+When the service function ends, the first matching row decides. When the adapter gives a raw answer, §When the Adapter Gives Raw decides instead. When the target function throws `ModelCallError`, `discard_on` is not consulted, only Outcome row 1 is checked, and otherwise that error decides through §Matching Reported Failures, or as adapter error A12 when it does not give exactly one of `status`, `kind` and `call`; rethrowing a failure the helper already captured takes that call's kind. These rows are cited as "Outcome row N".
 
 | Row | Situation | Result |
 |---|---|---|
@@ -144,10 +144,16 @@ When the service function ends, the first matching row decides. When the adapter
 | 5 | The answer candidate calls cannot be determined: no variant model call is true for `reply_call`; or there is no `reply_call` and two or more variant model branches; or the branches the answers came from have different systems | Adapter error A3. When `reply_call` is true only for calls to another model, the message names that model; when the function raised an exception that is not in `discard_on`, the message names it too. Exception below |
 | 6 | No answer, and an unrecovered failure in the answer branch. Or: the function returned a value or raised a `discard_on` exception, there is no answer, and the answer branch has an unfinished call | `timeout` when the answer branch has an unfinished call, else the kind of the unrecovered failure (the latest-ended when several). A service that swallowed the error and shipped a fixed message still counts as the call failure |
 | 7 | The function returned a value | `ok`. `finalKind` is `model` by default and `fallback` when the target function wrapped the text with `fallback(...)` |
-| 8 | The function raised a `discard_on` exception | `ok` · `discarded`. `discardReason` is the first 200 code points of `<exception class name>: <message>`, or the class name alone when the message is empty. Python uses `type(e).__name__` and `str(e)`; TypeScript uses `e.constructor.name` and `e.message`, and only `String(e)` for values that are not `Error` |
+| 8 | The function raised a `discard_on` exception | `ok` · `discarded`. `discardReason` is the exception's text as [helper-api §Adapter Error Messages](contracts/helper-api.md#adapter-error-messages) builds `<exception>` (the message trimmed first; the class name alone when it is then empty, else `Class: message`), cut to its first 200 code points |
 | 9 | Any other exception | Adapter error. When a model response was received, the text of the first answer goes along as `capturedRaw`; with no answer, the text of the last successful response |
 
 Outcome rows 7 and 8 need a raw answer that can be determined (§Raw Cannot Be Determined).
+
+**Non-text return**: when the target function returned a value that is not text, `fallback(text)` or a `Result` (after awaiting an awaitable, [helper-api §Return Values](contracts/helper-api.md#return-values)), only Outcome row 1 is checked, and otherwise the trial is adapter error A14 with `calls`, `usage` and `capturedRaw` in its data as in Outcome row 9. The value is an adapter defect, never caused by a call failure, so Outcome row 3 does not take it.
+
+**Decision failure**: when `reply_call` or a `discard_on` function raises, or the helper's own analysis of the calls raises, Outcome row 1 is checked first, as for A12, A14 and cancel, unless the classification of the calls is what raised; otherwise the trial is adapter error A16. Its data holds `calls` and `usage` after the helper has waited for unfinished calls as for every result (§After the Function Returned), so the trial is charged its real cost and a `config` failure among those calls still stops the run ([001 adapter-protocol §Reporting Model Failures](../001-swap-check/contracts/adapter-protocol.md#reporting-model-failures), rule 6).
+
+- A `reply_call` or `discard_on` exception is A16 after Outcome row 1, in render too, where it comes before A11: A11 means only that the service ended without reaching the render target ([helper-api §When Render Fails](contracts/helper-api.md#when-render-fails)).
 
 **Outcome row 3 when only (b) holds**: failures followed by a captured call of the trial sent after they ended are left out. Calls sent after the function returned do not count. Limits: K1, K2, K3.
 
@@ -197,7 +203,7 @@ Outcome rows 7 and 8 need a raw answer. When the adapter gave none:
 
 | Situation | Handling |
 |---|---|
-| 1. No answer, and every answer candidate response ended in a tool call | With `model` (Outcome row 7): adapter error A4. With `fallback` (Outcome row 7) or Outcome row 8: raw is the text of the last answer candidate response, or empty, and the trial is a completion failure |
+| 1. No answer, and every answer candidate response ended in a tool call | With `model` (Outcome row 7): adapter error A4. With `fallback` (Outcome row 7) or Outcome row 8: raw is the text of the last answer candidate response, or empty, `answers` is 0, and the trial is a completion failure |
 | 2. An answer candidate call has a stream response or a body that was not fully read ([helper-api §Reading Response Bodies](contracts/helper-api.md#reading-response-bodies)). This includes SSE responses that failed by time-out or cancel before the generation-end marker, SSE responses that failed after it, and SSE responses unfinished when the function returned. Whether a response is SSE is decided by the headers received by the time the function returned | Adapter error A5 |
 | 3. A Responses `status` of `queued` or `in_progress` | Adapter error A6. Background mode is not parsed; the adapter passes the final output and finish reason the service received later |
 
@@ -232,7 +238,7 @@ The protocol counts a cut stream by the reason it was cut ([001 adapter-protocol
 When the adapter gives the raw answer and the answer count, they carry the protocol meaning of `raw` and `answers` ([001 adapter-protocol §Answers](../001-swap-check/contracts/adapter-protocol.md#answers)): the first answer, and a count that includes cut answers (any number of cut answer streams count as one; cut streams that are not answers are left out).
 
 1. **Cut late** (the default, when 2, 3 and 5 do not apply).
-   - In the failure check, the cut stream is a call that failed with `timeout`; one that became unread ended per §When a Call Ended. After the failure check it is an unread response.
+   - In the failure check, the cut stream is a call that failed with `timeout`; one that became unread ended per §When a Call Ended. One still being read when the function returned ended when the service last read it, or when its headers arrived if it read nothing (K38). After the failure check it is an unread response.
    - It is not a successful call when deciding whether another call's failure was recovered.
    - Without raw from the adapter, a stream cut without an awaited read is a successful call (K7).
    - When the failure check does not run, §Cut Last Answer looks at the stream.
@@ -241,7 +247,7 @@ When the adapter gives the raw answer and the answer count, they carry the proto
    - When the raw answer given is an earlier, fully received answer, the fallback or discard is reported as is even when the cut was a time limit (§Cut Last Answer).
 3. **Deliberate stop**: the adapter gives a non-empty raw answer, `Result(stopped_early=True)` and kind `model`. Only cut streams that became unread responses are unread; the others are taken as view 1.
    - There is no awaited read after `break` from an SDK stream iterator (Python, all; Node `create({ stream: true })`), or after an immediate `abort()`, without awaiting, inside a Node stream helper event handler. After an `await` in the handler, the SDK has usually started the next read in the meantime; with only one microtask awaited and events left in that chunk, there is no awaited read (K8).
-   - Node stream helpers (`chat.completions.stream()`, `responses.stream()`, `messages.stream()`) iterated with `for await` and left with `break`: when the stopping event was the last event of a chunk read at once (usually so), the SDK cancels the awaited read in the background. That cannot be told from a cancel by the service's time limit, so it counts as a time-out. When events remain in that chunk there is no awaited read and the trial is normal (K8).
+   - Node stream helpers (`chat.completions.stream()`, `responses.stream()`, `messages.stream()`) iterated with `for await` and left with `break`: when the stopping event was the last event of a chunk read at once (usually so), the SDK cancels the awaited read in the background. That cannot be told from a cancel by the service's time limit, so it counts as a time-out. When events remain in that chunk there is no awaited read and the trial is normal, unless the stream helper has already started the next read, which depends on the SDK release and the stream helper; then that read is waiting and the trial is a time-out (K8).
    - A time limit that fires while the service processes each chunk from an SDK iterator with `await` leaves no awaited read and becomes an unread response (Python `asyncio.wait_for` too) (K9). Node stream helpers read the next chunk ahead in the background, so there is an awaited read then and it counts as a time-out.
    - `stopped_early` given with no raw, an empty raw or a kind other than `model` is ignored, and warning W7 is attached.
 4. **Cut because a parallel request failed**: the helper does not see this separately; the target function reports it ([helper-api §Trials Stopped by Another Call's Failure](contracts/helper-api.md#trials-stopped-by-another-calls-failure)).
@@ -257,7 +263,7 @@ When the adapter gives the raw answer and the answer count, they carry the proto
 
 #### Cut Styles
 
-Cancelling the request, leaving the read loop and only stopping to wait are treated alike ([research R14](research.md#r14-outcome-decision-trade-offs)).
+Cancelling the request, leaving the read loop and only stopping to wait are treated alike when the adapter gives raw: view 1 takes each cut stream as a `timeout` failure, and an unfinished call is a time-out too ([research R14](research.md#r14-outcome-decision-trade-offs)). The exceptions are view 3, where only a stream left without an awaited read escapes the time-out (K8, K9), and a request the service only stopped waiting for that ended before the function returned, which looks like a received response (K17). Without raw they can differ, because a stream left without an awaited read is a successful call (K7); scenarios then name the style (cut styles per client, [helper-scenarios](contracts/helper-scenarios.md)).
 
 ### Failure Check
 
@@ -359,6 +365,7 @@ When this section decides the trial, the warning carries the regeneration senten
 - **Raw call**: the call that produced the first answer. With no answer (tool-call responses, unread responses), the last successful answer candidate call. When the adapter gives raw, §Raw Call decides.
   - `modelSnapshot` is the raw call's response `model`; `Result(model_snapshot=)` overrides it.
   - `Result(usage=)` becomes the raw call's `usage`. When the raw call's record is a failure (a cut stream, a failure after the generation-end marker) and `Result(usage=)` is given, its `outcome` becomes `failed` and it is priced at that usage, as for corrected calls in §Matching Reported Failures.
+- **`final`**: the returned text, the text inside `fallback(text)`, or `Result(final=)`. A `Result` without `final` ships `raw` with kind `model`, the empty string with kind `fallback`, and no `final` with kind `discarded` ([001 data-model §Trial](../001-swap-check/data-model.md#trial)). An explicit `final=None` with kind `model` or `fallback` is adapter error A14 (§Outcome Decision, non-text return).
 - **Text**: Chat Completions `message.content`, or the empty string when absent; Responses, the text parts of the output messages joined without a separator; Anthropic, the `text` blocks joined without a separator. This equals the OpenAI SDK's `output_text`.
 - **Finish reason**: that of the last answer by send order, and within one response the last `choices` item. Text answers map through §Finish Reasons; `answer_tool` answers follow §Answer.
   - When `Result(finish_reason=)` is not given, the last answer is not `stop`, and an earlier answer from the same request (an earlier `choices` item of the same response, an answer of a request with the same body) is `stop`, warning W3 is attached: the service may have discarded the cut answer and picked a complete one. A cut regenerated answer from a modified request gets no warning.
@@ -368,7 +375,7 @@ When this section decides the trial, the warning carries the regeneration senten
   - A failure that may have been billed for an unknown amount (§Call Outcome) stays `outcome: unanswered`, so the tool charges the call reservation.
   - Stream and background calls have unknown usage and are recorded without `usage`; the tool charges the call reservation ([001 data-model §Cost](../001-swap-check/data-model.md#cost)). `Result(usage=)` becomes the raw call's `usage`. Other stream calls, such as earlier calls of a streaming tool loop, stay at their reservation.
 - **`calls`**: when calls were captured, they go in send order into normal results, model failure results and the `data` of adapter errors alike ([001 adapter-protocol §`generate`](../001-swap-check/contracts/adapter-protocol.md#generate-required)).
-  - Every call has `model` and `outcome`. `branch` is present only when the answer branch was decided, so it is absent with Outcome rows 4 and 5. `retryAfterMs` is present when the failed response said how long to wait ([helper-api §`retryAfterMs`](contracts/helper-api.md#retryafterms)).
+  - Every call has `model` and `outcome`. `branch` is present only when the answer branch was decided, so it is absent with Outcome rows 4 and 5, except in the Outcome row 5 exception, where every call is `side`. When the trial has no variant model call, no call carries `branch`, whichever Outcome row decides. `retryAfterMs` is present when the failed response said how long to wait and the call's kind is `transient` ([helper-api §`retryAfterMs`](contracts/helper-api.md#retryafterms)).
   - With no captured call (Outcome row 2, or calls made by other means than helper-api §Captured Requests), `calls` is omitted. The tool then prices `usage`, or charges the reservation without it.
 - **`latencyMs`**: the duration of the whole service function.
 - **`fingerprint`**: the first request of the branch that produced the first answer is converted to the render shape (`messages`, `tools`, [helper-api §Render Mode](contracts/helper-api.md#render-mode)) and hashed as the render fingerprint ([001 data-model §Identifiers and Hashing](../001-swap-check/data-model.md#identifiers-and-hashing)). With no answer, the first answer candidate request; with raw given, §Answer Candidate Calls When Raw Is Given. When that request is the render target, the value equals the render fingerprint.
@@ -390,11 +397,12 @@ With several candidates, the latest-sent is used.
 | Candidate | Record | Trial result |
 |---|---|---|
 | Started response | That call is corrected; no call is added | The thrown value |
-| Matching failure | Unchanged | That call's own kind, not the thrown value |
+| Matching failure | Unchanged, except that a `config` thrown value makes its kind `config` | That call's own kind, not the thrown value |
 | Unfinished call | Unchanged, as the call ended; no call is added | The thrown value |
 | None | A new call is appended to `calls`; with no captured call at all, no `calls` (§Derived Result Fields) | The thrown value |
 
 - When the thrown value classifies as `config`, the trial and the call's kind are `config` even with the matching-failure candidate. An error response closed before the SDK resent has an unread body, so its quota code is unknown ([helper-api §Reading Response Bodies](contracts/helper-api.md#reading-response-bodies)).
+- `retryAfterMs` of the trial's failure belongs to the call whose kind decides it ([001 adapter-protocol §Reporting Model Failures](../001-swap-check/contracts/adapter-protocol.md#reporting-model-failures)). With the matching-failure candidate it is that call's own value from the response headers, and the thrown `retry_after_ms` is not used. Otherwise it is the thrown `retry_after_ms`, which a corrected or added call carries too. Either way it is present only when the kind is `transient`, on the trial's result and on every call record alike (§Derived Result Fields, `calls`).
 - With no candidate, warning W10 is attached when the thrown value is a `status` or a `kind` other than `timeout`, and the only captured calls to that model (regardless of `reply_call`) with a failure matching it in the matching-failure sense have `retried` true. Not when that model is the variant model, `reply_call` exists, and no captured call is true for it. The outcome does not change.
 - A corrected or added call has the `errorKind` from [helper-api §Error Classification](contracts/helper-api.md#error-classification). Its `outcome`: `failed`, priced at the usage, when `usage` was given. Without `usage`, a corrected call and `status` 200, `disconnect` and `timeout` are `unanswered` and charged the call reservation; a non-200 `status`, `connect` and `tls` are `failed`.
 
@@ -402,9 +410,9 @@ With several candidates, the latest-sent is used.
 
 The wrappers sit at class level, so requests to captured paths without a trial context are seen too. When the service hands work to a thread that does not carry the context (Python `loop.run_in_executor`, a thread it creates), the request cannot be tied to a trial.
 
-1. A trial whose service function has ended and that waits before sending its result is not counted as in progress (§After the Function Returned).
-2. With exactly one trial in progress, the request joins that trial and is handled like a request of its context (waiting at function end, unfinished calls). So such services run with concurrency 1. A request a background thread sends after the previous trial ended then joins the next trial in progress (K26).
-3. With two or more trials in progress, all of them end as adapter error A10. The request is not blocked.
+1. A trial whose service function has ended and that waits before sending its result is not counted as in progress (§After the Function Returned). A `render` whose service function or render function is running counts as a trial in progress.
+2. With exactly one trial in progress, the request joins that trial and is handled like a request of its context (waiting at function end, unfinished calls); when that is a render, it gets the render-mode 400 ([helper-api §Render Mode](contracts/helper-api.md#render-mode)). So such services run with concurrency 1. A request a background thread sends after the previous trial ended then joins the next trial in progress (K26).
+3. With two or more trials in progress, all of them end as adapter error A10, a render included. The request is not blocked, except that it gets the render-mode 400 when one of them is a render, since it may be that render's request.
 4. With no trial in progress, only the call's cost is reported, as a `calls` notification: with the `id` of the one trial waiting to send its result if there is exactly one, otherwise without `id`.
 
 When the service passes the context along with the work (Python `executor.submit(contextvars.copy_context().run, fn)`, `asyncio.to_thread`), the request is inside the trial context and none of this applies.
@@ -467,7 +475,7 @@ Given `service_dir` (`serviceDir` in TypeScript), the helper reports in `initial
    - A trailing `/` is removed, since git lists a nested repository it does not enter as `nested/`.
    - Duplicate paths (per-stage entries during a merge conflict) are kept once.
    - Paths are relative to that folder and handled as the bytes git printed, never decoded.
-2. **Excluded paths**: a path that is, or has a parent folder up to this folder that is, the same file as a `toolPaths` entry; and a path absent from the work tree (a deleted file, or one that disappeared while computing: `lstat` or reading fails with "not found", or a nested repository's git fails and that folder no longer exists).
+2. **Excluded paths**: a path that is, or has a parent folder up to this folder that is, the same file as a `toolPaths` entry; and a path absent from the work tree (a deleted file, or one that disappeared while computing: `lstat` or reading fails with "not found", or a nested repository's git fails and `lstat` of that folder then fails with "not found"; when the folder still exists, its git failure is reported per §When Nothing Is Reported).
 3. **Kind**, from the work tree's `lstat`: a symbolic link is `l`; a regular file is `f`; a folder is a nested repository `s` when it is the top of a repository, else it is excluded, and files placed in it are not counted; anything else (sockets and so on) is excluded. A folder is a repository top when the folder `git -C <folder> rev-parse --show-toplevel` names is the same file as that folder.
 4. **Content**: for `f`, the file bytes; for `l`, the bytes of the link target as `readlink` returned it; for `s`, that folder's `treeHash` string. Submodules are thus compared by file content, not by commit. Binary files, such as fake storage in SQLite, are included by content.
 5. **Bytes**: sort the paths by bytes (Node sorts with `Buffer.compare`). For each path append: path, NUL, kind, NUL, content length in bytes as a decimal number, NUL, content.
@@ -478,8 +486,8 @@ Every git call runs with the variables printed by `git rev-parse --local-env-var
 
 | Condition | Reported |
 |---|---|
-| git, `lstat` or a file read fails (permissions and similar; paths that vanish while computing are excluded by step 2) | None of `version`, `dirty`, `treeHash`; the reason goes to log warning L1 |
-| `service_dir` is outside a git work tree, or git is missing | None of the three |
+| git, `lstat` or a file read fails (permissions and similar; paths that vanish while computing are excluded by step 2). This includes git failing to start for any reason other than not being installed (`EACCES`), and a `service_dir` that does not exist or is not a folder: the helper runs `lstat` on `.` in `service_dir` before any git call, so a missing folder is never taken for a missing git | None of `version`, `dirty`, `treeHash`; the reason goes to log warning L1 |
+| `service_dir` is outside a git work tree, or git is not installed (starting it fails with `ENOENT`) | None of the three |
 | `service_dir` is in the ignore list (`git -C <service_dir> check-ignore -q .` exits 0), or the path list after step 3 is empty (the place of an uninitialised submodule) | None of the three |
 
 - These rules apply to `service_dir` only. A nested repository whose list is empty contributes, as its `s` content, the `treeHash` of an empty list.
@@ -511,6 +519,8 @@ Provider values map to the protocol scale:
 | `content_filter`, Responses `incomplete` with reason `content_filter`, Anthropic `refusal` | `content_filter` |
 | Tool calls (`tool_calls`, `function_call`, `tool_use`), Anthropic `pause_turn`, any other value | `other` |
 
+The raw finish reason of a Responses call (helper-api `finishReason`) is its `status`, except that an `incomplete` response gives `incomplete_details.reason` when present. A failed call has none.
+
 The response content is checked before the provider value. A response ended by the output limit or a filter is `length` or `content_filter`. Otherwise a response that holds a tool call (Chat Completions `message.tool_calls`, a Responses tool-call item, an Anthropic `tool_use` block) ended in a tool call, even when its Responses `status` is `completed`.
 
 **Responses tool-call items** are output items the service must answer with a result before the response can continue:
@@ -526,6 +536,7 @@ The response content is checked before the provider value. A response ended by t
 | `mcp_approval_request` | `mcp_approval_response` | its `approval_request_id` equals the request's `id` |
 | `tool_search_call` | `tool_search_output` | Not used; decided by `execution` (below) |
 
+- In this pairing a `call_id` that is missing, `null` or the empty string counts as not given, and the item's `id` is used in its place. Any other non-string `call_id` is its canonical JSON (helper-api §Shared Conventions).
 - A tool-call item that a result item of the same response already points to was run by the provider on the spot (a `shell_call` in a container environment) and is not a tool call.
 - `tool_search_call` is decided by `execution`, because both items can arrive with an empty `call_id`: `server` means the provider ran it; `client` means it is a tool call.
 - Items of tools the provider runs (`web_search_call`, `file_search_call`, `code_interpreter_call`, `mcp_call` and others) are not tool calls.
@@ -547,7 +558,7 @@ Cases where the fixed rules decide differently from what the service did, becaus
 | K5 | When the service ends, or a parallel check blocks, while the SDK waits before resending, no later or unfinished call exists and the earlier failure decides (without raw: Outcome row 6 for a fixed message or a `discard_on` exception, Outcome row 3 for another exception; under view 5: the failure check); the helper cannot know whether the SDK would have resent |
 | K6 | `kind="timeout"` thrown during that wait after a failure without an error response (a connection failure or drop, or a read time-out on a non-stream body) matches that call, so the trial is `transient` |
 | K7 | Without raw from the adapter, a stream cut without an awaited read is a successful call, so a request sent while it was being received that failed after it was cut becomes a recovered failure; the trial ends in the adapter error of §Raw Cannot Be Determined or Outcome row 9, unless the target function throws that failure |
-| K8 | A Node stream helper left with `break` from `for await`, or `abort()` after one awaited microtask, has no awaited read when events remain in the chunk read at once, so the trial is normal or `timeout` depending on chunking |
+| K8 | A Node stream helper left with `break` from `for await`, or `abort()` after one awaited microtask, has no awaited read when events remain in the chunk read at once, so the trial is normal or `timeout` depending on chunking. Whether the stream helper has already started the next read when the loop is left also depends on the SDK release and the stream helper, through the order in which its background reading and the service's loop run. In the contract tests the next read has already started with the Chat Completions stream helper of openai-node 5 and 6 and the Messages stream helper of `@anthropic-ai/sdk` 0.137.0 and 1, where the same break therefore counts as `timeout`; it has not with the Responses stream helper of every openai-node release, the Chat Completions stream helper of openai-node 7, or the Messages stream helper of `@anthropic-ai/sdk` 0.50.1 |
 | K9 | A time limit that fires while the service processes each chunk from an SDK iterator with `await` leaves no awaited read, so with an adapter that always gives `stopped_early` the cut text passes as complete |
 | K10 | Under view 4 with a streamed first answer, `answers` counts the cut stream, so the regeneration rate counts one more |
 | K11 | A streaming tool loop with `answer_tool` cannot give `answers=0`: a trial that hit the loop limit counts as an empty answer, and a trial whose last stream a parallel check cut counts as `timeout` |
@@ -573,5 +584,9 @@ Cases where the fixed rules decide differently from what the service did, becaus
 | K31 | A compatible server whose Chat Completions stream calls a tool but reports `finish_reason` `stop` is not recognised as a stream that ended in a tool call |
 | K32 | In services that regenerate through unread responses, `Result(usage=)` attaches to the regenerated answer's call and the first answer's call is charged a reservation, so the total is higher than the actual cost |
 | K33 | Fake storage rejecting an unexpected query in background work does not surface as an adapter error |
-| K34 | A body read from a thread is not caught by yielding to the event loop, so it becomes an unread response when it is between chunks at that moment |
+| K34 | A body read from a thread is not caught by yielding to the event loop, so it becomes an unread response when it is between chunks at that moment; a thread blocked in a read that waits for the next chunk is reading, not between chunks |
 | K35 | A client created with `azure_deployment` has the path's deployment fixed and goes to that deployment whatever the body's `model` says; the variant model check reads only the body's `model` and does not catch it |
+| K36 | A failure while writing the request body cannot be told apart from a connection closed before headers: on the httpx and httpx2 default transports httpcore swallows the write error, and aiohttp raises the same `ClientOSError` for both, with a broken pipe or a reset depending on timing. Such a call is `unanswered` and the trial `transient`. |
+| K37 | A request the HTTP client refuses while sending the request for a reason other than its URL scheme (a header value it refuses) is not told apart from a drop before headers: the call is `unanswered` and charged its reservation, and the trial is `transient`, so every trial is retried and the run stops on the transient rate |
+| K38 | The SDK can keep reading a stream after the service stopped waiting for it, so its end time comes out later than when the service stopped, and a failure that ended in between can be taken as ending first (§Cut Streams) |
+| K39 | A stream the service cancels or closes between reads, with no read waiting, is not cut by that cancel: it stays an unread response, so a time limit that fires while the service is between chunks cannot be told apart from a deliberate stop ([helper-api §Reading Response Bodies](contracts/helper-api.md#reading-response-bodies) item 6; K8, K9) |

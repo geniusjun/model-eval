@@ -1,0 +1,96 @@
+name: Helpers on the latest SDKs
+
+# Both helpers' contract tests against the latest release of each SDK, installed without the
+# lockfile and without the pins of adapters/python/tests/requirements/ (003 plan D10, SC-002).
+# The pinned releases run in ci.yml; this run finds an SDK release that breaks a helper.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-requirements:
+    runs-on: ubuntu-latest
+    outputs:
+      files: ${{ steps.list.outputs.files }}
+    steps:
+      - uses: actions/checkout@v7
+      # The newest major of each SDK: openai-N.txt and anthropic-N.txt with the largest N.
+      - id: list
+        run: |
+          cd adapters/python/tests/requirements
+          newest() { ls "$1"-*.txt | grep -E "^$1-[0-9]+\.txt$" | sort -V | tail -n 1 | sed 's/\.txt$//'; }
+          echo "files=$(printf '%s\n' "$(newest openai)" "$(newest anthropic)" | jq -Rcn '[inputs]')" >> "$GITHUB_OUTPUT"
+
+  python:
+    needs: python-requirements
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # On 3.10, pip installs the newest release that still supports 3.10, which is what users
+        # of 3.10 get once an SDK drops it.
+        python: ['3.10', '3.x']
+        requirements: ${{ fromJSON(needs.python-requirements.outputs.files) }}
+    defaults:
+      run:
+        working-directory: adapters/python
+    env:
+      # The file names the SDK and its extras; the cases run as for that file.
+      MODEL_EVAL_REQUIREMENTS: ${{ matrix.requirements }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          check-latest: true
+      - name: Install the file's packages without their pins
+        run: |
+          sed -E 's/==[^;[:space:]]+//' "tests/requirements/$MODEL_EVAL_REQUIREMENTS.txt" > "$RUNNER_TEMP/latest.txt"
+          cat "$RUNNER_TEMP/latest.txt"
+          python3 -m pip install --upgrade -r "$RUNNER_TEMP/latest.txt"
+          python3 -m pip list | grep -Ei '^(openai|anthropic|httpx|httpx2|aiohttp) '
+      - run: python3 -m pytest
+
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      # The newest alias of each SDK in package.json (openai-N, anthropic-sdk-N with the largest N),
+      # pointed at the SDK's latest release; the contract tests run with those aliases only.
+      - name: Install without the lockfile, the SDK aliases at their latest releases
+        run: |
+          newest() { jq -r '.devDependencies | keys[]' package.json | grep -E "^$1-[0-9]+$" | sort -V | tail -n 1; }
+          openai=$(newest openai)
+          anthropic=$(newest anthropic-sdk)
+          rm pnpm-lock.yaml
+          pnpm install --no-frozen-lockfile
+          pnpm add --save-dev "$openai@npm:openai@latest" "$anthropic@npm:@anthropic-ai/sdk@latest"
+          pnpm list "$openai" "$anthropic"
+          echo "MODEL_EVAL_NODE_SDKS=$openai,$anthropic" >> "$GITHUB_ENV"
+      # The Python of the mock API server and the parity drivers: the packages of each SDK's
+      # requirements file with the highest major (ci.yml pins openai-2 and anthropic-2 instead),
+      # without their pins.
+      - name: Python environment with the latest openai and anthropic SDKs
+        run: |
+          cd adapters/python/tests/requirements
+          newest() { ls "$1"-*.txt | grep -E "^$1-[0-9]+\.txt$" | sort -V | tail -n 1; }
+          cat "$(newest openai)" "$(newest anthropic)" | sed -E 's/==[^;[:space:]]+//' > "$RUNNER_TEMP/latest.txt"
+          cat "$RUNNER_TEMP/latest.txt"
+          python3 -m venv "$RUNNER_TEMP/helper-python"
+          "$RUNNER_TEMP/helper-python/bin/python" -m pip install -r "$RUNNER_TEMP/latest.txt"
+          "$RUNNER_TEMP/helper-python/bin/python" -m pip list | grep -Ei '^(openai|anthropic) '
+          echo "MODEL_EVAL_PYTHON=$RUNNER_TEMP/helper-python/bin/python" >> "$GITHUB_ENV"
+      - run: pnpm build
+      - run: pnpm exec vitest run --project contract test/contract/helper

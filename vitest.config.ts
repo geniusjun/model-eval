@@ -7,6 +7,8 @@ export default defineConfig({
       { extends: true, test: { name: 'unit', include: ['test/unit/**/*.test.ts'] } },
       { extends: true, test: { name: 'contract', include: ['test/contract/**/*.test.ts'] } },
       { extends: true, test: { name: 'e2e', include: ['test/e2e/**/*.test.ts'] } },
+      // Needs the example service's own Python environment, so `test` leaves it out.
+      { extends: true, test: { name: 'example', include: ['test/example/**/*.test.ts'] } },
       {
         extends: true,
         oxc: { jsx: { runtime: 'automatic' } },

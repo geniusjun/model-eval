@@ -1,0 +1,2896 @@
+{
+  "S-CTX-01": [
+    {
+      "name": "at concurrency 1, a request from a thread without the context is that trial's call",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "thread": {
+                "name": "answer"
+              },
+              "context": "none"
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "at concurrency 1, a request through loop.run_in_executor, which passes no context, is that trial's call",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "executor": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "two trials in progress: a request from a thread without the context ends every trial as A10",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "sleepMs": 300
+            },
+            {
+              "thread": {
+                "name": "answer"
+              },
+              "context": "none"
+            },
+            {
+              "sleepMs": 300
+            }
+          ],
+          "result": {
+            "text": "Here is the answer."
+          }
+        }
+      },
+      "adapter": {
+        "maxConcurrency": 2
+      },
+      "trials": 2,
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          },
+          "times": 2
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A10"
+        }
+      }
+    }
+  ],
+  "S-CTX-02": [
+    {
+      "name": "at concurrency 1, the previous trial's background thread request joins the next trial after its failure: the first trial Outcome row 3, transient; the second Outcome row 4 (K26)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-x",
+                "system": "Safety check: answer allow or block.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "thread": {
+                "model": "model-y",
+                "system": "Record the analytics event.",
+                "user": "hello",
+                "startAfterMs": 1500
+              },
+              "context": "none",
+              "join": false
+            },
+            {
+              "sleepMs": 1000
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "trialsInARow": 2,
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "error": {
+            "status": 429
+          }
+        },
+        {
+          "match": {
+            "model": "model-y"
+          },
+          "times": 2,
+          "reply": {
+            "text": "Logged."
+          }
+        }
+      ],
+      "expectPerTrial": [
+        {
+          "status": "failed",
+          "errorKind": "transient",
+          "calls": [
+            {
+              "model": "model-x",
+              "outcome": "failed",
+              "branch": null,
+              "errorKind": "transient"
+            }
+          ]
+        },
+        {
+          "status": "adapter-error",
+          "adapterError": {
+            "message": "A2",
+            "placeholders": {
+              "model": "model-b",
+              "models": "`model-x`, `model-y`"
+            }
+          },
+          "calls": [
+            {
+              "model": "model-x",
+              "outcome": "failed",
+              "branch": null,
+              "errorKind": "transient"
+            },
+            {
+              "model": "model-y",
+              "outcome": "ok",
+              "branch": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "S-CTX-03": [
+    {
+      "name": "a thread started with contextvars.copy_context().run: that trial's call",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "thread": {
+                "name": "answer"
+              },
+              "context": "copy"
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-04": [
+    {
+      "name": "a memory write that ends after the function returned: waited for and included",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "background": {
+                "model": "model-x",
+                "system": "Write the memory note.",
+                "user": "The user said hello."
+              }
+            },
+            {
+              "sleepMs": 200
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "delayMs": 1000,
+          "reply": {
+            "text": "Noted."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-05": [
+    {
+      "name": "an SSE body nobody reads at function end: not waited for, an unread response (A5 without raw)",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "read": "none"
+              }
+            }
+          ],
+          "result": {
+            "text": "Here is the answer."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              3000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-06": [
+    {
+      "name": "a body background work is reading: waited for",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "background": {
+                "model": "model-x",
+                "system": "Write the memory note.",
+                "user": "The user said hello.",
+                "stream": true
+              }
+            },
+            {
+              "sleepMs": 300
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "reply": {
+            "text": "Noted."
+          },
+          "stream": {
+            "chunkDelaysMs": [
+              0,
+              0,
+              1000
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-07": [
+    {
+      "name": "a background request with no response by the time limit: unanswered, no error kind, result unchanged",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "background": {
+                "model": "model-x",
+                "system": "Write the memory note.",
+                "user": "The user said hello."
+              }
+            },
+            {
+              "sleepMs": 200
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "initialize": {
+        "timeoutMs": 7000
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "delayMs": 6000,
+          "reply": {
+            "text": "Noted."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "unanswered",
+            "branch": "side",
+            "errorKind": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-08": [
+    {
+      "name": "a request first sent while the helper waits after the function returned: not in the trial, a calls notification",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "background": {
+                "model": "model-x",
+                "system": "Write the memory note.",
+                "user": "The user said hello."
+              }
+            },
+            {
+              "background": {
+                "model": "model-y",
+                "system": "Record the analytics event.",
+                "user": "hello"
+              },
+              "delayMs": 400
+            },
+            {
+              "sleepMs": 100
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "delayMs": 1000,
+          "reply": {
+            "text": "Noted."
+          }
+        },
+        {
+          "match": {
+            "model": "model-y"
+          },
+          "reply": {
+            "text": "Logged."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "notifications": [
+          {
+            "calls": [
+              {
+                "model": "model-y",
+                "outcome": "ok"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-09": [
+    {
+      "name": "at concurrency 1, a request from a thread without the context sent while the helper waits: a calls notification",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "background": {
+                "model": "model-x",
+                "system": "Write the memory note.",
+                "user": "The user said hello."
+              }
+            },
+            {
+              "thread": {
+                "model": "model-y",
+                "system": "Record the analytics event.",
+                "user": "hello",
+                "startAfterMs": 400
+              },
+              "context": "none",
+              "join": false
+            },
+            {
+              "sleepMs": 100
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "delayMs": 1000,
+          "reply": {
+            "text": "Noted."
+          }
+        },
+        {
+          "match": {
+            "model": "model-y"
+          },
+          "reply": {
+            "text": "Logged."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          },
+          {
+            "model": "model-x",
+            "outcome": "ok",
+            "branch": "side"
+          }
+        ],
+        "notifications": [
+          {
+            "calls": [
+              {
+                "model": "model-y",
+                "outcome": "ok"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-10": [
+    {
+      "name": "the service stops waiting without cutting the request, the answer request then succeeds, fixed message unwrapped: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, that took too long."
+          }
+        }
+      },
+      "initialize": {
+        "timeoutMs": 9000
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service stops waiting without cutting the request, the answer request then succeeds, fixed message wrapped: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, that took too long."
+          }
+        }
+      },
+      "initialize": {
+        "timeoutMs": 9000
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service stops waiting without cutting the request, the answer request then fails with 503, fixed message unwrapped: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, that took too long."
+          }
+        }
+      },
+      "initialize": {
+        "timeoutMs": 9000
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "error": {
+            "status": 503
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service stops waiting without cutting the request, the answer request then fails with 503, fixed message wrapped: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, that took too long."
+          }
+        }
+      },
+      "initialize": {
+        "timeoutMs": 9000
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "error": {
+            "status": 503
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service stops waiting without cutting the request, the helper cuts the answer request at the end of its wait, fixed message unwrapped: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, that took too long."
+          }
+        }
+      },
+      "initialize": {
+        "timeoutMs": 7000
+      },
+      "script": [
+        {
+          "delayMs": 6000,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "the service stops waiting without cutting the request, the helper cuts the answer request at the end of its wait, fixed message wrapped: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, that took too long."
+          }
+        }
+      },
+      "initialize": {
+        "timeoutMs": 7000
+      },
+      "script": [
+        {
+          "delayMs": 6000,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-11": [
+    {
+      "name": "the same, ending while the SDK's resend after a 503 is awaited: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 1200,
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, that took too long."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          },
+          "headers": {
+            "retry-after-ms": "100"
+          }
+        },
+        {
+          "delayMs": 2000,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 100
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-12": [
+    {
+      "name": "the service stops waiting, the answer request then succeeds, kind timeout thrown: timeout, no call added",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "initialize": {
+        "timeoutMs": 9000
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same where the answer request then fails with 503: timeout, no call added",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "initialize": {
+        "timeoutMs": 9000
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          },
+          "delayMs": 1500
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same where the helper cuts the answer request at the end of its wait: timeout, no call added",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "initialize": {
+        "timeoutMs": 7000
+      },
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 6000
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "branch": "answer",
+            "errorKind": null
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-13": [
+    {
+      "name": "the first attempt dropped and the SDK's resend ended before the function returned; kind timeout thrown: a new call, timeout, no W10",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            },
+            {
+              "sleepMs": 3000
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "connection": "close-before-headers"
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1000
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-14": [
+    {
+      "name": "a streaming answer request that got its generation-end marker before the function returned, a value without raw: the data-model Raw Cannot Be Determined adapter error",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            },
+            {
+              "sleepMs": 3000
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "A late answer."
+          },
+          "stream": {
+            "deltas": 2
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A5"
+        },
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same, kind timeout thrown: timeout with one more call",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "stream": true,
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            },
+            {
+              "sleepMs": 3000
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "A late answer."
+          },
+          "stream": {
+            "deltas": 2
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-15": [
+    {
+      "name": "fut.result(timeout=) inside with ThreadPoolExecutor() at concurrency 1, the late response awaited when the block exits, wrapped: the late answer is the first answer, a fallback (K17)",
+      "languages": ["python"],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "poolWait": {
+                "name": "late"
+              },
+              "waitMs": 500
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, I cannot answer right now."
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "A late answer.",
+        "final": "Sorry, I cannot answer right now.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same, kind timeout thrown: timeout with one more call",
+      "languages": ["python"],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "poolWait": {
+                "name": "late"
+              },
+              "waitMs": 500
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-16": [
+    {
+      "name": "the same resending the same request and shipping its answer, Result(raw=<re-received answer>, answers=1): normal, answers 1",
+      "languages": ["python"],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "poolWait": {
+                "name": "late"
+              },
+              "waitMs": 500,
+              "then": [
+                {
+                  "call": {
+                    "name": "again"
+                  }
+                }
+              ]
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "again"
+              },
+              "final": {
+                "callText": "again"
+              },
+              "answers": 1
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        },
+        {
+          "reply": {
+            "text": "The answer again."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "The answer again.",
+        "final": "The answer again.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without it the late response counts too: answers 2 (K17)",
+      "languages": ["python"],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "poolWait": {
+                "name": "late"
+              },
+              "waitMs": 500,
+              "then": [
+                {
+                  "call": {
+                    "name": "again"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        },
+        {
+          "reply": {
+            "text": "The answer again."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "A late answer.",
+        "final": "The answer again.",
+        "answers": 2,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a modified resend with reply_call true for both: normal, answers 1, the fingerprint differs from the render fingerprint (render-mismatch)",
+      "languages": ["python"],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "poolWait": {
+                "name": "late"
+              },
+              "waitMs": 500,
+              "then": [
+                {
+                  "call": {
+                    "name": "again",
+                    "user": "Say hello again, please."
+                  }
+                }
+              ]
+            }
+          ],
+          "report": {
+            "result": {
+              "raw": {
+                "callText": "again"
+              },
+              "final": {
+                "callText": "again"
+              },
+              "answers": 1
+            }
+          }
+        }
+      },
+      "target": {
+        "replyCall": true,
+        "render": true
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        },
+        {
+          "reply": {
+            "text": "The answer again."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "The answer again.",
+        "answers": 1,
+        "fingerprint": "not-render",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-17": [
+    {
+      "name": "the resend ends in 429 after the SDK's retries and a fixed message is shipped; status=429 thrown: transient, and as the 429 overlaps the late response it is recovered, so one more call is added",
+      "languages": ["python"],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "poolWait": {
+                "name": "late"
+              },
+              "waitMs": 500,
+              "then": [
+                {
+                  "call": {
+                    "name": "again",
+                    "maxRetries": 1,
+                    "onError": "swallow"
+                  }
+                }
+              ]
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "status": 429
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 2
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "warnings": [],
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 20
+          },
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same given as call=: A13",
+      "languages": ["python"],
+      "backends": [
+        "sync"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "poolWait": {
+                "name": "late"
+              },
+              "waitMs": 500,
+              "then": [
+                {
+                  "call": {
+                    "name": "again",
+                    "maxRetries": 1,
+                    "onError": "swallow"
+                  }
+                }
+              ]
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "call": {
+                "failed": true,
+                "index": -1
+              }
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        },
+        {
+          "error": {
+            "status": 429
+          },
+          "headers": {
+            "retry-after-ms": "20"
+          },
+          "times": 2
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A13"
+        }
+      }
+    }
+  ],
+  "S-CTX-18": [
+    {
+      "name": "a shared fixed message wrapped with fallback: a swallowed 429 is transient",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, that took too long."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 429
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same: a late response after the function returned is timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, that took too long."
+          }
+        }
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same: a late response before the function returned is a fallback (K19)",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500,
+                "onError": "swallow"
+              }
+            },
+            {
+              "sleepMs": 1000
+            }
+          ],
+          "result": {
+            "fallback": "Sorry, that took too long."
+          }
+        }
+      },
+      "script": [
+        {
+          "delayMs": 800,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "fallback",
+        "raw": "A late answer.",
+        "final": "Sorry, that took too long.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-19": [
+    {
+      "name": "the service's time limit raised as an exception while the first request is awaited: Outcome row 9",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "ServiceTimeout: the service's time limit fired"
+          }
+        }
+      }
+    },
+    {
+      "name": "the same while the SDK's resend after a 503 is awaited: Outcome row 9",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 1200,
+                "maxRetries": 1
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          },
+          "headers": {
+            "retry-after-ms": "100"
+          }
+        },
+        {
+          "delayMs": 2000,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "ServiceTimeout: the service's time limit fired"
+          }
+        }
+      }
+    },
+    {
+      "name": "the service's time limit raised while the first request is awaited, converted to kind timeout: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 500
+              }
+            }
+          ],
+          "onException": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 1500
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same while the SDK's resend after a 503 is awaited, converted: timeout",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 1200,
+                "maxRetries": 1
+              }
+            }
+          ],
+          "onException": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          },
+          "headers": {
+            "retry-after-ms": "100"
+          }
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "delayMs": 2000
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 100
+          },
+          {
+            "model": "model-b",
+            "outcome": "ok"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-20": [
+    {
+      "name": "the time limit fires while the SDK waits before resending after a 503, fixed message: Outcome row 6, transient (K5)",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "limitMs": 800,
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, that took too long."
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          },
+          "headers": {
+            "retry-after-ms": "3000"
+          }
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 3000
+          }
+        ]
+      }
+    },
+    {
+      "name": "the same with the time limit raised as an exception: Outcome row 3, transient (K5)",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "limitMs": 800,
+                "maxRetries": 1
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          },
+          "headers": {
+            "retry-after-ms": "3000"
+          }
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "branch": "answer",
+            "errorKind": "transient",
+            "retryAfterMs": 3000
+          }
+        ]
+      }
+    },
+    {
+      "name": "the time limit fires while the SDK waits before resending after a 503, kind timeout thrown: no candidate, timeout with one more call",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "limitMs": 800,
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "error": {
+            "status": 503
+          },
+          "headers": {
+            "retry-after-ms": "3000"
+          }
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "timeout",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "failed",
+            "errorKind": "transient",
+            "retryAfterMs": 3000
+          },
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "timeout"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the earlier failure a drop before headers, kind timeout thrown: it matches that call, transient (K6)",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "limitMs": 1190,
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "delayMs": 1000,
+          "connection": "close-before-headers"
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the earlier failure a read time-out on a non-stream body, kind timeout thrown: it matches that call, transient (K6)",
+      "languages": ["python"],
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "timeoutMs": 300,
+                "limitMs": 500,
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "bodyChunks": {
+            "splitAt": [
+              10
+            ],
+            "chunkDelaysMs": [
+              0,
+              1000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Node: the earlier failure a read time-out on a non-stream body (undici's bodyTimeout), which the Node SDK does not resend, so the service swallows it and throws kind timeout at once: it matches that call, transient (K6)",
+      "service": {
+        "behaviour": "flow-report",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "bodyTimeoutMs": 300,
+                "limitMs": 2500,
+                "maxRetries": 1,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Sorry, I cannot answer right now."
+          },
+          "report": {
+            "throw": {
+              "kind": "timeout"
+            }
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "A late answer."
+          },
+          "bodyChunks": {
+            "splitAt": [
+              10
+            ],
+            "chunkDelaysMs": [
+              0,
+              3000
+            ]
+          }
+        },
+        {
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "failed",
+        "errorKind": "transient",
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "unanswered",
+            "errorKind": "transient"
+          }
+        ]
+      },
+      "languages": [
+        "typescript"
+      ]
+    }
+  ],
+  "S-CTX-21": [
+    {
+      "name": "the function ends with a fake-storage exception while the answer request runs: Outcome row 9",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "waitMs": 300,
+                "onError": {
+                  "raise": {
+                    "class": "StorageError",
+                    "message": "no such table: sessions"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "delayMs": 1500,
+          "reply": {
+            "text": "A late answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "row9",
+          "placeholders": {
+            "exception": "StorageError: no such table: sessions"
+          }
+        }
+      }
+    }
+  ],
+  "S-CTX-22": [
+    {
+      "name": "a request sent after the result: a calls notification",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "background": {
+                "model": "model-x",
+                "system": "Write the memory note.",
+                "user": "The user said hello."
+              },
+              "delayMs": 300
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "shutdownAfterRequests": 2,
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "reply": {
+            "text": "Noted."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "notifications": [
+          {
+            "calls": [
+              {
+                "model": "model-x",
+                "outcome": "ok"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-23": [
+    {
+      "name": "background requests left at shutdown: waited for and reported before the shutdown response",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "background": {
+                "model": "model-x",
+                "system": "Write the memory note.",
+                "user": "The user said hello."
+              },
+              "delayMs": 300
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "shutdownAfterRequests": 2,
+      "script": [
+        {
+          "match": {
+            "model": "model-b"
+          },
+          "reply": {
+            "text": "Here is the answer."
+          }
+        },
+        {
+          "match": {
+            "model": "model-x"
+          },
+          "delayMs": 1500,
+          "reply": {
+            "text": "Noted."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "notifications": [
+          {
+            "calls": [
+              {
+                "model": "model-x",
+                "outcome": "ok"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-24": [
+    {
+      "name": "an exception in background work: log warning L2, the result unchanged",
+      "backends": [
+        "async",
+        "aiohttp"
+      ],
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            },
+            {
+              "background": {
+                "raise": {
+                  "class": "StorageError",
+                  "message": "no such table: analytics"
+                }
+              }
+            },
+            {
+              "sleepMs": 100
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ],
+        "log": [
+          {
+            "message": "L2",
+            "placeholders": {
+              "exception": "StorageError: no such table: analytics"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "S-RESP-10": [
+    {
+      "name": "four concurrent requests: each trial holds only its own call",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "answer"
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "adapter": {
+        "maxConcurrency": 4
+      },
+      "trials": 4,
+      "script": [
+        {
+          "reply": {
+            "text": "Here is the answer."
+          },
+          "delayMs": 500,
+          "times": 4
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "finalKind": "model",
+        "raw": "Here is the answer.",
+        "final": "Here is the answer.",
+        "answers": 1,
+        "calls": [
+          {
+            "model": "model-b",
+            "outcome": "ok",
+            "branch": "answer"
+          }
+        ]
+      }
+    }
+  ],
+  "S-CTX-25": [
+    {
+      "name": "a request from a thread without the context while only a render runs: the render-mode 400 and a normal render, no request sent; the request joins the render as its call",
+      "target": {
+        "render": true,
+        "replyCall": {
+          "systemIncludes": "Report."
+        }
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "render-probe",
+        "params": {
+          "probes": [
+            {
+              "model": "model-c",
+              "context": "none"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Report."
+            },
+            {
+              "role": "user",
+              "content": "{\"calls\":[\"model-c\"],\"case\":{\"id\":\"case-1\",\"input\":{},\"lang\":\"en\",\"rendering\":true,\"repeat\":0,\"seed\":1},\"probes\":[{\"model\":\"model-c\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"}]}"
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the render target request itself from a thread without the context while only a render runs: the render-mode 400 and a normal render of that request, not A11, no request sent",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "thread": {
+                "system": "Answer the user.",
+                "maxTokens": 64
+              },
+              "context": "none"
+            }
+          ],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the same while a render and a generate run: both end as A10 and the request gets the render-mode 400, no request sent; each function waits before and after its request, so both are in progress for both requests",
+      "adapter": {
+        "maxConcurrency": 2
+      },
+      "target": {
+        "render": true
+      },
+      "request": "render-and-generate",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "sleepMs": 300
+            },
+            {
+              "thread": {
+                "model": "model-c"
+              },
+              "context": "none"
+            },
+            {
+              "sleepMs": 500
+            }
+          ],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A10"
+        },
+        "requests": []
+      }
+    }
+  ]
+}

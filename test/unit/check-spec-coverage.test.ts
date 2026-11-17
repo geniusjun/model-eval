@@ -12,6 +12,8 @@ import {
   findMissing,
   isChecked,
   parseFeature,
+  pytestRequirements,
+  pytestTestNames,
   testTitles,
 } from '../../scripts/check-spec-coverage.js';
 
@@ -148,5 +150,166 @@ describe('spec coverage check', () => {
       requirements: ['FR-002'],
       successCriteria: ['SC-001'],
     });
+  });
+});
+
+describe('spec coverage check on pytest tests', () => {
+  it('checks 003 now that its status is In Progress', async () => {
+    const report = await checkSpecCoverage(ROOT);
+    expect(report.features.map((feature) => feature.id)).toContain('003');
+  });
+
+  it('takes test functions at module level and in Test classes, async ones included', () => {
+    const source = [
+      'import pytest',
+      '',
+      'def test_009_FR_001_module_level():',
+      '    def test_009_FR_002_nested_function():',
+      '        pass',
+      '',
+      'async def test_009_FR_003_async(server):',
+      '    await server.stop()',
+      '',
+      'def helper_009_FR_004():',
+      '    pass',
+      '',
+      'class TestGroup:',
+      '    def test_009_FR_005_method(self):',
+      '        pass',
+      '',
+      '    async def test_009_FR_006_async_method(self):',
+      '        pass',
+      '',
+      '    class TestInner:',
+      '        def test_009_FR_007_inner_class(self):',
+      '            pass',
+      '',
+      'class Helpers:',
+      '    def test_009_FR_008_not_a_test_class(self):',
+      '        pass',
+      '',
+      'def testing_009_FR_009_not_named_test_underscore():',
+      '    pass',
+    ].join('\n');
+    expect(pytestTestNames(source)).toEqual([
+      'test_009_FR_001_module_level',
+      'test_009_FR_003_async',
+      'test_009_FR_005_method',
+      'test_009_FR_006_async_method',
+      'test_009_FR_007_inner_class',
+    ]);
+  });
+
+  it('ignores text inside strings, comments and bracketed continuation lines', () => {
+    const source = [
+      'DOC = """',
+      'def test_009_FR_001_inside_a_string():',
+      '"""',
+      '# def test_009_FR_002_commented_out():',
+      'CASES = [',
+      "    'def test_009_FR_003_in_a_list',",
+      ']',
+      'def test_009_FR_004_real(',
+      '    tmp_path,',
+      '):',
+      "    text = 'a \\' def test_009_FR_005_escaped'",
+    ].join('\n');
+    expect(pytestTestNames(source)).toEqual(['test_009_FR_004_real']);
+  });
+
+  it('leaves out tests skipped or marked xfail on the function or the class, and keeps skipif', () => {
+    const source = [
+      'import sys',
+      'import pytest',
+      '',
+      '@pytest.mark.skip(reason="not yet")',
+      'def test_009_FR_001_skipped():',
+      '    pass',
+      '',
+      '@pytest.mark.xfail',
+      'def test_009_FR_002_xfail():',
+      '    pass',
+      '',
+      '@pytest.mark.skipif(',
+      '    sys.version_info < (3, 11),',
+      '    reason="needs asyncio.TaskGroup",',
+      ')',
+      'def test_009_FR_003_skipif():',
+      '    pass',
+      '',
+      '@pytest.mark.parametrize("api", ["chat", "responses"])',
+      '@pytest.mark.skip',
+      'def test_009_FR_004_skipped_below_another_mark(api):',
+      '    pass',
+      '',
+      '@pytest.mark.skip',
+      'class TestSkipped:',
+      '    def test_009_FR_005_in_a_skipped_class(self):',
+      '        pass',
+      '',
+      '@pytest.mark.xfail(strict=True)',
+      'class TestExpectedToFail:',
+      '    def test_009_FR_006_in_an_xfail_class(self):',
+      '        pass',
+    ].join('\n');
+    expect(pytestTestNames(source)).toEqual(['test_009_FR_003_skipif']);
+  });
+
+  it('leaves out every test of a module whose pytestmark is or contains pytest.mark.skip', () => {
+    const tests = ['def test_009_FR_001_a():', '    pass'];
+    const skipped = ['pytestmark = pytest.mark.skip(reason="x")', ...tests];
+    const listed = [
+      ...tests,
+      'pytestmark = [',
+      '    pytest.mark.skipif(sys.platform == "win32", reason="posix"),',
+      '    pytest.mark.skip,',
+      ']',
+    ];
+    const skipifOnly = ['pytestmark = [pytest.mark.skipif(True, reason="x")]', ...tests];
+    expect(pytestTestNames(skipped.join('\n'))).toEqual([]);
+    expect(pytestTestNames(listed.join('\n'))).toEqual([]);
+    expect(pytestTestNames(skipifOnly.join('\n'))).toEqual(['test_009_FR_001_a']);
+  });
+
+  it('counts a pytest name for every FR and SC ID that follows the feature number', () => {
+    expect(pytestRequirements('test_003_FR_009_FR_010_x')).toEqual(['003 FR-009', '003 FR-010']);
+    expect(pytestRequirements('test_003_SC_002_FR_005_capture')).toEqual([
+      '003 SC-002',
+      '003 FR-005',
+    ]);
+    expect(pytestRequirements('test_003_FR_0091_too_long')).toEqual([]);
+    expect(pytestRequirements('test_capture_without_ids')).toEqual([]);
+  });
+
+  it('reads tests in adapters/python/tests and its subfolders, and only there', async () => {
+    const spec = SPEC.replace(
+      '- **SC-001**',
+      '- **FR-003**: System MUST do a third thing.\n- **SC-001**',
+    );
+    const root = await mkdtemp(path.join(tmpdir(), 'spec-coverage-'));
+    try {
+      const tests = path.join(root, 'adapters', 'python', 'tests');
+      await mkdir(path.join(root, 'specs', '009-example'), { recursive: true });
+      await mkdir(path.join(tests, 'nested'), { recursive: true });
+      await writeFile(path.join(root, 'specs', '009-example', 'spec.md'), spec);
+      await writeFile(path.join(tests, 'test_one.py'), 'def test_009_FR_001_a():\n    pass\n');
+      await writeFile(
+        path.join(tests, 'nested', 'test_two.py'),
+        'class TestTwo:\n    async def test_009_FR_002_SC_001_b(self):\n        pass\n',
+      );
+      // Neither a module whose name does not start with test_ nor one outside the tests folder.
+      await writeFile(path.join(tests, 'helpers.py'), 'def test_009_FR_003_not_a_test_file():\n');
+      await writeFile(
+        path.join(root, 'adapters', 'python', 'test_outside.py'),
+        'def test_009_FR_003_outside_the_tests_folder():\n    pass\n',
+      );
+      const report = await checkSpecCoverage(root);
+      expect(report.features[0]?.missing).toEqual({
+        requirements: ['FR-003'],
+        successCriteria: [],
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

@@ -1,0 +1,2705 @@
+{
+  "S-RESP-09": [
+    {
+      "name": "every captured request, to the variant model or another model, in a trial or outside any context, gets one non-retried 400 render_only, and a request without the context joins the render as its call; the case has rendering true and repeat 0",
+      "target": {
+        "render": true,
+        "replyCall": {
+          "systemIncludes": "Report."
+        }
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "render-probe",
+        "params": {
+          "maxRetries": 2,
+          "probes": [
+            {
+              "model": "model-a"
+            },
+            {
+              "model": "model-b"
+            },
+            {
+              "model": "model-c",
+              "context": "none"
+            },
+            {
+              "model": "model-b",
+              "context": "none"
+            }
+          ]
+        }
+      },
+      "params": {
+        "caseId": "greet-1",
+        "input": {
+          "user": "Hi."
+        },
+        "seed": 235035669
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Report."
+            },
+            {
+              "role": "user",
+              "content": "{\"calls\":[\"model-a\",\"model-b\",\"model-c\",\"model-b\"],\"case\":{\"id\":\"greet-1\",\"input\":{\"user\":\"Hi.\"},\"lang\":\"en\",\"rendering\":true,\"repeat\":0,\"seed\":235035669},\"probes\":[{\"model\":\"model-a\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-b\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-c\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"},{\"model\":\"model-b\",\"shouldRetry\":null,\"status\":400,\"type\":\"render_only\"}]}"
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a render request with a nonzero repeat: the target function gets repeat 0",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "render-probe",
+        "params": {
+          "probes": []
+        }
+      },
+      "params": {
+        "caseId": "greet-1",
+        "repeat": 3,
+        "seed": 7
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Report."
+            },
+            {
+              "role": "user",
+              "content": "{\"calls\":[],\"case\":{\"id\":\"greet-1\",\"input\":{},\"lang\":\"en\",\"rendering\":true,\"repeat\":0,\"seed\":7},\"probes\":[]}"
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the render target is the first variant model request; the service swallows the 400s and returns a fixed message",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a",
+                "system": "Pick a tone.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "system": "Answer the user.",
+                "maxTokens": 64,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "system": "Check the answer.",
+                "maxTokens": 32,
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Please try again."
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the render result is built when the 400 of the render target ends the function",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Answer the user.",
+                "maxTokens": 64
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the render result is built when the service raises its own exception after the 400",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Answer the user.",
+                "maxTokens": 64,
+                "onError": {
+                  "raise": {
+                    "class": "ServiceError",
+                    "message": "no answer"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "print in the service during render: render result, no request sent, output on stderr",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "print": "service output during a render"
+            },
+            {
+              "call": {
+                "system": "Answer the user.",
+                "maxTokens": 64
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": [],
+        "stderrIncludes": [
+          "service output during a render"
+        ]
+      }
+    },
+    {
+      "name": "Chat Completions: leading system and developer messages stay separate and in order, roles kept, maxOutputTokens from max_completion_tokens",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Rule one."
+                },
+                {
+                  "role": "system",
+                  "content": "Rule two."
+                },
+                {
+                  "role": "developer",
+                  "content": "Be brief."
+                },
+                {
+                  "role": "user",
+                  "content": "Hi."
+                },
+                {
+                  "role": "assistant",
+                  "content": "Hello."
+                },
+                {
+                  "role": "user",
+                  "content": "Bye."
+                }
+              ],
+              "max_completion_tokens": 100
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Rule one."
+            },
+            {
+              "role": "system",
+              "content": "Rule two."
+            },
+            {
+              "role": "developer",
+              "content": "Be brief."
+            },
+            {
+              "role": "user",
+              "content": "Hi."
+            },
+            {
+              "role": "assistant",
+              "content": "Hello."
+            },
+            {
+              "role": "user",
+              "content": "Bye."
+            }
+          ],
+          "tools": null,
+          "maxOutputTokens": 100
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Chat Completions: text parts joined with a line end, image, audio and file parts as their kinds, maxOutputTokens from max_tokens",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Rule one."
+                    },
+                    {
+                      "type": "text",
+                      "text": "Rule two."
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Look at this."
+                    },
+                    {
+                      "type": "image_url",
+                      "image_url": {
+                        "url": "data:image/png;base64,AAAA"
+                      }
+                    },
+                    {
+                      "type": "input_audio",
+                      "input_audio": {
+                        "data": "AAAA",
+                        "format": "wav"
+                      }
+                    },
+                    {
+                      "type": "file",
+                      "file": {
+                        "file_data": "data:application/pdf;base64,AAAA",
+                        "filename": "note.pdf"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": "What is it?"
+                    }
+                  ]
+                }
+              ],
+              "max_tokens": 50
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Rule one.\nRule two."
+            },
+            {
+              "role": "user",
+              "content": "Look at this.\n[image]\n[audio]\n[file]\nWhat is it?"
+            }
+          ],
+          "maxOutputTokens": 50
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Chat Completions: each tool call of the tool_calls field as a canonical JSON line, the tool role kept, tools given, no maxOutputTokens without an output limit",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Use tools."
+                },
+                {
+                  "role": "user",
+                  "content": "Weather in Paris and Rome?"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_1",
+                      "type": "function",
+                      "function": {
+                        "name": "weather",
+                        "arguments": "{\"city\":\"Paris\"}"
+                      }
+                    },
+                    {
+                      "id": "call_2",
+                      "type": "function",
+                      "function": {
+                        "name": "weather",
+                        "arguments": "{\"city\":\"Rome\"}"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "tool",
+                  "tool_call_id": "call_1",
+                  "content": "Sunny."
+                },
+                {
+                  "role": "tool",
+                  "tool_call_id": "call_2",
+                  "content": "Rainy."
+                }
+              ],
+              "tools": [
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "weather",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "city": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Use tools."
+            },
+            {
+              "role": "user",
+              "content": "Weather in Paris and Rome?"
+            },
+            {
+              "role": "assistant",
+              "content": "{\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"name\":\"weather\"},\"id\":\"call_1\",\"type\":\"function\"}\n{\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Rome\\\"}\",\"name\":\"weather\"},\"id\":\"call_2\",\"type\":\"function\"}"
+            },
+            {
+              "role": "tool",
+              "content": "Sunny."
+            },
+            {
+              "role": "tool",
+              "content": "Rainy."
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "weather",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "city": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "maxOutputTokens": null
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Responses: instructions as the first system message, a string input as one user message, maxOutputTokens from max_output_tokens",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "instructions": "Answer briefly.",
+              "input": "Hi.",
+              "max_output_tokens": 80
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer briefly."
+            },
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ],
+          "tools": null,
+          "maxOutputTokens": 80
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Responses: a leading developer input message keeps its role, input_text parts joined, image and file parts as their kinds, reasoning and tool items as {role: type, content: canonical JSON}",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "instructions": "Answer briefly.",
+              "input": [
+                {
+                  "role": "developer",
+                  "content": "Be kind."
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "Look."
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "data:image/png;base64,AAAA"
+                    },
+                    {
+                      "type": "input_file",
+                      "file_data": "data:application/pdf;base64,AAAA",
+                      "filename": "note.pdf"
+                    },
+                    {
+                      "type": "input_text",
+                      "text": "And the weather?"
+                    }
+                  ]
+                },
+                {
+                  "type": "reasoning",
+                  "id": "rs_1",
+                  "summary": []
+                },
+                {
+                  "type": "function_call",
+                  "call_id": "call_1",
+                  "name": "weather",
+                  "arguments": "{\"city\":\"Paris\"}"
+                },
+                {
+                  "type": "function_call_output",
+                  "call_id": "call_1",
+                  "output": "Sunny."
+                }
+              ],
+              "tools": [
+                {
+                  "type": "function",
+                  "name": "weather",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "city": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer briefly."
+            },
+            {
+              "role": "developer",
+              "content": "Be kind."
+            },
+            {
+              "role": "user",
+              "content": "Look.\n[image]\n[file]\nAnd the weather?"
+            },
+            {
+              "role": "reasoning",
+              "content": "{\"id\":\"rs_1\",\"summary\":[],\"type\":\"reasoning\"}"
+            },
+            {
+              "role": "function_call",
+              "content": "{\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"call_id\":\"call_1\",\"name\":\"weather\",\"type\":\"function_call\"}"
+            },
+            {
+              "role": "function_call_output",
+              "content": "{\"call_id\":\"call_1\",\"output\":\"Sunny.\",\"type\":\"function_call_output\"}"
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "name": "weather",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "city": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ],
+          "maxOutputTokens": null
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Responses: a stored prompt right after the leading system and developer messages",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "instructions": "Answer briefly.",
+              "prompt": {
+                "id": "pmpt_1",
+                "version": "2",
+                "variables": {
+                  "city": "Paris"
+                }
+              },
+              "input": [
+                {
+                  "role": "developer",
+                  "content": "Be kind."
+                },
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer briefly."
+            },
+            {
+              "role": "developer",
+              "content": "Be kind."
+            },
+            {
+              "role": "prompt",
+              "content": "{\"id\":\"pmpt_1\",\"variables\":{\"city\":\"Paris\"},\"version\":\"2\"}"
+            },
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Responses: a stored prompt first when there is no leading system or developer message",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "prompt": {
+                "id": "pmpt_1"
+              },
+              "input": "Hi."
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "prompt",
+              "content": "{\"id\":\"pmpt_1\"}"
+            },
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Anthropic: a system block list as one system message of its text blocks joined with line ends, an image block as its kind, maxOutputTokens from max_tokens",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "system": [
+                {
+                  "type": "text",
+                  "text": "Rule one."
+                },
+                {
+                  "type": "text",
+                  "text": "Rule two."
+                }
+              ],
+              "messages": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Look."
+                    },
+                    {
+                      "type": "image",
+                      "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": "AAAA"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "max_tokens": 40
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Rule one.\nRule two."
+            },
+            {
+              "role": "user",
+              "content": "Look.\n[image]"
+            }
+          ],
+          "tools": null,
+          "maxOutputTokens": 40
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Anthropic: thinking, tool_use and tool_result blocks each as a canonical JSON line, text blocks kept in order, tools given",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "system": "Use tools.",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Weather in Paris?"
+                },
+                {
+                  "role": "assistant",
+                  "content": [
+                    {
+                      "type": "thinking",
+                      "thinking": "Check the tool.",
+                      "signature": "sig-1"
+                    },
+                    {
+                      "type": "text",
+                      "text": "Checking."
+                    },
+                    {
+                      "type": "tool_use",
+                      "id": "toolu_1",
+                      "name": "weather",
+                      "input": {
+                        "city": "Paris"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "tool_result",
+                      "tool_use_id": "toolu_1",
+                      "content": "Sunny."
+                    }
+                  ]
+                }
+              ],
+              "tools": [
+                {
+                  "name": "weather",
+                  "input_schema": {
+                    "type": "object",
+                    "properties": {
+                      "city": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              ],
+              "max_tokens": 100
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Use tools."
+            },
+            {
+              "role": "user",
+              "content": "Weather in Paris?"
+            },
+            {
+              "role": "assistant",
+              "content": "{\"signature\":\"sig-1\",\"thinking\":\"Check the tool.\",\"type\":\"thinking\"}\nChecking.\n{\"id\":\"toolu_1\",\"input\":{\"city\":\"Paris\"},\"name\":\"weather\",\"type\":\"tool_use\"}"
+            },
+            {
+              "role": "user",
+              "content": "{\"content\":\"Sunny.\",\"tool_use_id\":\"toolu_1\",\"type\":\"tool_result\"}"
+            }
+          ],
+          "tools": [
+            {
+              "name": "weather",
+              "input_schema": {
+                "type": "object",
+                "properties": {
+                  "city": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ],
+          "maxOutputTokens": 100
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a streaming render target request gets the 400 too: the same render result, no request sent",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "steps",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Answer the user.",
+                "maxTokens": 64,
+                "stream": true
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Anthropic: a document block as [file]",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Read this."
+                    },
+                    {
+                      "type": "document",
+                      "source": {
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": "AAAA"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "max_tokens": 40
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Read this.\n[file]"
+            }
+          ],
+          "tools": null,
+          "maxOutputTokens": 40
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Chat Completions: a role written 1.0 as its canonical JSON, 1",
+      "languages": ["python"],
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": 1.0,
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "1",
+              "content": "Hi."
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Chat Completions: a role that is not a string as its canonical JSON, 1 as 1 and {\"a\":1} as {\"a\":1}",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": 1,
+                  "content": "Hi."
+                },
+                {
+                  "role": {
+                    "a": 1
+                  },
+                  "content": "Bye."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "1",
+              "content": "Hi."
+            },
+            {
+              "role": "{\"a\":1}",
+              "content": "Bye."
+            }
+          ]
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RV-01": [
+    {
+      "name": "case.rendering replaces the classification call with a fake: render result of the answer request",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "rendering-fake",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "name": "classify",
+                "system": "Classify the request: answer or refuse.",
+                "maxTokens": 16,
+                "fakeInRender": "answer"
+              }
+            },
+            {
+              "call": {
+                "name": "answer",
+                "system": "Answer the user.",
+                "maxTokens": 64
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RV-02": [
+    {
+      "name": "a render function given as the render option returns part lists: normalised as a captured request; the service calls no model, so the result comes from the render function",
+      "target": {
+        "render": {
+          "result": {
+            "messages": [
+              {
+                "role": "system",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer the user."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Be brief."
+                  }
+                ]
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Say hello."
+                  }
+                ]
+              }
+            ],
+            "maxOutputTokens": 64
+          },
+          "form": "option"
+        }
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user.\nBe brief."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "tools": null,
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the same render function given with @adapter.render: normalised the same way; the service calls no model, so the result comes from the render function",
+      "target": {
+        "render": {
+          "result": {
+            "messages": [
+              {
+                "role": "system",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer the user."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Be brief."
+                  }
+                ]
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Say hello."
+                  }
+                ]
+              }
+            ],
+            "maxOutputTokens": 64
+          },
+          "form": "decorator"
+        }
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user.\nBe brief."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "tools": null,
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the option render function's part lists normalised: its fingerprint equals the captured answer request's",
+      "target": {
+        "render": {
+          "result": {
+            "messages": [
+              {
+                "role": "system",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer the user."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Be brief."
+                  }
+                ]
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Say hello."
+                  }
+                ]
+              }
+            ],
+            "maxOutputTokens": 64
+          },
+          "form": "option"
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Answer the user.\nBe brief.",
+                "maxTokens": 64
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Hello.",
+        "fingerprint": "render"
+      }
+    },
+    {
+      "name": "the decorator render function's part lists normalised: its fingerprint equals the captured answer request's",
+      "target": {
+        "render": {
+          "result": {
+            "messages": [
+              {
+                "role": "system",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer the user."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Be brief."
+                  }
+                ]
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Say hello."
+                  }
+                ]
+              }
+            ],
+            "maxOutputTokens": 64
+          },
+          "form": "decorator"
+        }
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Answer the user.\nBe brief.",
+                "maxTokens": 64
+              }
+            }
+          ]
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "Hello."
+          }
+        }
+      ],
+      "expect": {
+        "status": "ok",
+        "raw": "Hello.",
+        "fingerprint": "render"
+      }
+    }
+  ],
+  "S-RV-03": [
+    {
+      "name": "a case on a path that calls no model: A11 (acceptance scenario 5)",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [],
+          "result": {
+            "text": "Please ask a question."
+          }
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A11"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "reply_call true for no request: the render target is never reached, A11",
+      "target": {
+        "render": true,
+        "replyCall": {
+          "systemIncludes": "Never sent."
+        }
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Answer the user.",
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A11"
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-ANS-25": [
+    {
+      "name": "without reply_call, render captures the classification request (acceptance scenario 2: lint checks anchors against it)",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "maxTokens": 16,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "answer",
+                "system": "Answer the user.",
+                "maxTokens": 64
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Classify the request: answer or refuse."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 16
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "the same service and no reply_call in a run: Outcome row 5, A3 cause (c) (acceptance scenario 3)",
+      "target": {
+        "render": true
+      },
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "maxTokens": 16,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "answer",
+                "system": "Answer the user.",
+                "maxTokens": 64
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "script": [
+        {
+          "reply": {
+            "text": "answer"
+          }
+        },
+        {
+          "reply": {
+            "text": "First answer."
+          }
+        }
+      ],
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A3-c"
+        }
+      }
+    },
+    {
+      "name": "with reply_call selecting the answer call, render captures the answer request (acceptance scenario 4)",
+      "target": {
+        "render": true,
+        "replyCall": {
+          "not": {
+            "systemIncludes": "Classify"
+          }
+        }
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "system": "Classify the request: answer or refuse.",
+                "maxTokens": 16,
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "name": "answer",
+                "system": "Answer the user.",
+                "maxTokens": 64
+              }
+            }
+          ],
+          "result": {
+            "callText": "answer"
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user."
+            },
+            {
+              "role": "user",
+              "content": "Say hello."
+            }
+          ],
+          "maxOutputTokens": 64
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-ANS-29": [
+    {
+      "name": "another model's call before the answer is blocked and the service stops: A11",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a",
+                "system": "Check the request."
+              }
+            },
+            {
+              "call": {
+                "system": "Answer the user."
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A11"
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RESP-08": [
+    {
+      "name": "the adapter does not pass the variant model, every request goes to another model: A11 in render (User Story 1 acceptance scenario 8)",
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [
+            {
+              "call": {
+                "model": "model-a",
+                "system": "Check the request.",
+                "onError": "swallow"
+              }
+            },
+            {
+              "call": {
+                "model": "model-a",
+                "system": "Answer the user.",
+                "onError": "swallow"
+              }
+            }
+          ],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A11"
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RV-20": [
+    {
+      "name": "Chat Completions: an assistant message with text content and two tool_calls: the text line first, then one canonical JSON line per tool call in order",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Weather in Paris and Rome?"
+                },
+                {
+                  "role": "assistant",
+                  "content": "Checking both.",
+                  "tool_calls": [
+                    {
+                      "id": "call_1",
+                      "type": "function",
+                      "function": {
+                        "name": "weather",
+                        "arguments": "{\"city\":\"Paris\"}"
+                      }
+                    },
+                    {
+                      "id": "call_2",
+                      "type": "function",
+                      "function": {
+                        "name": "weather",
+                        "arguments": "{\"city\":\"Rome\"}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Weather in Paris and Rome?"
+            },
+            {
+              "role": "assistant",
+              "content": "Checking both.\n{\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"name\":\"weather\"},\"id\":\"call_1\",\"type\":\"function\"}\n{\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Rome\\\"}\",\"name\":\"weather\"},\"id\":\"call_2\",\"type\":\"function\"}"
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Chat Completions: assistant messages with content null, \"\" or no content, and tool_calls: only the tool-call lines",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Weather in Paris, Rome and Oslo?"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_1",
+                      "type": "function",
+                      "function": {
+                        "name": "weather",
+                        "arguments": "{\"city\":\"Paris\"}"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "tool",
+                  "tool_call_id": "call_1",
+                  "content": "Sunny."
+                },
+                {
+                  "role": "assistant",
+                  "content": "",
+                  "tool_calls": [
+                    {
+                      "id": "call_2",
+                      "type": "function",
+                      "function": {
+                        "name": "weather",
+                        "arguments": "{\"city\":\"Rome\"}"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "tool",
+                  "tool_call_id": "call_2",
+                  "content": "Rainy."
+                },
+                {
+                  "role": "assistant",
+                  "tool_calls": [
+                    {
+                      "id": "call_3",
+                      "type": "function",
+                      "function": {
+                        "name": "weather",
+                        "arguments": "{\"city\":\"Oslo\"}"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "tool",
+                  "tool_call_id": "call_3",
+                  "content": "Snowy."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Weather in Paris, Rome and Oslo?"
+            },
+            {
+              "role": "assistant",
+              "content": "{\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"name\":\"weather\"},\"id\":\"call_1\",\"type\":\"function\"}"
+            },
+            {
+              "role": "tool",
+              "content": "Sunny."
+            },
+            {
+              "role": "assistant",
+              "content": "{\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Rome\\\"}\",\"name\":\"weather\"},\"id\":\"call_2\",\"type\":\"function\"}"
+            },
+            {
+              "role": "tool",
+              "content": "Rainy."
+            },
+            {
+              "role": "assistant",
+              "content": "{\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Oslo\\\"}\",\"name\":\"weather\"},\"id\":\"call_3\",\"type\":\"function\"}"
+            },
+            {
+              "role": "tool",
+              "content": "Snowy."
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "Anthropic: an assistant message with redacted_thinking, text and tool_use blocks: one line per block in block order, redacted_thinking as its canonical JSON",
+      "apis": [
+        "messages"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Weather in Paris?"
+                },
+                {
+                  "role": "assistant",
+                  "content": [
+                    {
+                      "type": "redacted_thinking",
+                      "data": "ZW5jcnlwdGVk"
+                    },
+                    {
+                      "type": "text",
+                      "text": "Checking."
+                    },
+                    {
+                      "type": "tool_use",
+                      "id": "toolu_1",
+                      "name": "weather",
+                      "input": {
+                        "city": "Paris"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "tool_result",
+                      "tool_use_id": "toolu_1",
+                      "content": "Sunny."
+                    }
+                  ]
+                }
+              ],
+              "max_tokens": 100
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Weather in Paris?"
+            },
+            {
+              "role": "assistant",
+              "content": "{\"data\":\"ZW5jcnlwdGVk\",\"type\":\"redacted_thinking\"}\nChecking.\n{\"id\":\"toolu_1\",\"input\":{\"city\":\"Paris\"},\"name\":\"weather\",\"type\":\"tool_use\"}"
+            },
+            {
+              "role": "user",
+              "content": "{\"content\":\"Sunny.\",\"tool_use_id\":\"toolu_1\",\"type\":\"tool_result\"}"
+            }
+          ]
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RV-21": [
+    {
+      "name": "a option render function whose part lists hold Responses input_text, input_image and refusal parts and Anthropic image, document, tool_use, server_tool_use and web_search_tool_result blocks, and a message with a legacy function_call: read as Chat Completions messages",
+      "target": {
+        "render": {
+          "result": {
+            "messages": [
+              {
+                "role": "system",
+                "content": [
+                  {
+                    "type": "input_text",
+                    "text": "Answer the user."
+                  },
+                  {
+                    "type": "input_text",
+                    "text": "Be brief."
+                  }
+                ]
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "input_text",
+                    "text": "Look."
+                  },
+                  {
+                    "type": "input_image",
+                    "image_url": "data:image/png;base64,AAAA"
+                  },
+                  {
+                    "type": "image",
+                    "source": {
+                      "type": "base64",
+                      "media_type": "image/png",
+                      "data": "AAAA"
+                    }
+                  },
+                  {
+                    "type": "document",
+                    "source": {
+                      "type": "base64",
+                      "media_type": "application/pdf",
+                      "data": "AAAA"
+                    }
+                  }
+                ]
+              },
+              {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "refusal",
+                    "refusal": "I cannot open that file."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Checking."
+                  },
+                  {
+                    "type": "tool_use",
+                    "id": "toolu_2",
+                    "name": "lookup",
+                    "input": {
+                      "text": "weather"
+                    }
+                  },
+                  {
+                    "type": "server_tool_use",
+                    "id": "srvtoolu_1",
+                    "name": "web_search",
+                    "input": {
+                      "query": "weather"
+                    }
+                  },
+                  {
+                    "type": "web_search_tool_result",
+                    "tool_use_id": "srvtoolu_1",
+                    "content": []
+                  }
+                ]
+              },
+              {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                  "name": "lookup",
+                  "arguments": "{\"text\":\"weather\"}"
+                }
+              }
+            ]
+          },
+          "form": "option"
+        }
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user.\nBe brief."
+            },
+            {
+              "role": "user",
+              "content": "Look.\n[image]\n[image]\n[file]"
+            },
+            {
+              "role": "assistant",
+              "content": "I cannot open that file.\nChecking.\n{\"id\":\"toolu_2\",\"input\":{\"text\":\"weather\"},\"name\":\"lookup\",\"type\":\"tool_use\"}\n{\"id\":\"srvtoolu_1\",\"input\":{\"query\":\"weather\"},\"name\":\"web_search\",\"type\":\"server_tool_use\"}\n{\"content\":[],\"tool_use_id\":\"srvtoolu_1\",\"type\":\"web_search_tool_result\"}"
+            },
+            {
+              "role": "assistant",
+              "content": "{\"arguments\":\"{\\\"text\\\":\\\"weather\\\"}\",\"name\":\"lookup\"}"
+            }
+          ],
+          "tools": null,
+          "maxOutputTokens": null
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a decorator render function whose part lists hold Responses input_text, input_image and refusal parts and Anthropic image, document, tool_use, server_tool_use and web_search_tool_result blocks, and a message with a legacy function_call: read as Chat Completions messages",
+      "target": {
+        "render": {
+          "result": {
+            "messages": [
+              {
+                "role": "system",
+                "content": [
+                  {
+                    "type": "input_text",
+                    "text": "Answer the user."
+                  },
+                  {
+                    "type": "input_text",
+                    "text": "Be brief."
+                  }
+                ]
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "input_text",
+                    "text": "Look."
+                  },
+                  {
+                    "type": "input_image",
+                    "image_url": "data:image/png;base64,AAAA"
+                  },
+                  {
+                    "type": "image",
+                    "source": {
+                      "type": "base64",
+                      "media_type": "image/png",
+                      "data": "AAAA"
+                    }
+                  },
+                  {
+                    "type": "document",
+                    "source": {
+                      "type": "base64",
+                      "media_type": "application/pdf",
+                      "data": "AAAA"
+                    }
+                  }
+                ]
+              },
+              {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "refusal",
+                    "refusal": "I cannot open that file."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Checking."
+                  },
+                  {
+                    "type": "tool_use",
+                    "id": "toolu_2",
+                    "name": "lookup",
+                    "input": {
+                      "text": "weather"
+                    }
+                  },
+                  {
+                    "type": "server_tool_use",
+                    "id": "srvtoolu_1",
+                    "name": "web_search",
+                    "input": {
+                      "query": "weather"
+                    }
+                  },
+                  {
+                    "type": "web_search_tool_result",
+                    "tool_use_id": "srvtoolu_1",
+                    "content": []
+                  }
+                ]
+              },
+              {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                  "name": "lookup",
+                  "arguments": "{\"text\":\"weather\"}"
+                }
+              }
+            ]
+          },
+          "form": "decorator"
+        }
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "flow",
+        "params": {
+          "steps": [],
+          "result": {
+            "text": "Hello."
+          }
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "Answer the user.\nBe brief."
+            },
+            {
+              "role": "user",
+              "content": "Look.\n[image]\n[image]\n[file]"
+            },
+            {
+              "role": "assistant",
+              "content": "I cannot open that file.\nChecking.\n{\"id\":\"toolu_2\",\"input\":{\"text\":\"weather\"},\"name\":\"lookup\",\"type\":\"tool_use\"}\n{\"id\":\"srvtoolu_1\",\"input\":{\"query\":\"weather\"},\"name\":\"web_search\",\"type\":\"server_tool_use\"}\n{\"content\":[],\"tool_use_id\":\"srvtoolu_1\",\"type\":\"web_search_tool_result\"}"
+            },
+            {
+              "role": "assistant",
+              "content": "{\"arguments\":\"{\\\"text\\\":\\\"weather\\\"}\",\"name\":\"lookup\"}"
+            }
+          ],
+          "tools": null,
+          "maxOutputTokens": null
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RV-25": [
+    {
+      "name": "a Responses render target request with input [], no instructions and no prompt: A19",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Chat Completions render target request with a message without role: A19",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Answer the user."
+                },
+                {
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Chat Completions render target request whose tools is an object: A19",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ],
+              "tools": {
+                "type": "function",
+                "function": {
+                  "name": "lookup",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Chat Completions render target request with a message whose role is null: A19",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Answer the user."
+                },
+                {
+                  "role": null,
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Responses input item whose role is null and that has a type: not A19, its type as role and the item's canonical JSON as content",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": [
+                {
+                  "role": "user",
+                  "content": "Weather in Paris?"
+                },
+                {
+                  "type": "function_call",
+                  "role": null,
+                  "call_id": "call_1",
+                  "name": "weather",
+                  "arguments": "{\"city\":\"Paris\"}"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Weather in Paris?"
+            },
+            {
+              "role": "function_call",
+              "content": "{\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"call_id\":\"call_1\",\"name\":\"weather\",\"role\":null,\"type\":\"function_call\"}"
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Responses input item with role null and type message: not A19, role message and the item's canonical JSON as content",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": [
+                {
+                  "role": null,
+                  "type": "message",
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "message",
+              "content": "{\"content\":\"Hi.\",\"role\":null,\"type\":\"message\"}"
+            }
+          ]
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Responses input item with role null and type null: A19",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": [
+                {
+                  "role": null,
+                  "type": null,
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "adapter-error",
+        "adapterError": {
+          "message": "A19"
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "a Responses input item with role user and type null: a user message",
+      "apis": [
+        "responses"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "input": [
+                {
+                  "role": "user",
+                  "type": null,
+                  "content": "Hi."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ]
+        },
+        "requests": []
+      }
+    }
+  ],
+  "S-RV-26": [
+    {
+      "name": "a render target request with max_tokens 0: no maxOutputTokens",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ],
+              "max_tokens": 0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ],
+          "maxOutputTokens": null
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "max_tokens null and max_completion_tokens 300: maxOutputTokens 300",
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ],
+              "max_tokens": null,
+              "max_completion_tokens": 300
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ],
+          "maxOutputTokens": 300
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "max_tokens 300.0, an integer: maxOutputTokens 300",
+      "languages": ["python"],
+      "apis": [
+        "chat-completions"
+      ],
+      "target": {
+        "render": true
+      },
+      "request": "render",
+      "service": {
+        "behaviour": "bodies",
+        "params": {
+          "requests": [
+            {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hi."
+                }
+              ],
+              "max_tokens": 300.0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "ok",
+        "render": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Hi."
+            }
+          ],
+          "maxOutputTokens": 300
+        },
+        "requests": []
+      }
+    }
+  ]
+}

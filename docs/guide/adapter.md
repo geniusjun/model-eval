@@ -19,6 +19,109 @@ hand, the check tests the copy.
 Node that stands in for a model. The protocol contract ends with a
 [minimal Python adapter](../../specs/001-swap-check/contracts/adapter-protocol.md#minimal-adapter-python-without-the-helper).
 
+## Helpers
+
+For services that call OpenAI or Anthropic through their official SDKs, a helper writes the
+protocol for you. It captures the model requests the service sends at the HTTP client layer and
+fills in `raw`, `usage`, `finishReason`, `calls` and the error kind. You write one target function
+that calls the service function and returns the text it ships. The full contract is
+[helper-api.md](../../specs/003-adapter-helpers/contracts/helper-api.md).
+
+Import the helper before the service, so the service's SDK clients are created after the capture
+is installed. The helper also moves the service's stdout to stderr.
+
+`init --adapter python` or `init --adapter node` writes a skeleton next to the config, and a new
+config's `adapter.command` starts it; for Python it also copies the helper file there:
+
+```bash
+model-eval init --adapter python   # adapter.py and model_eval_adapter.py
+model-eval init --adapter node     # adapter.mjs
+```
+
+Files that already exist are kept, so an older copy of the Python helper stays until you delete
+it; `lint` then warns with `helper-outdated`.
+
+### Python
+
+The Python helper is one file with no dependencies, `model_eval_adapter.py`, which
+`init --adapter python` copies next to the adapter. It needs Python 3.10 or newer.
+
+```python
+from model_eval_adapter import Adapter, fallback  # before the service
+from my_service import reply, EmptyReply
+
+adapter = Adapter(name="my-chat", version="0.1.0", service_dir="../my-service", max_concurrency=4)
+
+
+@adapter.target(
+    "chat",
+    languages=["ko", "en", "ja"],
+    input_schema={"type": "object", "required": ["user"]},
+    render=True,
+    discard_on=(EmptyReply,),
+)
+async def chat(case, variant):
+    r = await reply(case.input["user"], lang=case.lang, model=variant.model)
+    return fallback(r.text) if r.is_fallback else r.text
+
+
+if __name__ == "__main__":
+    adapter.run()
+```
+
+The config starts it with `command: [python3, adapter.py]`. Synchronous target functions work
+too.
+
+### TypeScript
+
+The TypeScript helper is the `model-eval/adapter` subpath of the tool package, so installing the
+tool as a development dependency of the adapter brings it along.
+
+```ts
+import { defineAdapter, fallback } from 'model-eval/adapter'; // before the service
+import { reply, EmptyReply } from './service.js';
+
+defineAdapter({
+  name: 'my-chat',
+  version: '0.1.0',
+  serviceDir: '../my-service',
+  maxConcurrency: 4,
+  targets: {
+    chat: {
+      languages: ['ko', 'en'],
+      inputSchema: { type: 'object', required: ['user'] },
+      render: true,
+      discardOn: [EmptyReply],
+      async generate(c, variant) {
+        const r = await reply(c.input.user, { lang: c.lang, model: variant.model });
+        return r.isFallback ? fallback(r.text) : r.text;
+      },
+    },
+  },
+}).listen();
+```
+
+The config starts it with `command: [node, adapter.mjs]`.
+
+### What to set
+
+- `render`: the helper renders a case by running the service with every captured model request
+  answered locally with an error (HTTP 400, error type `render_only`) instead of being sent, and
+  builds the messages from the answer request.
+- `discard_on` (`discardOn`): the exceptions the service raises when it throws an answer away.
+- `reply_call` (`replyCall`): when the service calls the same model for more than the answer
+  (classification, validation, memory writes), choose the answer calls.
+- `answer_tool` (`answerTool`): when the final answer arrives as a tool call, the tool name and the
+  argument that holds the text.
+- When the service streams its answer, uses a transport the helper does not capture, or fails in a
+  way the helper cannot see, return `Result` (`result()`) or throw `ModelCallError`, as
+  [What the Target Function Reports](../../specs/003-adapter-helpers/contracts/helper-api.md#what-the-target-function-reports)
+  says.
+
+When a trial ends in a helper adapter error or warning (A1, W5 and the others), the
+[troubleshooting table](../../specs/003-adapter-helpers/quickstart.md#troubleshooting) says what
+to change.
+
 ## How the tool runs it
 
 The config names the command:

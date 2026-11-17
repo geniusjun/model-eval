@@ -17,6 +17,7 @@
   "cli.variantWithoutRender": "--variant chooses the variant to render, so it needs --render.",
   "cli.init.writeFailed": "init could not write the starting files: {detail}",
   "cli.init.createdBeforeFailure": "Created before the failure: {paths}",
+  "cli.init.unknownAdapter": "--adapter must be python or node, not \"{value}\".",
   "cli.missingArguments": "{command} needs {arguments}.",
   "cli.extraArguments": "{command} takes {arguments}; unexpected: {extra}.",
   "cli.invalidRunId": "\"{value}\" is not a run ID (YYYYMMDD-HHMMSS-<variant>-<4 hex>).",
@@ -347,6 +348,8 @@
   "human.init.alreadyIgnored": "{path} already ignores {entry}",
   "human.init.outsideFolder": "init cannot ignore the output directory {dir} from {path}; ignore it in the .gitignore of a folder above it",
   "human.init.next": "Next: set adapter.command, the variants and their prices in {config}, then run model-eval lint.",
+  "human.init.nextAdapter.python": "Next: call your service in {file}, check adapter.command, the variants and their prices in {config}, then run model-eval lint.",
+  "human.init.nextAdapter.node": "Next: install model-eval in this folder (npm i -D model-eval or pnpm add -D model-eval), call your service in {file}, check adapter.command, the variants and their prices in {config}, then run model-eval lint.",
   "lint.schema": "{path}: {detail}",
   "lint.schema-file": "{detail}",
   "lint.duplicate-id": "Duplicate {kind} ID {id}.",
@@ -370,7 +373,7 @@
   "lint.margin-unreachable.one": "The gated cell ({surface}) plans 1 trial, fewer than the {nMin} its margin {margin} needs; equal compliance cannot pass.",
   "lint.excluded-from-gate": "Removed from the gate ({cause}).",
   "lint.vcs-unknown": "Not a git work tree, so tracked derived cases cannot be found.",
-  "lint.helper-outdated": "The adapter helper {version} is older than the bundled {bundled}; copy it again with init.",
-  "lint.helper-outdated.unknown": "The adapter helper version {version} is not of the form MAJOR.MINOR.PATCH, so it cannot be compared with the bundled {bundled}; copy it again with init.",
+  "lint.helper-outdated": "The adapter helper {version} is older than the bundled {bundled}. For Python, delete model_eval_adapter.py and run model-eval init --adapter python again; for Node, update model-eval.",
+  "lint.helper-outdated.unknown": "The adapter helper version {version} is not of the form MAJOR.MINOR.PATCH, so it cannot be compared with the bundled {bundled}. For Python, delete model_eval_adapter.py and run model-eval init --adapter python again; for Node, update model-eval.",
   "lint.unanchored": "No anchor for this rule and language."
 }

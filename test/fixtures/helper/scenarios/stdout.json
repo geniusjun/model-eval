@@ -1,0 +1,31 @@
+{
+  "S-RESP-09": [
+    {
+      "name": "print in the service: output on stderr, the protocol intact",
+      "service": {
+        "behaviour": "steps",
+        "params": { "steps": [{ "print": "service output during a trial" }, { "call": {} }] }
+      },
+      "script": [{ "reply": { "text": "Hello." } }],
+      "expect": {
+        "status": "ok",
+        "raw": "Hello.",
+        "final": "Hello.",
+        "stderrIncludes": ["service output during a trial"]
+      }
+    },
+    {
+      "name": "print in the service during render: output on stderr",
+      "target": { "render": true },
+      "request": "render",
+      "service": {
+        "behaviour": "steps",
+        "params": { "steps": [{ "print": "service output during a render" }, { "call": {} }] }
+      },
+      "expect": {
+        "status": "ok",
+        "stderrIncludes": ["service output during a render"]
+      }
+    }
+  ]
+}

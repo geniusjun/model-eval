@@ -1,0 +1,16 @@
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["--strict-markers", "--strict-config"]
+xfail_strict = true
+empty_parameter_set_mark = "skip"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+# Services that need Python 3.11 are checked on their own: ruff check --target-version py311 tests/services/py311_*.py
+extend-exclude = ["tests/services/py311_*.py"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

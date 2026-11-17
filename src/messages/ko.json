@@ -17,6 +17,7 @@
   "cli.variantWithoutRender": "--variant는 렌더할 변형을 고르므로 --render와 함께 써야 합니다.",
   "cli.init.writeFailed": "init이 시작 파일을 쓰지 못했습니다: {detail}",
   "cli.init.createdBeforeFailure": "실패 전에 만든 파일: {paths}",
+  "cli.init.unknownAdapter": "--adapter는 python이나 node여야 합니다. 받은 값: \"{value}\"",
   "cli.missingArguments": "{command}에는 {arguments}이(가) 필요합니다.",
   "cli.extraArguments": "{command}은(는) {arguments}만 받습니다. 남는 인자: {extra}.",
   "cli.invalidRunId": "\"{value}\"은(는) 실행 ID가 아닙니다 (YYYYMMDD-HHMMSS-<변형>-<16진수 4자리>).",
@@ -347,6 +348,8 @@
   "human.init.alreadyIgnored": "{path}에 이미 {entry}이(가) 있습니다",
   "human.init.outsideFolder": "출력 폴더 {dir}은(는) {path}로 무시할 수 없습니다. 그 위 폴더의 .gitignore에 추가하세요",
   "human.init.next": "다음: {config}에서 adapter.command와 변형, 가격을 정한 뒤 model-eval lint를 실행하세요.",
+  "human.init.nextAdapter.python": "다음: {file}에서 서비스를 호출하고, {config}에서 adapter.command와 변형, 가격을 확인한 뒤 model-eval lint를 실행하세요.",
+  "human.init.nextAdapter.node": "다음: 이 폴더에 model-eval을 설치하고(npm i -D model-eval 또는 pnpm add -D model-eval), {file}에서 서비스를 호출하고, {config}에서 adapter.command와 변형, 가격을 확인한 뒤 model-eval lint를 실행하세요.",
   "lint.schema": "{path}: {detail}",
   "lint.schema-file": "{detail}",
   "lint.duplicate-id": "{kind} ID {id}이(가) 중복됩니다.",
@@ -370,7 +373,7 @@
   "lint.margin-unreachable.one": "게이트 셀({surface})의 계획 trial 1개가 마진 {margin}에 필요한 {nMin}개보다 적어, 준수율이 같아도 통과할 수 없습니다.",
   "lint.excluded-from-gate": "게이트에서 뺐습니다({cause}).",
   "lint.vcs-unknown": "git 작업 트리가 아니어서 추적되는 derived 케이스를 찾을 수 없습니다.",
-  "lint.helper-outdated": "어댑터 헬퍼 {version}이(가) 함께 배포된 {bundled}보다 오래됐습니다. init으로 다시 복사하세요.",
-  "lint.helper-outdated.unknown": "어댑터 헬퍼 버전 {version}은(는) MAJOR.MINOR.PATCH 형식이 아니어서 함께 배포된 {bundled}와(과) 비교할 수 없습니다. init으로 다시 복사하세요.",
+  "lint.helper-outdated": "어댑터 헬퍼 {version}이(가) 함께 배포된 {bundled}보다 오래됐습니다. Python은 model_eval_adapter.py를 지우고 model-eval init --adapter python을 다시 실행하고, Node는 model-eval을 업데이트하세요.",
+  "lint.helper-outdated.unknown": "어댑터 헬퍼 버전 {version}은(는) MAJOR.MINOR.PATCH 형식이 아니어서 함께 배포된 {bundled}와(과) 비교할 수 없습니다. Python은 model_eval_adapter.py를 지우고 model-eval init --adapter python을 다시 실행하고, Node는 model-eval을 업데이트하세요.",
   "lint.unanchored": "이 규칙과 언어에는 앵커가 없습니다."
 }
