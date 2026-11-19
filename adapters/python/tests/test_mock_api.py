@@ -442,10 +442,22 @@ def read_all(response: http.client.HTTPResponse) -> bytes:
         return b"dropped:" + error.partial
 
 
+def test_003_SC_002_a_request_whose_script_was_replaced_is_left_out_of_the_new_log() -> None:
+    book = server_module.ScriptBook(print_log=False)
+    book.load([{"text": "old"}])
+    entry, generation = book.take(server_module.RequestHead("POST", CHAT, {}), {})
+    assert entry == {"text": "old"}
+    book.load([{"text": "new"}])
+    assert book.record({"path": CHAT}, generation) is False
+    assert book.record({"path": CHAT}, book.generation) is True
+    assert len(book.log()) == 1
+
+
+@pytest.mark.parametrize("delay_ms", [0, 500], ids=["no delay", "reset before the wait"])
 def test_003_SC_002_a_response_held_by_after_requests_gives_up_when_the_script_is_replaced(
-    mock_api: MockApi,
+    mock_api: MockApi, delay_ms: int
 ) -> None:
-    mock_api.load([{"afterRequests": 2, "text": "late"}])
+    mock_api.load([{"afterRequests": 2, "delayMs": delay_ms, "text": "late"}])
     started = time.monotonic()
     response = in_thread(lambda: script_error(send(mock_api)))
     wait_for_log(mock_api, 1)
@@ -455,10 +467,12 @@ def test_003_SC_002_a_response_held_by_after_requests_gives_up_when_the_script_i
     assert time.monotonic() - started < GIVE_UP_S
 
 
+@pytest.mark.parametrize("delay_ms", [0, 500], ids=["no delay", "reset before the wait"])
 def test_003_SC_002_a_chunk_held_by_chunk_after_requests_gives_up_when_the_script_is_replaced(
-    mock_api: MockApi,
+    mock_api: MockApi, delay_ms: int
 ) -> None:
-    entry = {"reply": {"text": "Hello."}, "stream": {"chunkAfterRequests": [0, 2]}}
+    stream = {"chunkAfterRequests": [0, 2], "chunkDelaysMs": [0, delay_ms]}
+    entry = {"reply": {"text": "Hello."}, "stream": stream}
     mock_api.load([entry])
     started = time.monotonic()
     body = in_thread(lambda: read_all(send(mock_api, body=STREAM)))
