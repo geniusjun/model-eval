@@ -1,20 +1,33 @@
 name: CI
 
+# A pull request runs the helper contract tests on the lowest and the newest supported runtimes,
+# each with one set of SDK releases. A push to main and a manual run (`gh workflow run ci.yml
+# --ref <branch>`) run them with every pinned SDK release: every Python requirements file on
+# both Pythons, and every Node SDK alias on Node 22 with the newest on Node 24 and 26.
+
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# A new commit on a pull request cancels the pull request's earlier run; every push to main and
+# every manual run gets a run of its own.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 30 || 75 }}
     strategy:
       fail-fast: false
       matrix:
-        node: [22, 24, 26]
+        node: ${{ fromJSON(github.event_name == 'pull_request' && '[22, 26]' || '[22, 24, 26]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v5
@@ -39,14 +52,22 @@ jobs:
             -r adapters/python/tests/requirements/openai-2.txt \
             -r adapters/python/tests/requirements/anthropic-2.txt
           echo "MODEL_EVAL_PYTHON=$RUNNER_TEMP/helper-python/bin/python" >> "$GITHUB_ENV"
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm format:check
+      # Checks that do not depend on the Node version run on Node 22 only.
+      - if: matrix.node == 22
+        run: pnpm typecheck
+      - if: matrix.node == 22
+        run: pnpm lint
+      - if: matrix.node == 22
+        run: pnpm format:check
       - run: pnpm build
-      # Every SDK alias on Node 22; the newest major of each SDK on the other versions.
+      # Pull request: the first release of each Node SDK on Node 22, the newest major on Node 26.
+      # Otherwise: every SDK alias on Node 22, the newest major on the other versions.
       - run: pnpm exec vitest run --project unit --project contract --project viewer
         env:
-          MODEL_EVAL_NODE_SDKS: ${{ matrix.node != 22 && 'openai-7,anthropic-sdk-1' || '' }}
+          MODEL_EVAL_NODE_SDKS: >-
+            ${{ matrix.node != 22 && 'openai-7,anthropic-sdk-1'
+            || github.event_name == 'pull_request' && 'openai-5-first,anthropic-sdk-0-first'
+            || '' }}
       - name: Example swap check against the mock adapter (SC-001)
         timeout-minutes: 3
         run: pnpm exec vitest run --project e2e test/e2e/example-pogo.test.ts
@@ -61,19 +82,26 @@ jobs:
       - name: End-to-end tests against the mock adapter
         timeout-minutes: 10
         run: pnpm exec vitest run --project e2e --exclude test/e2e/example-pogo.test.ts
-      - run: pnpm check:coverage
+      - if: matrix.node == 22
+        run: pnpm check:coverage
       - name: SC-003 simulation
+        if: matrix.node == 22
         run: pnpm bench
       - name: Pack
+        if: matrix.node == 22
         run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
       - name: The package ships the page template
+        if: matrix.node == 22
         run: tar -tzf "$RUNNER_TEMP"/pack/*.tgz | grep -x 'package/dist/viewer/report.html'
-      - run: pnpm exec publint run "$RUNNER_TEMP"/pack/*.tgz
+      - if: matrix.node == 22
+        run: pnpm exec publint run "$RUNNER_TEMP"/pack/*.tgz
       # The package is ESM only, so CommonJS resolution is not checked.
-      - run: pnpm exec attw "$RUNNER_TEMP"/pack/*.tgz --profile esm-only
+      - if: matrix.node == 22
+        run: pnpm exec attw "$RUNNER_TEMP"/pack/*.tgz --profile esm-only
 
   browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v5
@@ -122,30 +150,48 @@ jobs:
   python-requirements:
     runs-on: ubuntu-latest
     outputs:
-      files: ${{ steps.list.outputs.files }}
+      entries: ${{ steps.list.outputs.entries }}
     steps:
       - uses: actions/checkout@v7
+      # Pull request: each transport of each SDK at one end of the supported Pythons, httpx on
+      # 3.10 (openai 2, anthropic 0) and httpx2 on the newest (openai 3, anthropic 2), and both
+      # transports installed together. Otherwise: every file of tests/requirements/ on 3.10 and
+      # the newest Python, except openai 1, which cannot build Responses API objects on Python
+      # 3.14 and later (it sets an attribute on a typing.Union; openai 2.7.2 fixed it) and runs on
+      # 3.13 instead.
       - id: list
+        env:
+          PULL_REQUEST: ${{ github.event_name == 'pull_request' }}
         run: |
           cd adapters/python/tests/requirements
-          echo "files=$(ls *.txt | sed 's/\.txt$//' | jq -Rcn '[inputs]')" >> "$GITHUB_OUTPUT"
+          if [ "$PULL_REQUEST" = true ]; then
+            files='3.10 openai-2
+          3.10 anthropic-0
+          3.x openai-3
+          3.x anthropic-2
+          3.x both-transports'
+          else
+            files=$(for file in *.txt; do
+              name=${file%.txt}
+              echo "3.10 $name"
+              if [ "$name" = openai-1 ]; then echo "3.13 $name"; else echo "3.x $name"; fi
+            done)
+          fi
+          echo "$files"
+          for name in $(echo "$files" | cut -d ' ' -f 2); do
+            test -f "$name.txt" || { echo "::error::no tests/requirements/$name.txt"; exit 1; }
+          done
+          entries=$(echo "$files" | jq -Rcn '[inputs | split(" ") | {python: .[0], requirements: .[1]}]')
+          echo "entries=$entries" >> "$GITHUB_OUTPUT"
 
   python:
     needs: python-requirements
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.10', '3.x']
-        requirements: ${{ fromJSON(needs.python-requirements.outputs.files) }}
-        # openai 1.x cannot build Responses API objects on Python 3.14 and later (it sets an
-        # attribute on a typing.Union; openai 2.7.2 fixed it), so its newest Python is 3.13.
-        exclude:
-          - python: '3.x'
-            requirements: openai-1
-        include:
-          - python: '3.13'
-            requirements: openai-1
+        include: ${{ fromJSON(needs.python-requirements.outputs.entries) }}
     defaults:
       run:
         working-directory: adapters/python
@@ -161,7 +207,8 @@ jobs:
           cache: pip
           cache-dependency-path: adapters/python/tests/requirements/${{ matrix.requirements }}.txt
       - run: python3 -m pip install -r tests/requirements/${{ matrix.requirements }}.txt
-      - run: python3 -m pytest --junitxml="$RUNNER_TEMP/pytest.xml"
+      # Four workers on the runner's four vCPUs; each case starts its own adapter process.
+      - run: python3 -m pytest -n 4 --junitxml="$RUNNER_TEMP/pytest.xml"
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

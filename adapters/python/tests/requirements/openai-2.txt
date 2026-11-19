@@ -1,5 +1,6 @@
 openai[aiohttp]==2.54.0
 pytest==9.2.0
+pytest-xdist==3.8.0
 # Decoders of the httpx brotli and zstd extras
 brotli==1.2.1
 zstandard==0.25.0

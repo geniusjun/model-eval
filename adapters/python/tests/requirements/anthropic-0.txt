@@ -1,2 +1,3 @@
 anthropic[aiohttp]==0.125.0
 pytest==9.2.0
+pytest-xdist==3.8.0
