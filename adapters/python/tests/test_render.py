@@ -198,7 +198,7 @@ def test_003_FR_021_S_RV_24_requests_a_render_function_sends_get_the_render_400(
 def test_003_FR_021_S_RV_24_a_sync_render_function_that_sleeps_does_not_hold_up_a_generate(
     mock_api: MockApi,
 ) -> None:
-    """The render function sleeps 2 s; a `generate` sent right after the render answers while the
+    """The render function sleeps 5 s; a `generate` sent right after the render answers while the
     render still runs, so the sleep does not block the helper's loop."""
     api = any_api()
     case = case_of({"service": {"behaviour": "steps"}, "script": [{"reply": {"text": "Hi."}}]}, api)

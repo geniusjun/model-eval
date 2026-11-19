@@ -27,7 +27,7 @@ from model_eval_adapter import Adapter
 API = os.environ["MODEL_EVAL_API"]
 OTHER_MODEL = "model-a"
 USER = "Probe."
-SLEEP_S = 2.0
+SLEEP_S = 5.0
 HELLO = {"role": "user", "content": "Hello."}
 
 adapter = Adapter(name="render-requests", version="0.0.1", max_concurrency=2)
