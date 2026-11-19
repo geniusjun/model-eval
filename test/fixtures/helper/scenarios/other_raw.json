@@ -1544,7 +1544,8 @@
           "delayMs": 600,
           "reply": {
             "text": "First answer."
-          }
+          },
+          "afterRequests": 2
         },
         {
           "match": {
@@ -1626,7 +1627,8 @@
           "delayMs": 600,
           "reply": {
             "text": "First answer."
-          }
+          },
+          "afterRequests": 2
         },
         {
           "match": {
@@ -3187,6 +3189,14 @@
               0,
               0,
               3000
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
             ]
           }
         },
@@ -3813,6 +3823,11 @@
               300,
               300,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              2
             ]
           }
         },
@@ -4024,6 +4039,11 @@
               300,
               300,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              2,
+              2
             ]
           }
         },
@@ -4127,6 +4147,17 @@
               300,
               300,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
             ]
           }
         },
@@ -4233,6 +4264,14 @@
               300,
               300,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              2,
+              2,
+              2,
+              2,
+              2
             ]
           }
         },

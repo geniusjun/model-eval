@@ -2639,7 +2639,7 @@
                   }
                 },
                 {
-                  "startAfterMs": 50,
+                  "startAfterMs": 300,
                   "kwargs": {
                     "extra_headers": {
                       "x-mock-call": "second"
@@ -2662,7 +2662,8 @@
             "headers": {
               "x-mock-call": "first"
             }
-          }
+          },
+          "afterRequests": 2
         },
         {
           "reply": {
@@ -2742,7 +2743,8 @@
             "headers": {
               "x-mock-call": "early"
             }
-          }
+          },
+          "afterRequests": 2
         },
         {
           "reply": {
@@ -3229,7 +3231,7 @@
                 {},
                 {
                   "model": "model-x",
-                  "startAfterMs": 100
+                  "startAfterMs": 300
                 }
               ],
               "wait": "first"
@@ -3413,7 +3415,7 @@
                 {
                   "name": "other",
                   "model": "model-x",
-                  "startAfterMs": 100
+                  "startAfterMs": 300
                 }
               ]
             }
@@ -3908,7 +3910,7 @@
                 },
                 {
                   "system": "Classify the request: answer or refuse.",
-                  "startAfterMs": 100
+                  "startAfterMs": 300
                 }
               ]
             }
@@ -3926,7 +3928,8 @@
           "delayMs": 500,
           "error": {
             "status": 429
-          }
+          },
+          "afterRequests": 2
         },
         {
           "match": {
@@ -4739,7 +4742,7 @@
                   "model": "model-x",
                   "system": "Safety check: answer allow or block.",
                   "onError": "swallow",
-                  "startAfterMs": 50
+                  "startAfterMs": 300
                 }
               ]
             }
@@ -4815,7 +4818,7 @@
                   "model": "model-x",
                   "system": "Safety check: answer allow or block.",
                   "onError": "swallow",
-                  "startAfterMs": 100
+                  "startAfterMs": 300
                 }
               ]
             }

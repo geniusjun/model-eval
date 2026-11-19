@@ -2113,7 +2113,8 @@
             "chunkDelaysMs": [
               0,
               600
-            ]
+            ],
+            "chunkAfterRequests": [0, 2]
           }
         }
       ],

@@ -6361,7 +6361,7 @@
             "ending": "failure",
             "chunkDelaysMs": [
               0,
-              600
+              1400
             ]
           }
         }
@@ -6425,7 +6425,7 @@
             "ending": "failure",
             "chunkDelaysMs": [
               0,
-              600
+              1400
             ]
           }
         }
@@ -6607,7 +6607,7 @@
             "ending": "failure",
             "chunkDelaysMs": [
               0,
-              600
+              1400
             ]
           }
         }
@@ -6671,7 +6671,7 @@
             "ending": "failure",
             "chunkDelaysMs": [
               0,
-              600
+              1400
             ]
           }
         }

@@ -789,6 +789,48 @@ def sse_chunks(chunks: list[JsonObject], last_line: str) -> list[tuple[int, byte
     return [(delay, text.encode("utf-8")) for delay, text in rendered]
 
 
+def event_text_piece(event: Event) -> str:
+    """The answer text one rendered stream event adds: a Chat Completions content delta of
+    choice 0, a Responses `response.output_text.delta` or an Anthropic `text_delta`."""
+    data = event.get("data")
+    if not isinstance(data, dict):
+        return ""
+    if data.get("type") == "response.output_text.delta":
+        return str(data.get("delta", ""))
+    if data.get("type") == "content_block_delta":
+        delta = data.get("delta") or {}
+        return str(delta.get("text", "")) if delta.get("type") == "text_delta" else ""
+    choices = [choice for choice in data.get("choices", []) if choice.get("index", 0) == 0]
+    return "".join(str(choice.get("delta", {}).get("content") or "") for choice in choices)
+
+
+def chunk_gates(events: list[Event], options: JsonObject, count: int) -> list[int]:
+    """The request count each chunk waits for: `chunkAfterRequests` by index, and with
+    `afterText` every chunk after the one whose events complete its `text` in the answer text,
+    so the rest of a stream arrives only once the client has acted on that text."""
+    gates = [int(n) for n in options.get("chunkAfterRequests", [])]
+    after = options.get("afterText")
+    if after is None:
+        return gates
+    per_chunk = int(options.get("eventsPerChunk", 1))
+    text = ""
+    for index, event in enumerate(events):
+        text += event_text_piece(event)
+        if str(after["text"]) in text:
+            first_held = index // per_chunk + 1
+            break
+    else:
+        raise ScriptError(f"stream.afterText: {after['text']!r} is not in the answer text")
+    if first_held >= count:
+        raise ScriptError(
+            f"stream.afterText: no chunk follows the one that completes {after['text']!r}"
+        )
+    gates += [0] * (count - len(gates))
+    for chunk in range(first_held, count):
+        gates[chunk] = max(gates[chunk], int(after["requests"]))
+    return gates
+
+
 def stream_chunks(events: list[Event], options: JsonObject) -> list[tuple[int, bytes]]:
     per_chunk = int(options.get("eventsPerChunk", 1))
     delays = list(options.get("chunkDelaysMs", []))
@@ -898,7 +940,7 @@ def build_response(entry: JsonObject, api: str, request: JsonObject, rid: int) -
             events = stream_events(api, rid, model, reply, request, options)
             chunks = stream_chunks(events, options)
             response = Response(int(entry.get("status", 200)), {}, chunks, True)
-            response.after_requests = [int(n) for n in options.get("chunkAfterRequests", [])]
+            response.after_requests = chunk_gates(events, options, len(chunks))
             return response
         body = compact_json(reply_body(api, rid, model, reply)).encode("utf-8")
         return Response(int(entry.get("status", 200)), {}, body_chunks(body, entry), False)
