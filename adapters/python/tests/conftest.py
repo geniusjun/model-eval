@@ -5,6 +5,8 @@ A test that takes the `scenario_case` argument runs once per case of the fixture
 names in `SCENARIOS`, for every API and backend the case applies to and the environment has.
 `MODEL_EVAL_REQUIREMENTS` names the file of tests/requirements/ (without `.txt`) the environment
 was built from; without it the file is inferred from the installed SDK versions.
+`MODEL_EVAL_SHARD`, written `i/n`, runs only shard i of n of the collected tests, so CI can split
+one environment over several jobs.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from protocol_client import (
     ScenarioCase,
     api_env,
     environment_requirements,
+    in_shard,
     select_cases,
 )
 
@@ -82,3 +85,18 @@ def mock_api(mock_server: MockApi) -> MockApi:
     """The mock server with no script and an empty request log."""
     mock_server.reset()
     return mock_server
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    shard = os.environ.get("MODEL_EVAL_SHARD")
+    if not shard:
+        return
+    kept: list[pytest.Item] = []
+    left: list[pytest.Item] = []
+    for item in items:
+        try:
+            (kept if in_shard(item.nodeid, shard) else left).append(item)
+        except ValueError as error:
+            raise pytest.UsageError(str(error)) from error
+    config.hook.pytest_deselected(items=left)
+    items[:] = kept
