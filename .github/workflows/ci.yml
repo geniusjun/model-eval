@@ -177,12 +177,20 @@ jobs:
               if [ "$name" = openai-1 ]; then echo "3.13 $name"; else echo "3.x $name"; fi
             done)
           fi
-          echo "$files"
           for name in $(echo "$files" | cut -d ' ' -f 2); do
             test -f "$name.txt" || { echo "::error::no tests/requirements/$name.txt"; exit 1; }
           done
-          entries=$(echo "$files" | jq -Rcn '[inputs | split(" ") | {python: .[0], requirements: .[1]}]')
-          echo "entries=$entries" >> "$GITHUB_OUTPUT"
+          # An openai file has about twice the cases of an anthropic file (two APIs), so its
+          # tests split over two jobs (MODEL_EVAL_SHARD, adapters/python/tests/conftest.py).
+          entries=$(echo "$files" | while read -r python name; do
+            case $name in
+              (openai-*) echo "$python $name 1/2"; echo "$python $name 2/2" ;;
+              (*) echo "$python $name" ;;
+            esac
+          done)
+          echo "$entries"
+          json=$(echo "$entries" | jq -Rcn '[inputs | split(" ") | {python: .[0], requirements: .[1], shard: (.[2] // "")}]')
+          echo "entries=$json" >> "$GITHUB_OUTPUT"
 
   python:
     needs: python-requirements
@@ -197,6 +205,7 @@ jobs:
         working-directory: adapters/python
     env:
       MODEL_EVAL_REQUIREMENTS: ${{ matrix.requirements }}
+      MODEL_EVAL_SHARD: ${{ matrix.shard }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -212,7 +221,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: pytest-${{ steps.python.outputs.python-version }}-${{ matrix.requirements }}
+          name: pytest-${{ steps.python.outputs.python-version }}-${{ matrix.requirements }}-${{ strategy.job-index }}
           path: ${{ runner.temp }}/pytest.xml
           retention-days: 7
           if-no-files-found: error
