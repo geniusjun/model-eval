@@ -180,13 +180,20 @@ jobs:
           for name in $(echo "$files" | cut -d ' ' -f 2); do
             test -f "$name.txt" || { echo "::error::no tests/requirements/$name.txt"; exit 1; }
           done
-          # An openai file has about twice the cases of an anthropic file (two APIs), so its
-          # tests split over two jobs (MODEL_EVAL_SHARD, adapters/python/tests/conftest.py).
+          # Each job runs two pytest workers (below), so an anthropic file splits over two jobs
+          # and an openai file, with about twice the cases (two APIs), over four
+          # (MODEL_EVAL_SHARD, adapters/python/tests/conftest.py).
           entries=$(echo "$files" | while read -r python name; do
             case $name in
-              (openai-*) echo "$python $name 1/2"; echo "$python $name 2/2" ;;
-              (*) echo "$python $name" ;;
+              (openai-*) shards=4 ;;
+              (anthropic-*) shards=2 ;;
+              (*) shards=1 ;;
             esac
+            if [ "$shards" = 1 ]; then
+              echo "$python $name"
+            else
+              for i in $(seq "$shards"); do echo "$python $name $i/$shards"; done
+            fi
           done)
           echo "$entries"
           json=$(echo "$entries" | jq -Rcn '[inputs | split(" ") | {python: .[0], requirements: .[1], shard: (.[2] // "")}]')
@@ -216,8 +223,9 @@ jobs:
           cache: pip
           cache-dependency-path: adapters/python/tests/requirements/${{ matrix.requirements }}.txt
       - run: python3 -m pip install -r tests/requirements/${{ matrix.requirements }}.txt
-      # Four workers on the runner's four vCPUs; each case starts its own adapter process.
-      - run: python3 -m pytest -n 4 --junitxml="$RUNNER_TEMP/pytest.xml"
+      # Two workers on the runner's four vCPUs: each case starts its own adapter process next
+      # to the mock API server, and the scenarios' stream timings need the spare CPU.
+      - run: python3 -m pytest -n 2 --junitxml="$RUNNER_TEMP/pytest.xml"
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
