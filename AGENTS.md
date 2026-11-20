@@ -40,8 +40,8 @@ CI on a pull request runs the helper tests on the lowest and the newest supporte
 `both-transports.txt` on the newest Python; Node 22 with the first supported release of each
 Node SDK and Node 26 with the newest. A push to main runs every file on Python 3.10 and the
 newest Python (`openai-1.txt` on 3.13, which openai 1.x does not go past), and Node 22, 24 and
-26 with every Node SDK alias on Node 22. Before merging a change to a helper, run that full set
-on the branch: `gh workflow run ci.yml --ref <branch>`.
+26 with every Node SDK alias on Node 22, split over two jobs. Before merging a change to a
+helper, run that full set on the branch: `gh workflow run ci.yml --ref <branch>`.
 
 ```bash
 cd adapters/python
