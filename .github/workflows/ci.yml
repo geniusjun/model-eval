@@ -3,7 +3,8 @@ name: CI
 # A pull request runs the helper contract tests on the lowest and the newest supported runtimes,
 # each with one set of SDK releases. A push to main and a manual run (`gh workflow run ci.yml
 # --ref <branch>`) run them with every pinned SDK release: every Python requirements file on
-# both Pythons, and every Node SDK alias on Node 22 with the newest on Node 24 and 26.
+# both Pythons, and every Node SDK alias on Node 22 (over two jobs) with the newest on Node 24
+# and 26.
 
 on:
   push:
@@ -23,11 +24,25 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ github.event_name == 'pull_request' && 30 || 75 }}
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 45 || 75 }}
     strategy:
       fail-fast: false
+      # `sdks` is the contract tests' MODEL_EVAL_NODE_SDKS. Pull request: the first release of
+      # each Node SDK on Node 22, the newest major on Node 26. Otherwise: every SDK alias on Node
+      # 22, split over two jobs (an openai alias has about twice the cases: two APIs), and the
+      # newest major on Node 24 and 26. `checks` marks the one job that runs the checks that do
+      # not depend on the Node version or the SDKs.
       matrix:
-        node: ${{ fromJSON(github.event_name == 'pull_request' && '[22, 26]' || '[22, 24, 26]') }}
+        include: >-
+          ${{ fromJSON(github.event_name == 'pull_request' && '[
+            {"node": 22, "sdks": "openai-5-first,anthropic-sdk-0-first", "checks": true},
+            {"node": 26, "sdks": "openai-7,anthropic-sdk-1", "checks": false}
+          ]' || '[
+            {"node": 22, "sdks": "openai-5-first,openai-5,anthropic-sdk-0-first,anthropic-sdk-0", "checks": false},
+            {"node": 22, "sdks": "openai-6,openai-7,anthropic-sdk-1", "checks": true},
+            {"node": 24, "sdks": "openai-7,anthropic-sdk-1", "checks": false},
+            {"node": 26, "sdks": "openai-7,anthropic-sdk-1", "checks": false}
+          ]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v5
@@ -52,22 +67,17 @@ jobs:
             -r adapters/python/tests/requirements/openai-2.txt \
             -r adapters/python/tests/requirements/anthropic-2.txt
           echo "MODEL_EVAL_PYTHON=$RUNNER_TEMP/helper-python/bin/python" >> "$GITHUB_ENV"
-      # Checks that do not depend on the Node version run on Node 22 only.
-      - if: matrix.node == 22
+      # Checks that do not depend on the Node version run in one job only.
+      - if: matrix.checks
         run: pnpm typecheck
-      - if: matrix.node == 22
+      - if: matrix.checks
         run: pnpm lint
-      - if: matrix.node == 22
+      - if: matrix.checks
         run: pnpm format:check
       - run: pnpm build
-      # Pull request: the first release of each Node SDK on Node 22, the newest major on Node 26.
-      # Otherwise: every SDK alias on Node 22, the newest major on the other versions.
       - run: pnpm exec vitest run --project unit --project contract --project viewer
         env:
-          MODEL_EVAL_NODE_SDKS: >-
-            ${{ matrix.node != 22 && 'openai-7,anthropic-sdk-1'
-            || github.event_name == 'pull_request' && 'openai-5-first,anthropic-sdk-0-first'
-            || '' }}
+          MODEL_EVAL_NODE_SDKS: ${{ matrix.sdks }}
       - name: Example swap check against the mock adapter (SC-001)
         timeout-minutes: 3
         run: pnpm exec vitest run --project e2e test/e2e/example-pogo.test.ts
@@ -82,21 +92,21 @@ jobs:
       - name: End-to-end tests against the mock adapter
         timeout-minutes: 10
         run: pnpm exec vitest run --project e2e --exclude test/e2e/example-pogo.test.ts
-      - if: matrix.node == 22
+      - if: matrix.checks
         run: pnpm check:coverage
       - name: SC-003 simulation
-        if: matrix.node == 22
+        if: matrix.checks
         run: pnpm bench
       - name: Pack
-        if: matrix.node == 22
+        if: matrix.checks
         run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
       - name: The package ships the page template
-        if: matrix.node == 22
+        if: matrix.checks
         run: tar -tzf "$RUNNER_TEMP"/pack/*.tgz | grep -x 'package/dist/viewer/report.html'
-      - if: matrix.node == 22
+      - if: matrix.checks
         run: pnpm exec publint run "$RUNNER_TEMP"/pack/*.tgz
       # The package is ESM only, so CommonJS resolution is not checked.
-      - if: matrix.node == 22
+      - if: matrix.checks
         run: pnpm exec attw "$RUNNER_TEMP"/pack/*.tgz --profile esm-only
 
   browser:
