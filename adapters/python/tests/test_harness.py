@@ -19,6 +19,7 @@ from protocol_client import (
     assert_expect,
     check_expect,
     environment_requirements,
+    in_shard,
     require_loopback,
     run_case,
     same,
@@ -89,6 +90,17 @@ def test_003_SC_002_the_environment_file_comes_from_its_variable_else_from_the_p
     assert environment_requirements(BOTH_TRANSPORTS, {}) == "both-transports"
     assert environment_requirements({"openai": "3.0.0"}, {}) == "openai-3.0.0"
     assert environment_requirements({"openai": "0.1.0"}, {}) is None
+
+
+def test_003_SC_002_shards_split_the_tests_with_each_test_in_exactly_one() -> None:
+    ids = [f"tests/test_answer_calls.py::test_answer[S-ANS-{n:02} case]" for n in range(200)]
+    shards = [[test for test in ids if in_shard(test, f"{i}/3")] for i in (1, 2, 3)]
+    assert sorted(test for shard in shards for test in shard) == sorted(ids)
+    assert all(len(shard) > 40 for shard in shards)
+    assert all(in_shard(test, None) and in_shard(test, "") for test in ids)
+    for shard in ("0/2", "3/2", "1/0", "2", "a/b"):
+        with pytest.raises(ValueError):
+            in_shard(ids[0], shard)
 
 
 def test_003_SC_002_an_adapter_gets_no_proxy_and_no_real_credentials() -> None:

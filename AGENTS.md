@@ -32,16 +32,22 @@ pnpm test:browser      # after pnpm build and pnpm exec playwright install
 ```
 
 The Python helper in `adapters/python/`. Its tests run in an environment built from one file of
-`tests/requirements/`; CI runs each file on Python 3.10 and the newest Python 3, and
-`openai-1.txt` on 3.13 instead of the newest, which openai 1.x does not run on. The contract
-tests of `pnpm test` start Python from `MODEL_EVAL_PYTHON`, an interpreter with both SDKs; CI
-builds it from `openai-2.txt` and `anthropic-2.txt`.
+`tests/requirements/`. The contract tests of `pnpm test` start Python from `MODEL_EVAL_PYTHON`,
+an interpreter with both SDKs; CI builds it from `openai-2.txt` and `anthropic-2.txt`.
+
+CI on a pull request runs the helper tests on the lowest and the newest supported runtime:
+`openai-2.txt` and `anthropic-0.txt` on Python 3.10, `openai-3.txt`, `anthropic-2.txt` and
+`both-transports.txt` on the newest Python; Node 22 with the first supported release of each
+Node SDK and Node 26 with the newest. A push to main runs every file on Python 3.10 and the
+newest Python (`openai-1.txt` on 3.13, which openai 1.x does not go past), and Node 22, 24 and
+26 with every Node SDK alias on Node 22. Before merging a change to a helper, run that full set
+on the branch: `gh workflow run ci.yml --ref <branch>`.
 
 ```bash
 cd adapters/python
 uv venv --python 3.10 .venv
 uv pip install --python .venv/bin/python -r tests/requirements/openai-2.txt
-MODEL_EVAL_REQUIREMENTS=openai-2 .venv/bin/python -m pytest
+MODEL_EVAL_REQUIREMENTS=openai-2 .venv/bin/python -m pytest -n 4
 uvx --python 3.10 --with pytest --with httpx2 mypy --strict --python-version 3.10 \
   --exclude 'tests/services/py311_' tests model_eval_adapter.py
 uvx --python 3.11 --with pytest --with httpx2 mypy --strict --python-version 3.11 \

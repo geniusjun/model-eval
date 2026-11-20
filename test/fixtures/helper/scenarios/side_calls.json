@@ -420,7 +420,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 2
         },
         {
           "match": {
@@ -521,7 +522,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 2
         },
         {
           "match": {
@@ -612,7 +614,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 2
         },
         {
           "match": {
@@ -707,7 +710,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 2
         },
         {
           "match": {
@@ -993,7 +997,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 2
         },
         {
           "match": {
@@ -1094,7 +1099,8 @@
           "error": {
             "status": 400
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 2
         },
         {
           "match": {
@@ -1185,7 +1191,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 2
         },
         {
           "match": {
@@ -1296,7 +1303,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 2
         },
         {
           "match": {
@@ -1407,6 +1415,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "connection": "close-before-headers"
         },
         {
@@ -1573,6 +1582,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -1655,6 +1665,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -1734,6 +1745,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -1813,6 +1825,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -1899,6 +1912,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -1987,6 +2001,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -2065,6 +2080,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -2151,6 +2167,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -2226,6 +2243,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -2298,6 +2316,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -2380,6 +2399,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -2476,6 +2496,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -2569,6 +2590,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -2671,6 +2693,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -2780,6 +2803,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -2888,6 +2912,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -2992,6 +3017,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -3101,6 +3127,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -3210,6 +3237,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -3311,6 +3339,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -3424,6 +3453,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -3543,6 +3573,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -3663,6 +3694,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -3788,6 +3820,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -3903,6 +3936,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -4019,6 +4053,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -4223,6 +4258,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -4484,6 +4520,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 600,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -4615,6 +4652,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -4734,6 +4772,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -4854,6 +4893,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -4996,6 +5036,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 520,
+          "afterRequests": 5,
           "reply": {
             "text": "block"
           }
@@ -5137,6 +5178,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 520,
+          "afterRequests": 5,
           "reply": {
             "text": "block"
           }
@@ -5279,6 +5321,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 520,
+          "afterRequests": 5,
           "reply": {
             "text": "block"
           }
@@ -5379,6 +5422,7 @@
             "model": "model-x"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -5460,6 +5504,7 @@
             "model": "model-x"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -5542,6 +5587,7 @@
             "model": "model-x"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -5639,6 +5685,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -5732,6 +5779,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -5822,6 +5870,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -5880,7 +5929,7 @@
                 "stream": true,
                 "onError": "swallow",
                 "name": "first",
-                "limitMs": 300
+                "limitMs": 800
               }
             },
             {
@@ -5967,7 +6016,7 @@
                 "stream": true,
                 "onError": "swallow",
                 "name": "first",
-                "waitMs": 300
+                "waitMs": 800
               }
             },
             {
@@ -6149,7 +6198,7 @@
                 "stream": true,
                 "onError": "swallow",
                 "name": "first",
-                "limitMs": 300
+                "limitMs": 800
               }
             }
           ],
@@ -6207,7 +6256,7 @@
                 "stream": true,
                 "onError": "swallow",
                 "name": "first",
-                "waitMs": 300
+                "waitMs": 800
               }
             }
           ],
@@ -6367,6 +6416,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -6443,6 +6493,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -6529,6 +6580,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -6605,6 +6657,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -6688,6 +6741,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -6765,6 +6819,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 2,
           "reply": {
             "text": "block"
           }
@@ -6869,6 +6924,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -6882,7 +6938,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -6986,6 +7043,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -6999,7 +7057,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -7102,6 +7161,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -7115,7 +7175,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -7219,6 +7280,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -7232,7 +7294,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -7332,6 +7395,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -7345,7 +7409,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -7447,6 +7512,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 800,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -7460,7 +7526,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -7586,7 +7653,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -7594,6 +7662,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -7721,7 +7790,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -7729,6 +7799,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -7857,7 +7928,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -7865,6 +7937,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -7978,6 +8051,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 1200,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -7991,7 +8065,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -8093,6 +8168,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 1200,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -8106,7 +8182,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -8205,6 +8282,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 1200,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -8218,7 +8296,8 @@
           },
           "stream": {
             "deltas": 3,
-            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150]
+            "chunkDelaysMs": [0, 0, 0, 150, 0, 150, 150],
+            "afterText": { "text": "BAD", "requests": 3 }
           }
         },
         {
@@ -8321,6 +8400,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 1200,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -8427,6 +8507,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 1200,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -8530,6 +8611,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 1200,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -8604,7 +8686,7 @@
                 "user": "Answer again.",
                 "onError": "swallow",
                 "name": "second",
-                "limitMs": 300
+                "limitMs": 800
               }
             },
             {
@@ -8675,6 +8757,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -8745,7 +8828,7 @@
                 "user": "Answer again.",
                 "onError": "swallow",
                 "name": "second",
-                "waitMs": 300
+                "waitMs": 800
               }
             },
             {
@@ -8808,7 +8891,8 @@
             "chunkDelaysMs": [
               0,
               3000
-            ]
+            ],
+            "chunkAfterRequests": [0, 4]
           }
         },
         {
@@ -8816,6 +8900,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -8960,6 +9045,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -9103,6 +9189,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -9244,6 +9331,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 4,
           "reply": {
             "text": "block"
           }
@@ -9370,6 +9458,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -9462,6 +9551,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -9561,6 +9651,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -9653,6 +9744,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -9749,6 +9841,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -9842,6 +9935,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -9944,7 +10038,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10054,7 +10149,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10163,7 +10259,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10270,7 +10367,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10378,7 +10476,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10484,7 +10583,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10595,7 +10695,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10700,7 +10801,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10804,7 +10906,8 @@
           "headers": {
             "retry-after-ms": "20"
           },
-          "delayMs": 400
+          "delayMs": 400,
+          "afterRequests": 3
         },
         {
           "match": {
@@ -10915,6 +11018,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -11026,6 +11130,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -11118,6 +11223,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -11228,6 +11334,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -11335,6 +11442,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }
@@ -11428,6 +11536,7 @@
             "bodyIncludes": "Safety check"
           },
           "delayMs": 400,
+          "afterRequests": 3,
           "reply": {
             "text": "block"
           }

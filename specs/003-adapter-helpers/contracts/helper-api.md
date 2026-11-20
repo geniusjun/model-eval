@@ -611,7 +611,7 @@ Sent as `log` with level `warn` ([001 adapter-protocol §`log`](../../001-swap-c
 
 ## Supported SDKs
 
-Only the combinations the CI contract tests run are supported. For each major version below, the last release is tested; for a major version that changed the transport, the first release too. The CI configuration is the source of the exact versions tested.
+Only the combinations the CI contract tests run are supported. For each major version below, the last release is tested; for a major version that changed the transport, the first release too. Each push to main runs all of them; a pull request runs the lowest and the newest supported runtime, each with one release of each SDK. `.github/workflows/ci.yml` is the source of the exact versions tested.
 
 | Runtime | SDK | Major versions | Default transport |
 |---|---|---|---|

@@ -19,6 +19,7 @@ import sys
 import threading
 import time
 import urllib.request
+import zlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -337,6 +338,21 @@ def environment_requirements(installed: Mapping[str, str], env: Mapping[str, str
         if requirements_sdks(path.stem) == dict(installed)
     ]
     return matching[0] if len(matching) == 1 else None
+
+
+SHARD = re.compile(r"(\d+)/(\d+)")
+
+
+def in_shard(test_id: str, shard: str | None) -> bool:
+    """Whether a test belongs to `shard`, written `i/n` as `MODEL_EVAL_SHARD` is: shard i of n
+    holds the tests whose ID's CRC-32 is i - 1 modulo n, so n jobs split one environment's tests
+    and each test runs in exactly one of them. Without a shard every test belongs."""
+    if not shard:
+        return True
+    match = SHARD.fullmatch(shard)
+    if match is None or not 1 <= int(match.group(1)) <= int(match.group(2)):
+        raise ValueError(f"MODEL_EVAL_SHARD {shard!r} is not i/n with 1 <= i <= n")
+    return zlib.crc32(test_id.encode("utf-8")) % int(match.group(2)) == int(match.group(1)) - 1
 
 
 # The environment with httpx and httpx2 installed together is not an SDK major of its own, so it

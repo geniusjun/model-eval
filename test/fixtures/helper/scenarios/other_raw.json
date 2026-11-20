@@ -1544,7 +1544,8 @@
           "delayMs": 600,
           "reply": {
             "text": "First answer."
-          }
+          },
+          "afterRequests": 2
         },
         {
           "match": {
@@ -1626,7 +1627,8 @@
           "delayMs": 600,
           "reply": {
             "text": "First answer."
-          }
+          },
+          "afterRequests": 2
         },
         {
           "match": {
@@ -3093,7 +3095,7 @@
             "deltas": 1,
             "chunkDelaysMs": [
               0,
-              900,
+              4000,
               300,
               300,
               300,
@@ -3187,6 +3189,14 @@
               0,
               0,
               3000
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
             ]
           }
         },
@@ -3198,7 +3208,7 @@
             "deltas": 1,
             "chunkDelaysMs": [
               0,
-              900,
+              4000,
               300,
               300,
               300,
@@ -3302,7 +3312,7 @@
             "deltas": 1,
             "chunkDelaysMs": [
               0,
-              900,
+              4000,
               300,
               300,
               300,
@@ -3813,6 +3823,11 @@
               300,
               300,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              0,
+              2
             ]
           }
         },
@@ -3974,7 +3989,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 },
@@ -4016,7 +4031,7 @@
             "deltas": 1,
             "chunkDelaysMs": [
               0,
-              900,
+              4000,
               300,
               300,
               300,
@@ -4024,6 +4039,11 @@
               300,
               300,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              2,
+              2
             ]
           }
         },
@@ -4077,7 +4097,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 },
@@ -4119,7 +4139,7 @@
             "deltas": 1,
             "chunkDelaysMs": [
               0,
-              900,
+              4000,
               300,
               300,
               300,
@@ -4127,6 +4147,17 @@
               300,
               300,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
             ]
           }
         },
@@ -4183,7 +4214,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 },
@@ -4225,7 +4256,7 @@
             "deltas": 1,
             "chunkDelaysMs": [
               0,
-              900,
+              4000,
               300,
               300,
               300,
@@ -4233,6 +4264,14 @@
               300,
               300,
               300
+            ],
+            "chunkAfterRequests": [
+              0,
+              2,
+              2,
+              2,
+              2,
+              2
             ]
           }
         },

@@ -132,30 +132,42 @@ class ScriptBook:
                     return entry
         return None
 
-    def take(self, head: RequestHead, body: Any) -> JsonObject | None:
+    @property
+    def generation(self) -> int:
+        with self._lock:
+            return self._generation
+
+    def take(self, head: RequestHead, body: Any) -> tuple[JsonObject | None, int]:
+        """The entry that answers a request, if any, and the generation of the script it came
+        from, for `record`."""
         with self._lock:
             for index, entry in enumerate(self._entries or []):
                 if self._remaining[index] > 0 and matches(entry.get("match"), head, body):
                     self._remaining[index] -= 1
-                    return entry
-        return None
+                    return entry, self._generation
+            return None, self._generation
 
     def next_id(self) -> int:
         with self._lock:
             self._ids += 1
             return self._ids
 
-    def record(self, record: JsonObject) -> None:
+    def record(self, record: JsonObject, generation: int) -> bool:
+        """Logs a request answered under the script of `generation`. A request whose script was
+        loaded again or reset since is left out of the new script's log, and this returns False."""
         with self._lock:
+            if generation != self._generation:
+                return False
             self._log.append(record)
             self._received.notify_all()
+            return True
 
-    def wait_for_requests(self, count: int, record: JsonObject, what: str) -> bool:
+    def wait_for_requests(self, count: int, record: JsonObject, what: str, generation: int) -> bool:
         """Waits until `count` requests were received since the script was loaded (`afterRequests`).
-        It gives up past AFTER_REQUESTS_TIMEOUT_S, or when the script is loaded again or reset,
-        and then notes `waitTimedOut` on the request's record and returns False."""
+        It gives up past AFTER_REQUESTS_TIMEOUT_S, or when the script of `generation`, the one
+        the request was logged under, was loaded again or reset, even before the wait began, and
+        then notes `waitTimedOut` on the request's record and returns False."""
         with self._lock:
-            generation = self._generation
 
             def settled() -> bool:
                 return self._generation != generation or len(self._log) >= count
@@ -789,6 +801,48 @@ def sse_chunks(chunks: list[JsonObject], last_line: str) -> list[tuple[int, byte
     return [(delay, text.encode("utf-8")) for delay, text in rendered]
 
 
+def event_text_piece(event: Event) -> str:
+    """The answer text one rendered stream event adds: a Chat Completions content delta of
+    choice 0, a Responses `response.output_text.delta` or an Anthropic `text_delta`."""
+    data = event.get("data")
+    if not isinstance(data, dict):
+        return ""
+    if data.get("type") == "response.output_text.delta":
+        return str(data.get("delta", ""))
+    if data.get("type") == "content_block_delta":
+        delta = data.get("delta") or {}
+        return str(delta.get("text", "")) if delta.get("type") == "text_delta" else ""
+    choices = [choice for choice in data.get("choices", []) if choice.get("index", 0) == 0]
+    return "".join(str(choice.get("delta", {}).get("content") or "") for choice in choices)
+
+
+def chunk_gates(events: list[Event], options: JsonObject, count: int) -> list[int]:
+    """The request count each chunk waits for: `chunkAfterRequests` by index, and with
+    `afterText` every chunk after the one whose events complete its `text` in the answer text,
+    so the rest of a stream arrives only once the client has acted on that text."""
+    gates = [int(n) for n in options.get("chunkAfterRequests", [])]
+    after = options.get("afterText")
+    if after is None:
+        return gates
+    per_chunk = int(options.get("eventsPerChunk", 1))
+    text = ""
+    for index, event in enumerate(events):
+        text += event_text_piece(event)
+        if str(after["text"]) in text:
+            first_held = index // per_chunk + 1
+            break
+    else:
+        raise ScriptError(f"stream.afterText: {after['text']!r} is not in the answer text")
+    if first_held >= count:
+        raise ScriptError(
+            f"stream.afterText: no chunk follows the one that completes {after['text']!r}"
+        )
+    gates += [0] * (count - len(gates))
+    for chunk in range(first_held, count):
+        gates[chunk] = max(gates[chunk], int(after["requests"]))
+    return gates
+
+
 def stream_chunks(events: list[Event], options: JsonObject) -> list[tuple[int, bytes]]:
     per_chunk = int(options.get("eventsPerChunk", 1))
     delays = list(options.get("chunkDelaysMs", []))
@@ -898,7 +952,7 @@ def build_response(entry: JsonObject, api: str, request: JsonObject, rid: int) -
             events = stream_events(api, rid, model, reply, request, options)
             chunks = stream_chunks(events, options)
             response = Response(int(entry.get("status", 200)), {}, chunks, True)
-            response.after_requests = [int(n) for n in options.get("chunkAfterRequests", [])]
+            response.after_requests = chunk_gates(events, options, len(chunks))
             return response
         body = compact_json(reply_body(api, rid, model, reply)).encode("utf-8")
         return Response(int(entry.get("status", 200)), {}, body_chunks(body, entry), False)
@@ -1094,9 +1148,9 @@ class Handler(BaseHTTPRequestHandler):
         head = RequestHead(method, path, record["headers"])
         early = book.peek(head)
         if early is not None and early.get("connection") == "close-unread":
-            book.take(head, None)
+            _, generation = book.take(head, None)
             record["scripted"] = True
-            book.record(record)
+            book.record(record, generation)
             book.publish(record)
             self.drop_connection()
             return
@@ -1111,14 +1165,22 @@ class Handler(BaseHTTPRequestHandler):
         )
         entry: JsonObject | None = None
         if book.loaded:
-            entry = book.take(head, body)
+            entry, generation = book.take(head, body)
             record["scripted"] = entry is not None
-        elif record["api"] == "chat-completions":
-            entry = example_entry(request)
-        book.record(record)
-        self.respond(entry, record, request)
+        else:
+            generation = book.generation
+            if record["api"] == "chat-completions":
+                entry = example_entry(request)
+        if not book.record(record, generation):
+            book.publish(record)
+            message = "mock server: the script was replaced while the request arrived"
+            self.send(unscripted(format_of(path), message), None)
+            return
+        self.respond(entry, record, request, generation)
 
-    def respond(self, entry: JsonObject | None, record: JsonObject, request: JsonObject) -> None:
+    def respond(
+        self, entry: JsonObject | None, record: JsonObject, request: JsonObject, generation: int
+    ) -> None:
         book = self.server.book
         api = format_of(record["path"])
         if entry is None:
@@ -1128,7 +1190,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         time.sleep(int(entry.get("delayMs", 0)) / 1000)
         if "afterRequests" in entry and not book.wait_for_requests(
-            int(entry["afterRequests"]), record, "the response"
+            int(entry["afterRequests"]), record, "the response", generation
         ):
             book.publish(record)
             self.send(unscripted(api, f"mock server: {record['waitTimedOut']}"), None)
@@ -1151,11 +1213,16 @@ class Handler(BaseHTTPRequestHandler):
         response.headers.update(
             {name.lower(): value for name, value in (entry.get("headers") or {}).items()}
         )
-        self.send(response, entry.get("drop"), record)
+        self.send(response, entry.get("drop"), (record, generation))
 
     def send(
-        self, response: Response, drop: JsonObject | None, record: JsonObject | None = None
+        self,
+        response: Response,
+        drop: JsonObject | None,
+        held: tuple[JsonObject, int] | None = None,
     ) -> None:
+        """Sends a response; `held` is the request's record and script generation, which the
+        chunks held by `chunkAfterRequests` wait under."""
         content_type = "text/event-stream" if response.sse else "application/json"
         headers = {"content-type": content_type, **response.headers}
         chunked = response.sse or len(response.chunks) > 1
@@ -1170,11 +1237,13 @@ class Handler(BaseHTTPRequestHandler):
         whole = len(response.chunks) if drop is None else int(drop.get("chunks", 0))
         for index, (delay, chunk) in enumerate(response.chunks[:whole]):
             time.sleep(delay / 1000)
-            if index < len(response.after_requests) and record is not None:
+            if index < len(response.after_requests) and held is not None:
+                record, generation = held
                 count = response.after_requests[index]
-                if not self.server.book.wait_for_requests(count, record, f"chunk {index}"):
+                book = self.server.book
+                if not book.wait_for_requests(count, record, f"chunk {index}", generation):
                     # The record was printed with the headers; print it again with the reason.
-                    self.server.book.publish(record)
+                    book.publish(record)
                     self.drop_connection()
                     return
             self.wfile.write(frame(chunk) if chunked else chunk)

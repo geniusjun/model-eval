@@ -576,6 +576,7 @@
             "model": "model-x"
           },
           "delayMs": 1000,
+          "afterRequests": 3,
           "reply": {
             "text": "Noted."
           }
@@ -672,6 +673,7 @@
             "model": "model-x"
           },
           "delayMs": 1000,
+          "afterRequests": 3,
           "reply": {
             "text": "Noted."
           }
@@ -740,7 +742,7 @@
         }
       },
       "initialize": {
-        "timeoutMs": 9000
+        "timeoutMs": 12000
       },
       "script": [
         {
@@ -785,7 +787,7 @@
         }
       },
       "initialize": {
-        "timeoutMs": 9000
+        "timeoutMs": 12000
       },
       "script": [
         {
@@ -830,7 +832,7 @@
         }
       },
       "initialize": {
-        "timeoutMs": 9000
+        "timeoutMs": 12000
       },
       "script": [
         {
@@ -876,7 +878,7 @@
         }
       },
       "initialize": {
-        "timeoutMs": 9000
+        "timeoutMs": 12000
       },
       "script": [
         {
@@ -1522,7 +1524,8 @@
           "reply": {
             "text": "A late answer."
           },
-          "delayMs": 1500
+          "delayMs": 1500,
+          "afterRequests": 2
         },
         {
           "reply": {
@@ -1579,7 +1582,8 @@
           "reply": {
             "text": "A late answer."
           },
-          "delayMs": 1500
+          "delayMs": 1500,
+          "afterRequests": 2
         },
         {
           "reply": {
@@ -1652,7 +1656,8 @@
           "reply": {
             "text": "A late answer."
           },
-          "delayMs": 1500
+          "delayMs": 1500,
+          "afterRequests": 2
         },
         {
           "reply": {
@@ -1923,7 +1928,7 @@
               }
             },
             {
-              "sleepMs": 1000
+              "sleepMs": 1500
             }
           ],
           "result": {
@@ -1933,7 +1938,7 @@
       },
       "script": [
         {
-          "delayMs": 800,
+          "delayMs": 1000,
           "reply": {
             "text": "A late answer."
           }

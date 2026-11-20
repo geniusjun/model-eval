@@ -2,3 +2,4 @@
 openai[aiohttp,httpx2]==2.54.0
 anthropic[aiohttp]==1.17.0
 pytest==9.2.0
+pytest-xdist==3.8.0

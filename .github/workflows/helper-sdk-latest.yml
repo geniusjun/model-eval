@@ -23,12 +23,13 @@ jobs:
       - id: list
         run: |
           cd adapters/python/tests/requirements
-          newest() { ls "$1"-*.txt | grep -E "^$1-[0-9]+\.txt$" | sort -V | tail -n 1 | sed 's/\.txt$//'; }
+          newest() { printf '%s\n' "$1"-*.txt | grep -E "^$1-[0-9]+\.txt$" | sort -V | tail -n 1 | sed 's/\.txt$//'; }
           echo "files=$(printf '%s\n' "$(newest openai)" "$(newest anthropic)" | jq -Rcn '[inputs]')" >> "$GITHUB_OUTPUT"
 
   python:
     needs: python-requirements
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -54,10 +55,11 @@ jobs:
           cat "$RUNNER_TEMP/latest.txt"
           python3 -m pip install --upgrade -r "$RUNNER_TEMP/latest.txt"
           python3 -m pip list | grep -Ei '^(openai|anthropic|httpx|httpx2|aiohttp) '
-      - run: python3 -m pytest
+      - run: python3 -m pytest -n 4
 
   node:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v5
@@ -85,7 +87,7 @@ jobs:
       - name: Python environment with the latest openai and anthropic SDKs
         run: |
           cd adapters/python/tests/requirements
-          newest() { ls "$1"-*.txt | grep -E "^$1-[0-9]+\.txt$" | sort -V | tail -n 1; }
+          newest() { printf '%s\n' "$1"-*.txt | grep -E "^$1-[0-9]+\.txt$" | sort -V | tail -n 1; }
           cat "$(newest openai)" "$(newest anthropic)" | sed -E 's/==[^;[:space:]]+//' > "$RUNNER_TEMP/latest.txt"
           cat "$RUNNER_TEMP/latest.txt"
           python3 -m venv "$RUNNER_TEMP/helper-python"

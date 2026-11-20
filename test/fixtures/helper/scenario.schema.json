@@ -491,6 +491,16 @@
           "type": "array",
           "items": { "type": "integer", "minimum": 0 }
         },
+        "afterText": {
+          "description": "Hold every body chunk after the one whose events complete `text` in the answer text (of the first choice for Chat Completions) until the server has received `requests` requests since the script was loaded, as `chunkAfterRequests` does, so the rest of the stream arrives only once the client acted on that text (for example after it sent the next request). A `text` the answer does not contain, or one completed in the last chunk, is a script error.",
+          "type": "object",
+          "required": ["text", "requests"],
+          "additionalProperties": false,
+          "properties": {
+            "text": { "type": "string", "minLength": 1 },
+            "requests": { "type": "integer", "minimum": 1 }
+          }
+        },
         "ending": {
           "description": "`end-event` (default): the generation-end marker and the normal end event; `no-end-event`: the body ends without the normal end event; `text-only`: the body ends after the text, before any generation-end marker; `failure`: a failure end event built from `reply.failure` after the text.",
           "enum": ["end-event", "no-end-event", "text-only", "failure"]
