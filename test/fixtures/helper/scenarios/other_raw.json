@@ -3989,7 +3989,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 },
@@ -4097,7 +4097,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 },
@@ -4214,7 +4214,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 },

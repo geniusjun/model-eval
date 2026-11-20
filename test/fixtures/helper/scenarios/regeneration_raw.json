@@ -8225,7 +8225,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -8384,7 +8384,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -8543,7 +8543,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -9063,7 +9063,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -9241,7 +9241,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -9415,7 +9415,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -9783,7 +9783,7 @@
               "call": {
                 "name": "answer",
                 "stream": true,
-                "limitMs": 500,
+                "limitMs": 1500,
                 "onError": "swallow"
               }
             },
@@ -9792,7 +9792,7 @@
                 "name": "resent",
                 "same": "answer",
                 "stream": true,
-                "limitMs": 400,
+                "limitMs": 1500,
                 "onError": "swallow"
               }
             }
@@ -9823,7 +9823,7 @@
           },
           "stream": {
             "chunkDelaysMs": [
-              900,
+              4000,
               300
             ],
             "chunkAfterRequests": [
@@ -9845,7 +9845,7 @@
               0,
               0,
               0,
-              900,
+              4000,
               300
             ]
           }
@@ -10009,7 +10009,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 500
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -10023,7 +10023,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -10123,7 +10123,7 @@
                 "name": "answer",
                 "stream": true,
                 "onError": "swallow",
-                "limitMs": 400
+                "limitMs": 1500
               }
             },
             {
@@ -10163,7 +10163,7 @@
               0,
               0,
               0,
-              900,
+              4000,
               300
             ]
           }
@@ -10585,7 +10585,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -10786,7 +10786,7 @@
                 "onError": "swallow",
                 "cut": {
                   "at": {
-                    "ms": 400
+                    "ms": 1500
                   },
                   "style": "stop-waiting"
                 }
@@ -12913,7 +12913,7 @@
               "call": {
                 "name": "answer",
                 "stream": true,
-                "limitMs": 400,
+                "limitMs": 1500,
                 "onError": "swallow"
               }
             },
@@ -12922,7 +12922,7 @@
                 "name": "resent",
                 "same": "answer",
                 "stream": true,
-                "limitMs": 400,
+                "limitMs": 1500,
                 "onError": "swallow"
               }
             }
@@ -12949,7 +12949,7 @@
               0,
               0,
               0,
-              900,
+              4000,
               300
             ],
             "chunkAfterRequests": [
@@ -12978,7 +12978,7 @@
               0,
               0,
               0,
-              900,
+              4000,
               300
             ]
           }
